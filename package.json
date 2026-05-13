@@ -1,0 +1,118 @@
+{
+  "name": "vscode-pipelinesexplorer",
+  "displayName": "Pipelines Explorer",
+  "description": "Pipelines Explorer allows you to navigate through the Azure DevOps Pipelines and the referenced templates.",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.99.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "pipelinesexplorer.signInWithMicrosoft",
+        "title": "Pipelines Explorer: Sign in with Microsoft"
+      },
+      {
+        "command": "pipelinesexplorer.signInWithPat",
+        "title": "Pipelines Explorer: Sign in with Personal Access Token"
+      },
+      {
+        "command": "pipelinesexplorer.signOut",
+        "title": "Pipelines Explorer: Sign out"
+      },
+      {
+        "command": "pipelinesexplorer.refresh",
+        "title": "Pipelines Explorer: Refresh",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "pipelinesexplorer.refresh",
+          "when": "view == pipelinesTree && pipelinesexplorer.signedIn",
+          "group": "navigation"
+        },
+        {
+          "command": "pipelinesexplorer.signOut",
+          "when": "view == pipelinesTree && pipelinesexplorer.signedIn"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "pipelinesexplorer.signOut",
+          "when": "pipelinesexplorer.signedIn"
+        },
+        {
+          "command": "pipelinesexplorer.refresh",
+          "when": "pipelinesexplorer.signedIn"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "pipelinesTree",
+        "contents": "Sign in to Azure DevOps to start exploring your pipelines.\n[Sign in with Microsoft](command:pipelinesexplorer.signInWithMicrosoft)\n[Sign in with Personal Access Token](command:pipelinesexplorer.signInWithPat)\n\nUse Microsoft sign-in for organizations connected to Microsoft Entra ID. Use a PAT for legacy or fine-grained scenarios.",
+        "when": "!pipelinesexplorer.signedIn"
+      }
+    ],
+    "authentication": [
+      {
+        "id": "azuredevopspat",
+        "label": "Azure DevOps PAT"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "pipelines-explorer",
+          "title": "Pipelines Explorer",
+          "icon": "media/dep.svg"
+        }
+      ]
+    },
+    "views": {
+      "pipelines-explorer": [
+        {
+          "id": "pipelinesTree",
+          "name": "Pipelines",
+          "icon": "media/dep.svg",
+          "contextualTitle": "Pipelines Explorer"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.99.1",
+    "@typescript-eslint/eslint-plugin": "^8.30.1",
+    "@typescript-eslint/parser": "^8.30.1",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.25.2",
+    "eslint": "^9.24.0",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {}
+}
