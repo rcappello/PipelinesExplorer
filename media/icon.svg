@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+	<defs>
+		<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+			<stop offset="0%" stop-color="#1F6FBF"/>
+			<stop offset="100%" stop-color="#0E4880"/>
+		</linearGradient>
+		<linearGradient id="node" x1="0" y1="0" x2="0" y2="1">
+			<stop offset="0%" stop-color="#FFFFFF"/>
+			<stop offset="100%" stop-color="#DCEBF7"/>
+		</linearGradient>
+		<linearGradient id="rootNode" x1="0" y1="0" x2="0" y2="1">
+			<stop offset="0%" stop-color="#FFFFFF"/>
+			<stop offset="100%" stop-color="#9DC9EE"/>
+		</linearGradient>
+	</defs>
+
+	<!-- Rounded background tile -->
+	<rect x="0" y="0" width="256" height="256" rx="48" ry="48" fill="url(#bg)"/>
+
+	<!-- Connection lines (drawn first so they sit behind the nodes) -->
+	<g fill="none" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" opacity="0.9">
+		<!-- Root → Left child -->
+		<path d="M 128 84 C 128 116, 92 116, 76 134"/>
+		<!-- Root → Right child -->
+		<path d="M 128 84 C 128 116, 164 116, 180 134"/>
+		<!-- Right child → Nested grandchild (recursion) -->
+		<path d="M 184 162 L 184 192"/>
+	</g>
+
+	<!-- Nodes -->
+	<g>
+		<!-- Root pipeline -->
+		<circle cx="128" cy="60" r="26" fill="url(#rootNode)" stroke="#FFFFFF" stroke-width="3"/>
+		<!-- Left template -->
+		<circle cx="72" cy="140" r="22" fill="url(#node)" stroke="#FFFFFF" stroke-width="3"/>
+		<!-- Right template -->
+		<circle cx="184" cy="140" r="22" fill="url(#node)" stroke="#FFFFFF" stroke-width="3"/>
+		<!-- Nested template (recursive depth) -->
+		<circle cx="184" cy="212" r="18" fill="url(#node)" stroke="#FFFFFF" stroke-width="3"/>
+	</g>
+</svg>

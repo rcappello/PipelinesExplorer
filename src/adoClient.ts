@@ -1,6 +1,13 @@
 import { AuthService } from './authService';
 import { LoggingService } from './LoggingService';
 
+export class AdoUnauthorizedError extends Error {
+	constructor(public readonly status: number, message: string) {
+		super(message);
+		this.name = 'AdoUnauthorizedError';
+	}
+}
+
 export interface AdoProfile {
 	id: string;
 	displayName: string;
@@ -26,6 +33,28 @@ export interface AdoPipeline {
 	folder: string;
 	url: string;
 	revision?: number;
+}
+
+export interface AdoPipelineDetail extends AdoPipeline {
+	configuration?: {
+		type?: string;
+		path?: string;
+		repository?: {
+			id?: string;
+			type?: string;
+			fullName?: string;
+			name?: string;
+		};
+	};
+}
+
+export interface AdoRepository {
+	id: string;
+	name: string;
+	url?: string;
+	webUrl?: string;
+	defaultBranch?: string;
+	project?: { id: string; name: string };
 }
 
 interface AdoListResponse<T> {
@@ -76,6 +105,65 @@ export class AdoClient {
 		return res.value;
 	}
 
+	async getPipeline(organizationName: string, projectName: string, pipelineId: number): Promise<AdoPipelineDetail> {
+		const url = `https://dev.azure.com/${encodeURIComponent(organizationName)}/${encodeURIComponent(projectName)}/_apis/pipelines/${pipelineId}?api-version=7.1`;
+		return this.getJson<AdoPipelineDetail>(url);
+	}
+
+	/** Look up a Git repository by id. Returns undefined on 404. */
+	async getRepository(
+		organizationName: string,
+		projectName: string,
+		repositoryId: string,
+	): Promise<AdoRepository | undefined> {
+		const url = `https://dev.azure.com/${encodeURIComponent(organizationName)}/${encodeURIComponent(projectName)}/_apis/git/repositories/${encodeURIComponent(repositoryId)}?api-version=7.1`;
+		try {
+			return await this.getJson<AdoRepository>(url);
+		} catch (err) {
+			if (err instanceof Error && /\b404\b/.test(err.message)) {
+				return undefined;
+			}
+			throw err;
+		}
+	}
+
+	/**
+	 * Fetch the raw text content of a file from a Git repository hosted in Azure DevOps.
+	 * Returns undefined if the file is missing (404) or the repo is not a TfsGit repo.
+	 */
+	async getFileContent(
+		organizationName: string,
+		projectName: string,
+		repositoryId: string,
+		path: string,
+	): Promise<string | undefined> {
+		const normalized = path.startsWith('/') ? path : `/${path}`;
+		const url = `https://dev.azure.com/${encodeURIComponent(organizationName)}/${encodeURIComponent(projectName)}/_apis/git/repositories/${encodeURIComponent(repositoryId)}/items?path=${encodeURIComponent(normalized)}&api-version=7.1&includeContent=true&$format=text`;
+		return this.getText(url);
+	}
+
+	private async getText(url: string): Promise<string | undefined> {
+		const headers = this.auth.getHeaders();
+		this.logger.logDebug(`GET ${url}`);
+		const response = await fetch(url, { headers: headers as unknown as Record<string, string> });
+		if (response.status === 404) {
+			return undefined;
+		}
+		if (!response.ok) {
+			const body = await safeReadBody(response);
+			const msg = `ADO REST call failed: ${response.status} ${response.statusText} for ${url}${body ? ` :: ${body}` : ''}`;
+			this.logger.logError(msg);
+			if (response.status === 401 || response.status === 403) {
+				throw new AdoUnauthorizedError(
+					response.status,
+					`Azure DevOps rejected the credentials (${response.status}). The stored token may be expired or revoked.`,
+				);
+			}
+			throw new Error(msg);
+		}
+		return await response.text();
+	}
+
 	private async getJson<T>(url: string): Promise<T> {
 		const headers = this.auth.getHeaders();
 		this.logger.logDebug(`GET ${url}`);
@@ -85,13 +173,22 @@ export class AdoClient {
 			const body = await safeReadBody(response);
 			const msg = `ADO REST call failed: ${response.status} ${response.statusText} for ${url}${body ? ` :: ${body}` : ''}`;
 			this.logger.logError(msg);
+			if (response.status === 401 || response.status === 403) {
+				throw new AdoUnauthorizedError(
+					response.status,
+					`Azure DevOps rejected the credentials (${response.status}). The stored token may be expired or revoked.`,
+				);
+			}
 			throw new Error(msg);
 		}
 
 		// ADO returns HTML on redirect-to-login when auth fails silently. Detect it.
 		const contentType = response.headers.get('content-type') ?? '';
 		if (!contentType.includes('application/json')) {
-			throw new Error(`Unexpected non-JSON response from ${url}. Authentication may have expired.`);
+			throw new AdoUnauthorizedError(
+				401,
+				`Unexpected non-JSON response from ${url}. Authentication may have expired.`,
+			);
 		}
 
 		return await response.json() as T;

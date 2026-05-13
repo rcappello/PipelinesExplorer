@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+	<!-- Connection lines -->
+	<g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+		<path d="M 12 7.5 C 12 10, 8.5 10.5, 7 11.2"/>
+		<path d="M 12 7.5 C 12 10, 15.5 10.5, 17 11.2"/>
+		<path d="M 17 14 L 17 17.2"/>
+	</g>
+	<!-- Nodes -->
+	<circle cx="12" cy="5.2" r="2.6"/>
+	<circle cx="6" cy="12.8" r="2.2"/>
+	<circle cx="17" cy="12.8" r="2.2"/>
+	<circle cx="17" cy="19.4" r="1.9"/>
+</svg>

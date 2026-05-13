@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { AzureDevOpsAuthenticationProvider } from './authProvider';
+import { LoggingService } from './LoggingService';
 
 /**
  * Azure DevOps "well-known" application id used as scope when requesting
@@ -41,7 +42,11 @@ export class AuthService implements vscode.Disposable {
 	private currentSession: AdoSession | undefined;
 	private readonly subscriptions: vscode.Disposable[] = [];
 
-	constructor(private readonly context: vscode.ExtensionContext) {
+	constructor(
+		private readonly context: vscode.ExtensionContext,
+		private readonly patProvider: AzureDevOpsAuthenticationProvider,
+		private readonly logger: LoggingService,
+	) {
 		// React to external session changes (e.g. user signs out from Accounts menu).
 		this.subscriptions.push(
 			vscode.authentication.onDidChangeSessions(async e => {
@@ -70,46 +75,93 @@ export class AuthService implements vscode.Disposable {
 	/** Best-effort silent restore using the previously chosen provider. */
 	async initialize(): Promise<void> {
 		const kind = this.getStoredKind();
+		this.logger.logInfo(`AuthService.initialize: stored kind = ${kind ?? '<none>'}`);
 		if (!kind) {
 			await this.setContext(undefined);
 			return;
 		}
 		try {
-			await this.acquireSession(kind, /*createIfNone*/ false);
-		} catch {
+			const restored = await this.acquireSession(kind, /*createIfNone*/ false);
+			this.logger.logInfo(`AuthService.initialize: silent restore ${restored ? 'succeeded' : 'returned no session'}`);
+		} catch (err) {
+			this.logger.logError('AuthService.initialize: silent restore failed', err);
 			await this.setContext(undefined);
 		}
 	}
 
 	async signInWithMicrosoft(): Promise<AdoSession | undefined> {
+		this.logger.logInfo('signInWithMicrosoft invoked');
+		if (!(await this.confirmReplaceIfSignedIn('Microsoft'))) {
+			return this.currentSession;
+		}
 		return this.acquireSession('microsoft', true);
 	}
 
 	async signInWithPat(): Promise<AdoSession | undefined> {
-		return this.acquireSession('pat', true);
+		this.logger.logInfo('signInWithPat invoked');
+		if (!(await this.confirmReplaceIfSignedIn('PAT'))) {
+			return this.currentSession;
+		}
+		// We own the provider, so call it directly (bypassing the consent dialog
+		// of vscode.authentication.getSession that can silently swallow the request).
+		try {
+			this.logger.logInfo('Prompting for new PAT...');
+			await this.patProvider.createSession([]);
+		} catch (err) {
+			if (err instanceof Error && err.message === 'PAT is required') {
+				this.logger.logInfo('PAT input box cancelled by user');
+				return undefined;
+			}
+			throw err;
+		}
+		return this.acquireSession('pat', false);
 	}
 
 	async signOut(): Promise<void> {
 		const kind = this.getStoredKind();
+		this.logger.logInfo(`signOut invoked (kind=${kind ?? '<none>'})`);
 		if (kind === 'pat') {
-			const session = await vscode.authentication.getSession(
-				AzureDevOpsAuthenticationProvider.id, [], { createIfNone: false },
-			);
-			if (session) {
-				// Our custom provider exposes the underlying SecretStorage delete via removeSession.
-				// We don't have a direct handle here, so we fall back to triggering it via the provider.
-				// The cleanest way is to look up the provider instance through the extension context;
-				// instead we simply clear the secret using the same key indirectly: the provider
-				// listens to SecretStorage changes and emits the proper event.
-				await this.context.secrets.delete('AzureDevOpsPAT');
-			}
+			await this.patProvider.removeSession(AzureDevOpsAuthenticationProvider.id);
 		}
-		// We deliberately DO NOT sign the user out from the global Microsoft provider:
-		// other extensions may rely on it. We only forget our local choice.
 		await this.context.globalState.update(SIGN_IN_KIND_KEY, undefined);
 		this.currentSession = undefined;
 		await this.setContext(undefined);
 		this._onDidChangeSession.fire(undefined);
+	}
+
+	/**
+	 * Wipe ALL persisted state (PAT secret + chosen provider). Used by the
+	 * "Reset" command to recover from inconsistent local state.
+	 */
+	async reset(): Promise<void> {
+		this.logger.logInfo('AuthService.reset: clearing all stored credentials');
+		try {
+			await this.patProvider.removeSession(AzureDevOpsAuthenticationProvider.id);
+		} catch (err) {
+			this.logger.logError('reset: removeSession failed (ignored)', err);
+		}
+		await this.context.secrets.delete('AzureDevOpsPAT');
+		await this.context.globalState.update(SIGN_IN_KIND_KEY, undefined);
+		this.currentSession = undefined;
+		await this.setContext(undefined);
+		this._onDidChangeSession.fire(undefined);
+	}
+
+	private async confirmReplaceIfSignedIn(label: string): Promise<boolean> {
+		if (!this.currentSession) {
+			return true;
+		}
+		const pick = await vscode.window.showWarningMessage(
+			`Already signed in as ${this.currentSession.accountLabel} (${this.currentSession.kind}). Replace with a new ${label} sign-in?`,
+			{ modal: true },
+			'Replace',
+		);
+		if (pick !== 'Replace') {
+			this.logger.logInfo('Sign-in cancelled (user kept existing session)');
+			return false;
+		}
+		await this.signOut();
+		return true;
 	}
 
 	/** Build the auth headers required for a REST call. */

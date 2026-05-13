@@ -2,13 +2,14 @@
   "name": "vscode-pipelinesexplorer",
   "displayName": "Pipelines Explorer",
   "description": "Pipelines Explorer allows you to navigate through the Azure DevOps Pipelines and the referenced templates.",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.99.0"
   },
   "categories": [
     "Other"
   ],
+  "icon": "media/icon.png",
   "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
@@ -26,9 +27,31 @@
         "title": "Pipelines Explorer: Sign out"
       },
       {
+        "command": "pipelinesexplorer.reset",
+        "title": "Pipelines Explorer: Reset (clear stored credentials)"
+      },
+      {
         "command": "pipelinesexplorer.refresh",
         "title": "Pipelines Explorer: Refresh",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "pipelinesexplorer.showLogs",
+        "title": "Pipelines Explorer: Show Logs"
+      },
+      {
+        "command": "pipelinesexplorer.linkWorkspace",
+        "title": "Link Workspace Folder…",
+        "icon": "$(link)"
+      },
+      {
+        "command": "pipelinesexplorer.unlinkWorkspace",
+        "title": "Unlink Workspace Folder",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "pipelinesexplorer.openItem",
+        "title": "Open"
       }
     ],
     "menus": {
@@ -49,8 +72,46 @@
           "when": "pipelinesexplorer.signedIn"
         },
         {
+          "command": "pipelinesexplorer.reset"
+        },
+        {
           "command": "pipelinesexplorer.refresh",
           "when": "pipelinesexplorer.signedIn"
+        },
+        {
+          "command": "pipelinesexplorer.showLogs"
+        },
+        {
+          "command": "pipelinesexplorer.linkWorkspace",
+          "when": "false"
+        },
+        {
+          "command": "pipelinesexplorer.unlinkWorkspace",
+          "when": "false"
+        },
+        {
+          "command": "pipelinesexplorer.openItem",
+          "when": "false"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "pipelinesexplorer.linkWorkspace",
+          "when": "view == pipelinesTree && viewItem == pipelinesexplorer.repository",
+          "group": "inline"
+        },
+        {
+          "command": "pipelinesexplorer.linkWorkspace",
+          "when": "view == pipelinesTree && viewItem == pipelinesexplorer.repository"
+        },
+        {
+          "command": "pipelinesexplorer.linkWorkspace",
+          "when": "view == pipelinesTree && viewItem == pipelinesexplorer.repository.linked"
+        },
+        {
+          "command": "pipelinesexplorer.unlinkWorkspace",
+          "when": "view == pipelinesTree && viewItem == pipelinesexplorer.repository.linked",
+          "group": "inline"
         }
       ]
     },
@@ -72,7 +133,7 @@
         {
           "id": "pipelines-explorer",
           "title": "Pipelines Explorer",
-          "icon": "media/dep.svg"
+          "icon": "media/pipelines-explorer.svg"
         }
       ]
     },
@@ -81,7 +142,7 @@
         {
           "id": "pipelinesTree",
           "name": "Pipelines",
-          "icon": "media/dep.svg",
+          "icon": "media/pipelines-explorer.svg",
           "contextualTitle": "Pipelines Explorer"
         }
       ]
@@ -114,5 +175,7 @@
     "npm-run-all": "^4.1.5",
     "typescript": "^5.8.3"
   },
-  "dependencies": {}
+  "dependencies": {
+    "yaml": "^2.9.0"
+  }
 }
