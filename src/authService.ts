@@ -104,9 +104,10 @@ export class AuthService implements vscode.Disposable {
 		}
 		// We own the provider, so call it directly (bypassing the consent dialog
 		// of vscode.authentication.getSession that can silently swallow the request).
+		let raw: vscode.AuthenticationSession;
 		try {
 			this.logger.logInfo('Prompting for new PAT...');
-			await this.patProvider.createSession([]);
+			raw = await this.patProvider.createSession([]);
 		} catch (err) {
 			if (err instanceof Error && err.message === 'PAT is required') {
 				this.logger.logInfo('PAT input box cancelled by user');
@@ -114,7 +115,23 @@ export class AuthService implements vscode.Disposable {
 			}
 			throw err;
 		}
-		return this.acquireSession('pat', false);
+
+		// Use the freshly-created session directly. We can't rely on
+		// vscode.authentication.getSession({createIfNone:false}) here because
+		// VS Code's consent gate may silently return undefined on the very first
+		// call after our own provider stored a token (no prior session approval
+		// recorded for this extension).
+		const session: AdoSession = {
+			kind: 'pat',
+			accessToken: raw.accessToken,
+			accountLabel: raw.account?.label ?? 'Personal Access Token',
+		};
+		this.currentSession = session;
+		await this.context.globalState.update(SIGN_IN_KIND_KEY, 'pat');
+		await this.setContext(session);
+		this._onDidChangeSession.fire(session);
+		this.logger.logInfo('PAT sign-in completed');
+		return session;
 	}
 
 	async signOut(): Promise<void> {
