@@ -51,6 +51,8 @@ export interface OpenTarget {
 	webUrl?: string;
 	/** Friendly label for messages. */
 	displayName: string;
+	/** 1-based line number to reveal after opening. */
+	selectionLine?: number;
 }
 
 export class OpenItemService {
@@ -72,7 +74,13 @@ export class OpenItemService {
 		const resolved = resolveCandidate(linkedRoot, target.relativePath);
 		if (resolved) {
 			const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(resolved));
-			await vscode.window.showTextDocument(doc, { preview: true });
+			const editor = await vscode.window.showTextDocument(doc, { preview: true });
+			if (target.selectionLine && target.selectionLine > 0) {
+				const ln = Math.min(target.selectionLine - 1, Math.max(0, doc.lineCount - 1));
+				const range = doc.lineAt(ln).range;
+				editor.selection = new vscode.Selection(range.start, range.start);
+				editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+			}
 			return;
 		}
 
@@ -80,7 +88,10 @@ export class OpenItemService {
 			`Could not find ${target.relativePath} under ${linkedRoot} for ${target.displayName}`,
 		);
 		const pick = await vscode.window.showWarningMessage(
-			`File not found in linked workspace: ${target.relativePath}`,
+			`File not found in linked workspace: ${target.relativePath}. ` +
+			`Pipelines Explorer reads YAML from the repository's default branch on Azure DevOps; ` +
+			`your local clone may be on a different branch or out of date. ` +
+			`Try pulling the latest changes (or switching branch) and retry.`,
 			...(target.webUrl ? ['Open in Browser'] : []),
 			'Re-link Workspace',
 		);

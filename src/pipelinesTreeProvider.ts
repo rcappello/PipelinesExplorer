@@ -176,12 +176,12 @@ export class ScriptItemNode extends vscode.TreeItem {
 		this.description = ref.task;
 		this.tooltip = ref.filePath
 			? `${ref.task} → ${ref.filePath}`
-			: `${ref.task} (${ref.inline ? 'inline' : 'unknown'})`;
+			: `${ref.task} (${ref.inline ? `inline${ref.line ? ` @ line ${ref.line}` : ''}` : 'unknown'})`;
 		this.contextValue = 'pipelinesexplorer.script';
-		if (ref.filePath) {
+		if (ref.filePath || (ref.inline && ref.line)) {
 			this.command = {
 				command: 'pipelinesexplorer.openItem',
-				title: 'Open Script',
+				title: ref.filePath ? 'Open Script' : 'Open Inline Script Location',
 				arguments: [this],
 			};
 		}

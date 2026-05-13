@@ -1,4 +1,4 @@
-import { parseDocument } from 'yaml';
+import { isMap, LineCounter, parseDocument, visit, YAMLMap } from 'yaml';
 import { AdoClient, AdoPipelineDetail } from './adoClient';
 import { LoggingService } from './LoggingService';
 
@@ -18,6 +18,8 @@ export interface PowerShellRef {
 	filePath?: string;
 	/** True if the task uses an inline script (no external file). */
 	inline: boolean;
+	/** 1-based line number of the task in the source YAML (when known). */
+	line?: number;
 }
 
 export interface PipelineAnalysis {
@@ -63,11 +65,11 @@ export class PipelineYamlAnalyzer {
 			return { templates: [], scripts: [], rootPath: filePath, warning: 'YAML file not found in the repository.' };
 		}
 		try {
-			const doc = parseDocument(yamlText, { keepSourceTokens: false });
-			const json = doc.toJS({ maxAliasCount: -1 }) as unknown;
+			const lineCounter = new LineCounter();
+			const doc = parseDocument(yamlText, { keepSourceTokens: false, lineCounter });
 			const templates: TemplateRef[] = [];
 			const scripts: PowerShellRef[] = [];
-			walk(json, templates, scripts);
+			walkAst(doc, lineCounter, templates, scripts);
 			return { templates: dedupeTemplates(templates), scripts: dedupeScripts(scripts), rootPath: filePath };
 		} catch (err) {
 			this.logger.logError(`Failed to parse YAML ${filePath}`, err);
@@ -113,44 +115,37 @@ export class PipelineYamlAnalyzer {
 	}
 }
 
-function walk(node: unknown, templates: TemplateRef[], scripts: PowerShellRef[]): void {
-	if (Array.isArray(node)) {
-		for (const item of node) {
-			walk(item, templates, scripts);
-		}
-		return;
-	}
-	if (!node || typeof node !== 'object') {
-		return;
-	}
-	const obj = node as Record<string, unknown>;
+/**
+ * Walk the YAML AST (rather than the JS object) so we can capture source
+ * line numbers for every PowerShell-style task. The `visit` traversal
+ * naturally descends into `extends:` so its inner `template:` pair is
+ * picked up by the same Map handler.
+ */
+function walkAst(
+	doc: ReturnType<typeof parseDocument>,
+	lineCounter: LineCounter,
+	templates: TemplateRef[],
+	scripts: PowerShellRef[],
+): void {
+	visit(doc, {
+		Map(_key, node) {
+			const tplVal = node.get('template');
+			if (typeof tplVal === 'string') {
+				templates.push(parseTemplateRef(tplVal));
+			}
 
-	const tplVal = obj['template'];
-	if (typeof tplVal === 'string') {
-		templates.push(parseTemplateRef(tplVal));
-	}
-
-	// `extends:` and `resources.repositories` may also reference templates/repos,
-	// but only the `extends.template` form is a real template reference.
-	const extendsVal = obj['extends'];
-	if (extendsVal && typeof extendsVal === 'object' && !Array.isArray(extendsVal)) {
-		const t = (extendsVal as Record<string, unknown>)['template'];
-		if (typeof t === 'string') {
-			templates.push(parseTemplateRef(t));
-		}
-	}
-
-	const taskVal = obj['task'];
-	if (typeof taskVal === 'string' && POWERSHELL_TASK_RE.test(taskVal)) {
-		scripts.push(parseTaskRef(taskVal, obj['inputs']));
-	}
-
-	for (const key of Object.keys(obj)) {
-		if (key === 'template' || key === 'task') {
-			continue;
-		}
-		walk(obj[key], templates, scripts);
-	}
+			const taskVal = node.get('task');
+			if (typeof taskVal === 'string' && POWERSHELL_TASK_RE.test(taskVal)) {
+				const inputsNode = node.get('inputs');
+				const inputsJs = isMap(inputsNode)
+					? (inputsNode as YAMLMap).toJSON()
+					: inputsNode;
+				const range = node.range;
+				const line = range ? lineCounter.linePos(range[0]).line : undefined;
+				scripts.push(parseTaskRef(taskVal, inputsJs, line));
+			}
+		},
+	});
 }
 
 function parseTemplateRef(raw: string): TemplateRef {
@@ -161,9 +156,9 @@ function parseTemplateRef(raw: string): TemplateRef {
 	return { raw, path: raw.slice(0, at), repository: raw.slice(at + 1) };
 }
 
-function parseTaskRef(task: string, inputs: unknown): PowerShellRef {
+function parseTaskRef(task: string, inputs: unknown, line?: number): PowerShellRef {
 	if (!inputs || typeof inputs !== 'object') {
-		return { task, inline: true };
+		return { task, inline: true, line };
 	}
 	const i = inputs as Record<string, unknown>;
 	// Normalise input keys (YAML is case-insensitive in practice for ADO tasks).
@@ -182,7 +177,7 @@ function parseTaskRef(task: string, inputs: unknown): PowerShellRef {
 		undefined;
 
 	if (filePath) {
-		return { task, filePath, inline: false };
+		return { task, filePath, inline: false, line };
 	}
 	const isInline =
 		targetType === 'inline' ||
@@ -190,7 +185,7 @@ function parseTaskRef(task: string, inputs: unknown): PowerShellRef {
 		!!lower['script'] ||
 		!!lower['inline'] ||
 		!!lower['inlinescript'];
-	return { task, inline: isInline };
+	return { task, inline: isInline, line };
 }
 
 function dedupeTemplates(items: TemplateRef[]): TemplateRef[] {
@@ -207,7 +202,7 @@ function dedupeTemplates(items: TemplateRef[]): TemplateRef[] {
 function dedupeScripts(items: PowerShellRef[]): PowerShellRef[] {
 	const seen = new Set<string>();
 	return items.filter(s => {
-		const key = `${s.task}|${s.filePath ?? (s.inline ? '<inline>' : '<unknown>')}`;
+		const key = `${s.task}|${s.filePath ?? (s.inline ? `<inline:${s.line ?? '?'}>` : '<unknown>')}`;
 		if (seen.has(key)) {
 			return false;
 		}

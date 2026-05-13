@@ -216,7 +216,6 @@ function buildOpenTarget(
 		};
 	}
 	if (node.kind === 'scriptItem') {
-		if (!node.ref.filePath) { return undefined; }
 		const grandparent = node.parent.parent;
 		const ctx = grandparent.kind === 'pipeline'
 			? {
@@ -229,15 +228,33 @@ function buildOpenTarget(
 				projId: grandparent.project.id,
 				repoKey: grandparent.pipelineRepoKey,
 			};
-		return {
-			repoLinkKey: {
-				orgAccountId: ctx.orgId,
-				projectId: ctx.projId,
-				repoKey: ctx.repoKey,
-			},
-			relativePath: node.ref.filePath,
-			displayName: node.ref.filePath,
-		};
+		if (node.ref.filePath) {
+			return {
+				repoLinkKey: {
+					orgAccountId: ctx.orgId,
+					projectId: ctx.projId,
+					repoKey: ctx.repoKey,
+				},
+				relativePath: node.ref.filePath,
+				displayName: node.ref.filePath,
+			};
+		}
+		// Inline script: open the parent YAML at the task line.
+		if (node.ref.inline && node.ref.line) {
+			const parentYaml = node.parent.analysis.rootPath;
+			if (!parentYaml) { return undefined; }
+			return {
+				repoLinkKey: {
+					orgAccountId: ctx.orgId,
+					projectId: ctx.projId,
+					repoKey: ctx.repoKey,
+				},
+				relativePath: parentYaml,
+				selectionLine: node.ref.line,
+				displayName: `${parentYaml}:${node.ref.line}`,
+			};
+		}
+		return undefined;
 	}
 	return undefined;
 }
