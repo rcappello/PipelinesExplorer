@@ -3,6 +3,7 @@ import { AdoClient, AdoOrganization, AdoPipeline, AdoPipelineDetail, AdoProject,
 import { AuthService } from './authService';
 import { LoggingService } from './LoggingService';
 import { PipelineAnalysis, PipelineYamlAnalyzer, PowerShellRef, TemplateRef } from './pipelineYamlAnalyzer';
+import { RepoBranchService } from './repoBranchService';
 import { WorkspaceLinkService } from './workspaceLinkService';
 
 type Node =
@@ -89,6 +90,7 @@ export class RepositoryNode extends vscode.TreeItem {
 		public readonly repoType: string | undefined,
 		public readonly pipelines: Array<{ pipeline: AdoPipeline; detail?: AdoPipelineDetail }>,
 		public readonly linkedFolder?: string,
+		public readonly branchOverride?: string,
 	) {
 		super(repoLabel, vscode.TreeItemCollapsibleState.Collapsed);
 		this.id = `repo:${organization.accountId}:${project.id}:${repoKey}`;
@@ -99,10 +101,14 @@ export class RepositoryNode extends vscode.TreeItem {
 		const pieces = [`${pipelines.length}`];
 		if (repoType) { pieces.push(repoType); }
 		if (linkedFolder) { pieces.push('linked'); }
+		if (branchOverride) { pieces.push(`branch: ${branchOverride}`); }
 		this.description = pieces.join(' · ');
-		this.tooltip = linkedFolder
-			? `${repoLabel}${repoType ? ` (${repoType})` : ''}\nLinked: ${linkedFolder}`
-			: (repoType ? `${repoLabel} (${repoType})` : repoLabel);
+		const tooltipLines = [repoType ? `${repoLabel} (${repoType})` : repoLabel];
+		if (linkedFolder) { tooltipLines.push(`Linked: ${linkedFolder}`); }
+		tooltipLines.push(branchOverride
+			? `Reading YAML from branch: ${branchOverride}`
+			: 'Reading YAML from default branch');
+		this.tooltip = tooltipLines.join('\n');
 	}
 }
 
@@ -240,10 +246,12 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 		private readonly auth: AuthService,
 		private readonly logger: LoggingService,
 		private readonly links: WorkspaceLinkService,
+		private readonly branches: RepoBranchService,
 	) {
 		this.analyzer = new PipelineYamlAnalyzer(client, logger);
 		this.auth.onDidChangeSession(() => this.refresh());
 		this.links.onDidChange(() => this.refresh());
+		this.branches.onDidChange(() => this.refresh());
 	}
 
 	refresh(): void {
@@ -406,7 +414,13 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 	}
 
 	private getAnalysis(node: PipelineNode): Promise<PipelineAnalysis> {
-		const cached = this.analysisCache.get(node.id!);
+		const branch = this.branches.get({
+			orgAccountId: node.organization.accountId,
+			projectId: node.project.id,
+			repoKey: node.repoKey,
+		});
+		const cacheKey = `${node.id!}::${branch ?? ''}`;
+		const cached = this.analysisCache.get(cacheKey);
 		if (cached) {
 			return cached;
 		}
@@ -415,13 +429,20 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 			node.project.name,
 			node.pipeline.id,
 			node.detail,
+			branch,
 		);
-		this.analysisCache.set(node.id!, promise);
+		this.analysisCache.set(cacheKey, promise);
 		return promise;
 	}
 
 	private getTemplateAnalysis(node: TemplateItemNode): Promise<PipelineAnalysis> {
-		const cached = this.analysisCache.get(node.id!);
+		const branch = this.branches.get({
+			orgAccountId: node.organization.accountId,
+			projectId: node.project.id,
+			repoKey: node.pipelineRepoKey,
+		});
+		const cacheKey = `${node.id!}::${branch ?? ''}`;
+		const cached = this.analysisCache.get(cacheKey);
 		if (cached) {
 			return cached;
 		}
@@ -430,8 +451,9 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 			node.project.name,
 			node.containingRepoId!,
 			node.resolvedPath,
+			branch,
 		);
-		this.analysisCache.set(node.id!, promise);
+		this.analysisCache.set(cacheKey, promise);
 		return promise;
 	}
 
@@ -506,12 +528,14 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 
 		return Array.from(buckets.entries())
 			.map(([key, b]) => {
-				const linked = this.links.get({
+				const keyObj = {
 					orgAccountId: org.accountId,
 					projectId: project.id,
 					repoKey: key,
-				});
-				return new RepositoryNode(org, project, key, b.label, b.type, b.items, linked);
+				};
+				const linked = this.links.get(keyObj);
+				const branchOverride = this.branches.get(keyObj);
+				return new RepositoryNode(org, project, key, b.label, b.type, b.items, linked, branchOverride);
 			})
 			.sort((a, b) => a.repoLabel.localeCompare(b.repoLabel));
 	}

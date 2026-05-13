@@ -64,9 +64,19 @@ If you already have a local clone of one of your repositories open in VS Code:
 2. Pick the workspace folder that contains the clone.
 3. Single-click any pipeline / template / `*.ps1` underneath that repo to open the file in the editor.
 
-If a referenced file isn't found in the linked folder (e.g. it's on a different branch), the extension shows a warning with **Re-link Workspace** and **Open in Browser** options.
+If a referenced file isn't found in the linked folder (e.g. it's on a different branch), the extension shows a warning with **Re-link Workspace** and **Open in Browser** options. The warning also tells you which branch the YAML was read from on Azure DevOps.
 
 To remove a link: right-click the repository → **Unlink Workspace Folder**.
+
+### Choosing a branch (per repository)
+
+By default Pipelines Explorer reads pipeline YAML, templates and PowerShell scripts from each repository's **default branch** on Azure DevOps. You can override the branch on a per-repository basis:
+
+1. Right-click a repository node → **Select Branch…**.
+2. Pick a branch from the list, or choose **Use default branch** to clear the override.
+3. The tree refreshes and reads YAML from the chosen branch. The repository node shows `· branch: <name>` while an override is active.
+
+When you link a workspace folder that is a Git working copy, the extension auto-detects its current branch (from `.git/HEAD`) and offers to use it as the override — keeping what you see in the tree aligned with what you have checked out locally.
 
 ## Commands
 
@@ -79,6 +89,7 @@ To remove a link: right-click the repository → **Unlink Workspace Folder**.
 | `Pipelines Explorer: Refresh` | Re-fetch the tree and re-analyse pipelines. |
 | `Pipelines Explorer: Show Logs` | Open the extension output channel. |
 | Link / Unlink Workspace Folder | Available from the repository node context menu. |
+| Select Branch… | Available from the repository node context menu. Overrides the branch from which YAML is read. |
 
 ## Requirements
 
@@ -88,7 +99,7 @@ To remove a link: right-click the repository → **Unlink Workspace Folder**.
 
 ## Known limitations
 
-- **YAML is always read from the repository's default branch on Azure DevOps.** The tree (templates, PowerShell scripts, line numbers) reflects the server-side default branch (typically `main`). If your local clone is on another branch, or behind the remote, opening a script may fail with *"File not found in linked workspace"*. Pull / switch branch in your local clone to align it. Per-pipeline branch selection is planned for a future release.
+- **YAML is read from a single branch per repository on Azure DevOps** — the default branch, or the branch chosen via **Select Branch…** on the repository node. The tree (templates, PowerShell scripts, line numbers) reflects that branch. If your local clone is on a different branch, opening a script may fail with *"File not found in linked workspace"*; either change the override (right-click the repo → **Select Branch…**) or align the local clone (`git switch` / `git pull`).
 - Cross-repo template references (`template: file.yml@otherRepo`) are shown as leaves in the tree (no recursion). They can still be opened locally if a workspace folder has been linked to a repo with the same alias.
 - Only `azureReposGit` repositories are inspected for YAML content. GitHub-hosted pipeline definitions are listed but not expanded.
 - Pipeline variables other than `System.DefaultWorkingDirectory`, `Build.SourcesDirectory`, `Pipeline.Workspace` and `Agent.BuildDirectory` are not interpolated when resolving local file paths.

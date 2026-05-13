@@ -53,10 +53,11 @@ export class PipelineYamlAnalyzer {
 		projectName: string,
 		repositoryId: string,
 		filePath: string,
+		branch?: string,
 	): Promise<PipelineAnalysis> {
 		let yamlText: string | undefined;
 		try {
-			yamlText = await this.client.getFileContent(organizationName, projectName, repositoryId, filePath);
+			yamlText = await this.client.getFileContent(organizationName, projectName, repositoryId, filePath, branch);
 		} catch (err) {
 			this.logger.logError(`Failed to fetch YAML ${filePath}`, err);
 			return { templates: [], scripts: [], rootPath: filePath, warning: 'Could not fetch YAML file.' };
@@ -82,6 +83,7 @@ export class PipelineYamlAnalyzer {
 		projectName: string,
 		pipelineId: number,
 		preloadedDetail?: AdoPipelineDetail,
+		branch?: string,
 	): Promise<PipelineAnalysis> {
 		let detail: AdoPipelineDetail;
 		if (preloadedDetail) {
@@ -111,7 +113,7 @@ export class PipelineYamlAnalyzer {
 			};
 		}
 
-		return this.analyzeFile(organizationName, projectName, repoId, yamlPath);
+		return this.analyzeFile(organizationName, projectName, repoId, yamlPath, branch);
 	}
 }
 

@@ -130,16 +130,38 @@ export class AdoClient {
 	/**
 	 * Fetch the raw text content of a file from a Git repository hosted in Azure DevOps.
 	 * Returns undefined if the file is missing (404) or the repo is not a TfsGit repo.
+	 * When `branch` is provided, the file is fetched from that branch; otherwise the
+	 * repository's default branch is used.
 	 */
 	async getFileContent(
 		organizationName: string,
 		projectName: string,
 		repositoryId: string,
 		path: string,
+		branch?: string,
 	): Promise<string | undefined> {
 		const normalized = path.startsWith('/') ? path : `/${path}`;
-		const url = `https://dev.azure.com/${encodeURIComponent(organizationName)}/${encodeURIComponent(projectName)}/_apis/git/repositories/${encodeURIComponent(repositoryId)}/items?path=${encodeURIComponent(normalized)}&api-version=7.1&includeContent=true&$format=text`;
+		let url = `https://dev.azure.com/${encodeURIComponent(organizationName)}/${encodeURIComponent(projectName)}/_apis/git/repositories/${encodeURIComponent(repositoryId)}/items?path=${encodeURIComponent(normalized)}&api-version=7.1&includeContent=true&$format=text`;
+		if (branch) {
+			url += `&versionDescriptor.versionType=branch&versionDescriptor.version=${encodeURIComponent(branch)}`;
+		}
 		return this.getText(url);
+	}
+
+	/**
+	 * List heads (branches) of a Git repository. Returns short branch names
+	 * (without the `refs/heads/` prefix).
+	 */
+	async listBranches(
+		organizationName: string,
+		projectName: string,
+		repositoryId: string,
+	): Promise<string[]> {
+		const url = `https://dev.azure.com/${encodeURIComponent(organizationName)}/${encodeURIComponent(projectName)}/_apis/git/repositories/${encodeURIComponent(repositoryId)}/refs?filter=heads/&api-version=7.1&$top=1000`;
+		const res = await this.getJson<AdoListResponse<{ name: string }>>(url);
+		return res.value
+			.map(r => r.name.replace(/^refs\/heads\//, ''))
+			.sort((a, b) => a.localeCompare(b));
 	}
 
 	private async getText(url: string): Promise<string | undefined> {

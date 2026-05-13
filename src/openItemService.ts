@@ -53,6 +53,8 @@ export interface OpenTarget {
 	displayName: string;
 	/** 1-based line number to reveal after opening. */
 	selectionLine?: number;
+	/** Branch the YAML was read from (override or default). Used in warnings. */
+	branch?: string;
 }
 
 export class OpenItemService {
@@ -87,9 +89,12 @@ export class OpenItemService {
 		this.logger.logWarning(
 			`Could not find ${target.relativePath} under ${linkedRoot} for ${target.displayName}`,
 		);
+		const branchHint = target.branch
+			? `Pipelines Explorer is reading YAML from branch "${target.branch}" on Azure DevOps; `
+			: `Pipelines Explorer reads YAML from the repository's default branch on Azure DevOps; `;
 		const pick = await vscode.window.showWarningMessage(
 			`File not found in linked workspace: ${target.relativePath}. ` +
-			`Pipelines Explorer reads YAML from the repository's default branch on Azure DevOps; ` +
+			branchHint +
 			`your local clone may be on a different branch or out of date. ` +
 			`Try pulling the latest changes (or switching branch) and retry.`,
 			...(target.webUrl ? ['Open in Browser'] : []),

@@ -76,6 +76,11 @@
         "icon": "$(debug-disconnect)"
       },
       {
+        "command": "pipelinesexplorer.selectBranch",
+        "title": "Select Branch…",
+        "icon": "$(git-branch)"
+      },
+      {
         "command": "pipelinesexplorer.openItem",
         "title": "Open"
       }
@@ -116,6 +121,10 @@
           "when": "false"
         },
         {
+          "command": "pipelinesexplorer.selectBranch",
+          "when": "false"
+        },
+        {
           "command": "pipelinesexplorer.openItem",
           "when": "false"
         }
@@ -138,6 +147,10 @@
           "command": "pipelinesexplorer.unlinkWorkspace",
           "when": "view == pipelinesTree && viewItem == pipelinesexplorer.repository.linked",
           "group": "inline"
+        },
+        {
+          "command": "pipelinesexplorer.selectBranch",
+          "when": "view == pipelinesTree && (viewItem == pipelinesexplorer.repository || viewItem == pipelinesexplorer.repository.linked)"
         }
       ]
     },

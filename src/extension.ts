@@ -1,5 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
+import * as fs from 'fs';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { AdoClient } from './adoClient';
 import { AuthService } from './authService';
@@ -13,6 +15,7 @@ import {
 	TemplateItemNode,
 } from './pipelinesTreeProvider';
 import { OpenItemService, OpenTarget } from './openItemService';
+import { RepoBranchService } from './repoBranchService';
 import { WorkspaceLinkService } from './workspaceLinkService';
 
 const extensionName = process.env.EXTENSION_NAME || 'dev.pipelinesexplorer';
@@ -43,9 +46,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 	const client = new AdoClient(auth, logger);
 
 	const links = new WorkspaceLinkService(context, logger);
+	const branches = new RepoBranchService(context, logger);
 	const opener = new OpenItemService(links, logger);
 
-	const tree = new PipelinesTreeProvider(client, auth, logger, links);
+	const tree = new PipelinesTreeProvider(client, auth, logger, links, branches);
 	context.subscriptions.push(
 		vscode.window.registerTreeDataProvider('pipelinesTree', tree),
 	);
@@ -131,15 +135,30 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 			if (!fsPath) {
 				return;
 			}
-			await links.set(
-				{
-					orgAccountId: node.organization.accountId,
-					projectId: node.project.id,
-					repoKey: node.repoKey,
-				},
-				fsPath,
-			);
+			const repoKey = {
+				orgAccountId: node.organization.accountId,
+				projectId: node.project.id,
+				repoKey: node.repoKey,
+			};
+			await links.set(repoKey, fsPath);
 			vscode.window.showInformationMessage(`Linked "${node.repoLabel}" → ${fsPath}`);
+			// Auto-detect the current branch of the local clone and offer to use it
+			// as the branch override for this repo.
+			const detected = await detectLocalBranch(fsPath);
+			if (detected) {
+				const current = branches.get(repoKey);
+				if (detected !== current) {
+					const choice = await vscode.window.showInformationMessage(
+						`The linked clone of "${node.repoLabel}" is on branch "${detected}". ` +
+						`Use this branch when reading YAML from Azure DevOps?`,
+						'Use this branch',
+						'Keep default branch',
+					);
+					if (choice === 'Use this branch') {
+						await branches.set(repoKey, detected);
+					}
+				}
+			}
 		}),
 		vscode.commands.registerCommand('pipelinesexplorer.unlinkWorkspace', async (node: RepositoryNode) => {
 			if (!node || node.kind !== 'repository') {
@@ -152,6 +171,59 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 			});
 			vscode.window.showInformationMessage(`Unlinked "${node.repoLabel}".`);
 		}),
+		vscode.commands.registerCommand('pipelinesexplorer.selectBranch', async (node: RepositoryNode) => {
+			if (!node || node.kind !== 'repository') {
+				vscode.window.showWarningMessage('Run this command from the context menu of a repository node.');
+				return;
+			}
+			const key = {
+				orgAccountId: node.organization.accountId,
+				projectId: node.project.id,
+				repoKey: node.repoKey,
+			};
+			const current = branches.get(key);
+			let branchList: string[] = [];
+			try {
+				branchList = await vscode.window.withProgress(
+					{ location: vscode.ProgressLocation.Notification, title: `Loading branches for ${node.repoLabel}…` },
+					() => client.listBranches(node.organization.accountName, node.project.name, node.repoKey),
+				);
+			} catch (err) {
+				logger.logError(`Failed to list branches for ${node.repoLabel}`, err);
+				vscode.window.showErrorMessage(
+					`Could not load branches for "${node.repoLabel}": ${err instanceof Error ? err.message : String(err)}`,
+				);
+				return;
+			}
+			const defaultItem: vscode.QuickPickItem & { branch?: string; clear?: boolean } = {
+				label: '$(repo) Use default branch',
+				description: current ? `currently overridden to "${current}"` : 'currently in use',
+				clear: true,
+			};
+			const items: Array<vscode.QuickPickItem & { branch?: string; clear?: boolean }> = [defaultItem];
+			for (const b of branchList) {
+				items.push({
+					label: `$(git-branch) ${b}`,
+					description: b === current ? 'current override' : undefined,
+					branch: b,
+				});
+			}
+			const pick = await vscode.window.showQuickPick(items, {
+				title: `Select branch for "${node.repoLabel}"`,
+				placeHolder: 'Pipelines Explorer will read YAML from this branch',
+				matchOnDescription: true,
+			});
+			if (!pick) {
+				return;
+			}
+			if (pick.clear) {
+				await branches.clear(key);
+				vscode.window.showInformationMessage(`"${node.repoLabel}" now uses the default branch.`);
+			} else if (pick.branch) {
+				await branches.set(key, pick.branch);
+				vscode.window.showInformationMessage(`"${node.repoLabel}" set to branch "${pick.branch}".`);
+			}
+		}),
 		vscode.commands.registerCommand('pipelinesexplorer.openItem',
 			async (node: PipelineNode | TemplateItemNode | ScriptItemNode) => {
 				const target = buildOpenTarget(node);
@@ -159,6 +231,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 					vscode.window.showInformationMessage('Nothing to open for this item.');
 					return;
 				}
+				target.branch = branches.get(target.repoLinkKey);
 				try {
 					await opener.open(target);
 				} catch (err) {
@@ -259,4 +332,30 @@ function buildOpenTarget(
 	return undefined;
 }
 
-
+/**
+ * Best-effort detection of the current branch of a local Git working copy by
+ * reading `.git/HEAD`. Handles the worktree indirection where `.git` is a file
+ * containing `gitdir: <path>`. Returns undefined if the folder is not a Git
+ * working copy or the HEAD is detached.
+ */
+async function detectLocalBranch(folderPath: string): Promise<string | undefined> {
+	try {
+		const gitEntry = path.join(folderPath, '.git');
+		let gitDir = gitEntry;
+		const stat = await fs.promises.stat(gitEntry).catch(() => undefined);
+		if (!stat) { return undefined; }
+		if (stat.isFile()) {
+			const content = await fs.promises.readFile(gitEntry, 'utf8');
+			const match = content.match(/^gitdir:\s*(.+)\s*$/m);
+			if (!match) { return undefined; }
+			const target = match[1].trim();
+			gitDir = path.isAbsolute(target) ? target : path.resolve(folderPath, target);
+		}
+		const headPath = path.join(gitDir, 'HEAD');
+		const head = (await fs.promises.readFile(headPath, 'utf8')).trim();
+		const refMatch = head.match(/^ref:\s*refs\/heads\/(.+)$/);
+		return refMatch ? refMatch[1].trim() : undefined;
+	} catch {
+		return undefined;
+	}
+}
