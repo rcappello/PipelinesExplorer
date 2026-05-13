@@ -1,12 +1,38 @@
 {
   "name": "vscode-pipelinesexplorer",
   "displayName": "Pipelines Explorer",
-  "description": "Pipelines Explorer allows you to navigate through the Azure DevOps Pipelines and the referenced templates.",
-  "version": "1.0.0",
+  "description": "Browse Azure DevOps pipelines, drill into referenced YAML templates and PowerShell scripts, and jump to the local files in your workspace.",
+  "version": "0.1.0",
+  "publisher": "RiccardoCappello",
+  "author": {
+    "name": "Riccardo Cappello"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/rcappello/PipelinesExplorer#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rcappello/PipelinesExplorer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rcappello/PipelinesExplorer/issues"
+  },
+  "qna": "marketplace",
+  "keywords": [
+    "azure devops",
+    "pipelines",
+    "yaml",
+    "ci/cd",
+    "templates"
+  ],
+  "galleryBanner": {
+    "color": "#1F2937",
+    "theme": "dark"
+  },
   "engines": {
     "vscode": "^1.99.0"
   },
   "categories": [
+    "Azure",
     "Other"
   ],
   "icon": "media/icon.png",
@@ -160,7 +186,8 @@
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "vsce:package": "vsce package --out vscode-pipelinesexplorer-${npm_package_version}.vsix"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
@@ -170,6 +197,7 @@
     "@typescript-eslint/parser": "^8.30.1",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.9.1",
     "esbuild": "^0.25.2",
     "eslint": "^9.24.0",
     "npm-run-all": "^4.1.5",
