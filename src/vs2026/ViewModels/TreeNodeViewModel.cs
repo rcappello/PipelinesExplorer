@@ -1,7 +1,9 @@
-using System.Collections.ObjectModel;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Runtime.Serialization;
 using Microsoft.VisualStudio.Extensibility.UI;
 using PipelinesExplorer.VisualStudio.AzureDevOps;
+using PipelinesExplorer.VisualStudio.Services;
 
 namespace PipelinesExplorer.VisualStudio.ViewModels;
 
@@ -12,9 +14,19 @@ public enum TreeNodeKind
     Project,
     Repository,
     Pipeline,
+    Group,
+    Template,
+    Script,
     Loading,
     Info,
     Error,
+}
+
+/// <summary>Subtype for <see cref="GroupNode"/>.</summary>
+public enum GroupKind
+{
+    Templates,
+    Scripts,
 }
 
 /// <summary>
@@ -115,6 +127,10 @@ public sealed class ProjectNode : TreeNodeViewModel
 [DataContract]
 public sealed class RepositoryNode : TreeNodeViewModel
 {
+    private AsyncCommand? _linkCommand;
+    private AsyncCommand? _unlinkCommand;
+    private AsyncCommand? _selectBranchCommand;
+
     public RepositoryNode(
         AdoOrganization org,
         AdoProject project,
@@ -133,17 +149,10 @@ public sealed class RepositoryNode : TreeNodeViewModel
         RepoType = repoType;
         LinkedFolder = linkedFolder;
         BranchOverride = branchOverride;
+        PipelineCount = pipelineCount;
         Label = repoLabel;
-        var pieces = new System.Collections.Generic.List<string>
-        {
-            pipelineCount.ToString(System.Globalization.CultureInfo.InvariantCulture)
-        };
-        if (!string.IsNullOrEmpty(repoType)) { pieces.Add(repoType!); }
-        if (!string.IsNullOrEmpty(linkedFolder)) { pieces.Add("linked"); }
-        if (!string.IsNullOrEmpty(branchOverride)) { pieces.Add("branch: " + branchOverride); }
-        Description = string.Join(" \u00b7 ", pieces);
-        Tooltip = (string.IsNullOrEmpty(linkedFolder) ? repoLabel : $"{repoLabel}\nLinked: {linkedFolder}")
-            + (string.IsNullOrEmpty(branchOverride) ? "\nReading YAML from default branch" : $"\nReading YAML from branch: {branchOverride}");
+        Description = BuildDescription();
+        Tooltip = BuildTooltip();
     }
 
     public AdoOrganization Organization { get; }
@@ -151,13 +160,69 @@ public sealed class RepositoryNode : TreeNodeViewModel
     public string RepoKey { get; }
     public string RepoLabel { get; }
     public string? RepoType { get; }
-    public string? LinkedFolder { get; }
-    public string? BranchOverride { get; }
+    public string? LinkedFolder { get; private set; }
+    public string? BranchOverride { get; private set; }
+    public int PipelineCount { get; }
+
+    public RepoLinkKey LinkKey => new(Organization.AccountId, Project.Id, RepoKey);
+
+    [DataMember]
+    public AsyncCommand? LinkCommand
+    {
+        get => _linkCommand;
+        internal set => SetProperty(ref _linkCommand, value);
+    }
+
+    [DataMember]
+    public AsyncCommand? UnlinkCommand
+    {
+        get => _unlinkCommand;
+        internal set => SetProperty(ref _unlinkCommand, value);
+    }
+
+    [DataMember]
+    public AsyncCommand? SelectBranchCommand
+    {
+        get => _selectBranchCommand;
+        internal set => SetProperty(ref _selectBranchCommand, value);
+    }
+
+    [DataMember]
+    public bool IsLinked => !string.IsNullOrEmpty(LinkedFolder);
+
+    [DataMember]
+    public bool HasBranchOverride => !string.IsNullOrEmpty(BranchOverride);
+
+    /// <summary>Refresh the link/branch state from the latest service data.</summary>
+    internal void UpdateState(string? linkedFolder, string? branchOverride)
+    {
+        LinkedFolder = linkedFolder;
+        BranchOverride = branchOverride;
+        Description = BuildDescription();
+        Tooltip = BuildTooltip();
+        RaiseNotifyPropertyChangedEvent(nameof(IsLinked));
+        RaiseNotifyPropertyChangedEvent(nameof(HasBranchOverride));
+    }
+
+    private string BuildDescription()
+    {
+        var pieces = new List<string> { PipelineCount.ToString(CultureInfo.InvariantCulture) };
+        if (!string.IsNullOrEmpty(RepoType)) { pieces.Add(RepoType!); }
+        if (!string.IsNullOrEmpty(LinkedFolder)) { pieces.Add("linked"); }
+        if (!string.IsNullOrEmpty(BranchOverride)) { pieces.Add("branch: " + BranchOverride); }
+        return string.Join(" \u00b7 ", pieces);
+    }
+
+    private string BuildTooltip() =>
+        (string.IsNullOrEmpty(LinkedFolder) ? RepoLabel : $"{RepoLabel}\nLinked: {LinkedFolder}")
+        + (string.IsNullOrEmpty(BranchOverride) ? "\nReading YAML from default branch" : $"\nReading YAML from branch: {BranchOverride}");
 }
 
 [DataContract]
 public sealed class PipelineNode : TreeNodeViewModel
 {
+    private AsyncCommand? _openCommand;
+
     public PipelineNode(
         AdoOrganization org,
         AdoProject project,
@@ -182,6 +247,149 @@ public sealed class PipelineNode : TreeNodeViewModel
     public AdoPipeline Pipeline { get; }
     public AdoPipelineDetail? Detail { get; }
     public string RepoKey { get; }
+
+    /// <summary>Repo id of the pipeline source (TfsGit only).</summary>
+    public string? RepoId => Detail?.Configuration?.Repository?.Id;
+
+    /// <summary>Directory of the root YAML inside the repo (e.g. <c>/solutions/foo/.ci</c>).</summary>
+    public string YamlDir => DirOfRepoPath(Detail?.Configuration?.Path ?? "/");
+
+    [DataMember]
+    public AsyncCommand? OpenCommand
+    {
+        get => _openCommand;
+        internal set => SetProperty(ref _openCommand, value);
+    }
+
+    private static string DirOfRepoPath(string p)
+    {
+        var clean = p.Replace('\\', '/');
+        var i = clean.LastIndexOf('/');
+        return i <= 0 ? string.Empty : clean.Substring(0, i);
+    }
+}
+
+[DataContract]
+public sealed class GroupNode : TreeNodeViewModel
+{
+    public GroupNode(GroupKind group, int count) : base(TreeNodeKind.Group)
+    {
+        Group = group;
+        Label = group == GroupKind.Templates ? "Templates" : "PowerShell scripts";
+        Description = count.ToString(CultureInfo.InvariantCulture);
+    }
+
+    public GroupKind Group { get; }
+}
+
+[DataContract]
+public sealed class TemplateNode : TreeNodeViewModel
+{
+    private AsyncCommand? _openCommand;
+
+    public TemplateNode(
+        TemplateRef reference,
+        AdoOrganization org,
+        AdoProject project,
+        string pipelineRepoKey,
+        string? containingRepoId,
+        string containingDir)
+        : base(TreeNodeKind.Template)
+    {
+        Reference = reference;
+        Organization = org;
+        Project = project;
+        PipelineRepoKey = pipelineRepoKey;
+        ContainingRepoId = containingRepoId;
+        ContainingDir = containingDir;
+        Label = BaseName(reference.Path);
+        Description = reference.Repository is null ? null : "@" + reference.Repository;
+        Tooltip = reference.Repository is null ? reference.Path : $"{reference.Path} @{reference.Repository}";
+    }
+
+    public TemplateRef Reference { get; }
+    public AdoOrganization Organization { get; }
+    public AdoProject Project { get; }
+    public string PipelineRepoKey { get; }
+    public string? ContainingRepoId { get; }
+    public string ContainingDir { get; }
+
+    /// <summary>Repo-absolute resolved path of this template (only meaningful for same-repo).</summary>
+    public string ResolvedPath => ResolveRepoPath(ContainingDir, Reference.Path);
+    public string ResolvedDir => DirOfRepoPath(ResolvedPath);
+
+    /// <summary>True for same-repo templates whose body can be analysed and expanded.</summary>
+    public bool IsSameRepoExpandable => Reference.Repository is null && !string.IsNullOrEmpty(ContainingRepoId);
+
+    [DataMember]
+    public AsyncCommand? OpenCommand
+    {
+        get => _openCommand;
+        internal set => SetProperty(ref _openCommand, value);
+    }
+
+    private static string BaseName(string p)
+    {
+        var clean = p.Replace('\\', '/').TrimEnd('/');
+        var i = clean.LastIndexOf('/');
+        return i >= 0 ? clean.Substring(i + 1) : clean;
+    }
+
+    private static string ResolveRepoPath(string baseDir, string reference)
+    {
+        var cleaned = reference.Replace('\\', '/').Trim();
+        var combined = cleaned.StartsWith('/') ? cleaned : $"{baseDir}/{cleaned}";
+        var parts = combined.Split('/', System.StringSplitOptions.RemoveEmptyEntries);
+        var stack = new List<string>();
+        foreach (var seg in parts)
+        {
+            if (seg == ".") { continue; }
+            if (seg == "..") { if (stack.Count > 0) { stack.RemoveAt(stack.Count - 1); } continue; }
+            stack.Add(seg);
+        }
+        return "/" + string.Join('/', stack);
+    }
+
+    private static string DirOfRepoPath(string p)
+    {
+        var clean = p.Replace('\\', '/');
+        var i = clean.LastIndexOf('/');
+        return i <= 0 ? string.Empty : clean.Substring(0, i);
+    }
+}
+
+[DataContract]
+public sealed class ScriptNode : TreeNodeViewModel
+{
+    private AsyncCommand? _openCommand;
+
+    public ScriptNode(PowerShellRef reference) : base(TreeNodeKind.Script)
+    {
+        Reference = reference;
+        Label = reference.FilePath is not null
+            ? BaseName(reference.FilePath)
+            : (reference.Inline ? "(inline script)" : "(unknown source)");
+        Description = reference.Task;
+        Tooltip = reference.FilePath is not null
+            ? $"{reference.Task} \u2192 {reference.FilePath}"
+            : $"{reference.Task} ({(reference.Inline ? $"inline{(reference.Line is int l ? $" @ line {l}" : "")}" : "unknown")})";
+    }
+
+    public PowerShellRef Reference { get; }
+
+    [DataMember]
+    public AsyncCommand? OpenCommand
+    {
+        get => _openCommand;
+        internal set => SetProperty(ref _openCommand, value);
+    }
+
+    private static string BaseName(string p)
+    {
+        var clean = p.Replace('\\', '/').TrimEnd('/');
+        var i = clean.LastIndexOf('/');
+        return i >= 0 ? clean.Substring(i + 1) : clean;
+    }
 }
 
 [DataContract]

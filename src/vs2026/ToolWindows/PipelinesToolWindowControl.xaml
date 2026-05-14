@@ -88,6 +88,19 @@
             <TreeView.ItemTemplate>
                 <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                     <StackPanel Orientation="Horizontal">
+                        <StackPanel.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Open"
+                                          Command="{Binding OpenCommand}" />
+                                <Separator />
+                                <MenuItem Header="Link workspace folder\u2026"
+                                          Command="{Binding LinkCommand}" />
+                                <MenuItem Header="Unlink workspace folder"
+                                          Command="{Binding UnlinkCommand}" />
+                                <MenuItem Header="Select branch\u2026"
+                                          Command="{Binding SelectBranchCommand}" />
+                            </ContextMenu>
+                        </StackPanel.ContextMenu>
                         <TextBlock Text="{Binding Label}" />
                         <TextBlock Text="{Binding Description}"
                                    Margin="6,0,0,0"

@@ -23,6 +23,8 @@ internal static class ExtensionServices
     private static AdoClient? _ado;
     private static WorkspaceLinkService? _links;
     private static RepoBranchService? _branches;
+    private static PipelineYamlAnalyzer? _analyzer;
+    private static OpenItemService? _openItem;
     private static PipelinesViewModel? _viewModel;
     private static VisualStudioExtensibility? _extensibility;
 
@@ -85,6 +87,24 @@ internal static class ExtensionServices
         }
     }
 
+    public static PipelineYamlAnalyzer Analyzer
+    {
+        get
+        {
+            if (_analyzer is null) lock (_gate) { _analyzer ??= new PipelineYamlAnalyzer(Ado, Logger); }
+            return _analyzer;
+        }
+    }
+
+    public static OpenItemService OpenItem
+    {
+        get
+        {
+            if (_openItem is null) lock (_gate) { _openItem ??= new OpenItemService(Links, Logger, () => _extensibility); }
+            return _openItem;
+        }
+    }
+
     public static PipelinesViewModel ViewModel
     {
         get
@@ -93,7 +113,7 @@ internal static class ExtensionServices
             {
                 lock (_gate)
                 {
-                    _viewModel ??= new PipelinesViewModel(Logger, Auth, Ado, Links, Branches, () => _extensibility);
+                    _viewModel ??= new PipelinesViewModel(Logger, Auth, Ado, Links, Branches, Analyzer, OpenItem, () => _extensibility);
                 }
             }
             return _viewModel;

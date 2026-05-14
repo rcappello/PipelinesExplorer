@@ -5,6 +5,7 @@ using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Extensibility;
+using Microsoft.VisualStudio.Extensibility.Shell;
 using Microsoft.VisualStudio.Extensibility.UI;
 using PipelinesExplorer.VisualStudio.Auth;
 using PipelinesExplorer.VisualStudio.AzureDevOps;
@@ -25,6 +26,8 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     private readonly AdoClient _ado;
     private readonly WorkspaceLinkService _links;
     private readonly RepoBranchService _branches;
+    private readonly PipelineYamlAnalyzer _analyzer;
+    private readonly OpenItemService _openItem;
     private readonly Func<VisualStudioExtensibility?> _extensibilityProvider;
 
     private bool _isSignedIn;
@@ -40,6 +43,8 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         AdoClient ado,
         WorkspaceLinkService links,
         RepoBranchService branches,
+        PipelineYamlAnalyzer analyzer,
+        OpenItemService openItem,
         Func<VisualStudioExtensibility?> extensibilityProvider)
     {
         _logger = logger;
@@ -47,6 +52,8 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         _ado = ado;
         _links = links;
         _branches = branches;
+        _analyzer = analyzer;
+        _openItem = openItem;
         _extensibilityProvider = extensibilityProvider;
         Roots = new ObservableList<TreeNodeViewModel>();
 
@@ -307,10 +314,12 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
                 var linked = _links.Get(linkKey);
                 var branch = _branches.Get(linkKey);
                 var repoNode = new RepositoryNode(node.Organization, node.Project, repoKey, label, type, linked, branch, kv.Value.Count);
+                WireRepositoryCommands(repoNode);
 
                 foreach (var (pipe, detail) in kv.Value.OrderBy(t => t.pipe.Name, StringComparer.OrdinalIgnoreCase))
                 {
-                    repoNode.Children.Add(new PipelineNode(node.Organization, node.Project, pipe, detail, repoKey));
+                    var pipeNode = BuildPipelineNode(node.Organization, node.Project, pipe, detail, repoKey);
+                    repoNode.Children.Add(pipeNode);
                 }
                 repoNodes.Add(repoNode);
             }
@@ -384,5 +393,267 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         {
             yield return bucket;
         }
+    }
+
+    // -------- Pipeline / template / script wiring (Phase 4) --------
+
+    private PipelineNode BuildPipelineNode(
+        AdoOrganization org, AdoProject project, AdoPipeline pipe, AdoPipelineDetail? detail, string repoKey)
+    {
+        var node = new PipelineNode(org, project, pipe, detail, repoKey);
+        var rootPath = detail?.Configuration?.Path;
+        if (!string.IsNullOrEmpty(rootPath))
+        {
+            node.OpenCommand = new AsyncCommand((_, _, ct) => OpenPipelineYamlAsync(node, ct));
+        }
+        node.Children.Add(new InfoNode("Loading\u2026", TreeNodeKind.Loading));
+        node.PropertyChanged += async (_, e) =>
+        {
+            if (e.PropertyName == nameof(TreeNodeViewModel.IsExpanded) && node.IsExpanded
+                && node.Children.Count == 1 && node.Children[0].Kind == TreeNodeKind.Loading)
+            {
+                await LoadPipelineAnalysisAsync(node).ConfigureAwait(false);
+            }
+        };
+        return node;
+    }
+
+    private async Task LoadPipelineAnalysisAsync(PipelineNode node)
+    {
+        try
+        {
+            var branch = _branches.Get(new RepoLinkKey(node.Organization.AccountId, node.Project.Id, node.RepoKey));
+            var analysis = await _analyzer.AnalyzeAsync(
+                node.Organization.AccountName,
+                node.Project.Name,
+                node.Pipeline.Id,
+                node.Detail,
+                branch).ConfigureAwait(false);
+            BuildAnalysisChildren(node, analysis, node.RepoKey, node.RepoId, node.YamlDir);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error($"Loading analysis of pipeline {node.Pipeline.Name} failed", ex);
+            ReplaceList(node.Children, new TreeNodeViewModel[] { new InfoNode(ex.Message, TreeNodeKind.Error) });
+        }
+    }
+
+    private async Task LoadTemplateAnalysisAsync(TemplateNode node)
+    {
+        if (!node.IsSameRepoExpandable) { ReplaceList(node.Children, System.Array.Empty<TreeNodeViewModel>()); return; }
+        try
+        {
+            var branch = _branches.Get(new RepoLinkKey(node.Organization.AccountId, node.Project.Id, node.PipelineRepoKey));
+            var analysis = await _analyzer.AnalyzeFileAsync(
+                node.Organization.AccountName,
+                node.Project.Name,
+                node.ContainingRepoId!,
+                node.ResolvedPath,
+                branch).ConfigureAwait(false);
+            BuildAnalysisChildren(node, analysis, node.PipelineRepoKey, node.ContainingRepoId, node.ResolvedDir);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error($"Loading analysis of template {node.Reference.Raw} failed", ex);
+            ReplaceList(node.Children, new TreeNodeViewModel[] { new InfoNode(ex.Message, TreeNodeKind.Error) });
+        }
+    }
+
+    private void BuildAnalysisChildren(
+        TreeNodeViewModel parent,
+        PipelineAnalysis analysis,
+        string pipelineRepoKey,
+        string? containingRepoId,
+        string baseDir)
+    {
+        var children = new List<TreeNodeViewModel>();
+        if (!string.IsNullOrEmpty(analysis.Warning))
+        {
+            children.Add(new InfoNode(analysis.Warning!, TreeNodeKind.Info));
+        }
+
+        if (analysis.Templates.Count == 0 && analysis.Scripts.Count == 0 && string.IsNullOrEmpty(analysis.Warning))
+        {
+            children.Add(new InfoNode("(no templates or scripts)", TreeNodeKind.Info));
+        }
+
+        var org = parent switch
+        {
+            PipelineNode pn => pn.Organization,
+            TemplateNode tn => tn.Organization,
+            _ => null,
+        };
+        var project = parent switch
+        {
+            PipelineNode pn => pn.Project,
+            TemplateNode tn => tn.Project,
+            _ => null,
+        };
+
+        if (analysis.Templates.Count > 0 && org is not null && project is not null)
+        {
+            var group = new GroupNode(GroupKind.Templates, analysis.Templates.Count);
+            foreach (var t in analysis.Templates)
+            {
+                group.Children.Add(BuildTemplateNode(t, org, project, pipelineRepoKey, containingRepoId, baseDir));
+            }
+            children.Add(group);
+        }
+        if (analysis.Scripts.Count > 0 && org is not null && project is not null)
+        {
+            var group = new GroupNode(GroupKind.Scripts, analysis.Scripts.Count);
+            foreach (var s in analysis.Scripts)
+            {
+                group.Children.Add(BuildScriptNode(s, org, project, pipelineRepoKey, baseDir));
+            }
+            children.Add(group);
+        }
+
+        ReplaceList(parent.Children, children);
+    }
+
+    private TemplateNode BuildTemplateNode(
+        TemplateRef reference, AdoOrganization org, AdoProject project,
+        string pipelineRepoKey, string? containingRepoId, string containingDir)
+    {
+        var node = new TemplateNode(reference, org, project, pipelineRepoKey, containingRepoId, containingDir);
+        node.OpenCommand = new AsyncCommand((_, _, ct) => OpenTemplateAsync(node, ct));
+
+        if (node.IsSameRepoExpandable)
+        {
+            node.Children.Add(new InfoNode("Loading\u2026", TreeNodeKind.Loading));
+            node.PropertyChanged += async (_, e) =>
+            {
+                if (e.PropertyName == nameof(TreeNodeViewModel.IsExpanded) && node.IsExpanded
+                    && node.Children.Count == 1 && node.Children[0].Kind == TreeNodeKind.Loading)
+                {
+                    await LoadTemplateAnalysisAsync(node).ConfigureAwait(false);
+                }
+            };
+        }
+        return node;
+    }
+
+    private ScriptNode BuildScriptNode(
+        PowerShellRef reference, AdoOrganization org, AdoProject project,
+        string pipelineRepoKey, string baseDir)
+    {
+        var node = new ScriptNode(reference);
+        if (!string.IsNullOrEmpty(reference.FilePath))
+        {
+            var linkKey = new RepoLinkKey(org.AccountId, project.Id, pipelineRepoKey);
+            var branch = _branches.Get(linkKey);
+            var resolved = ResolveRepoPath(baseDir, reference.FilePath!);
+            var target = new OpenTarget
+            {
+                RepoLinkKey = linkKey,
+                RelativePath = resolved,
+                DisplayName = node.Label,
+                Branch = branch,
+            };
+            node.OpenCommand = new AsyncCommand((_, _, ct) => _openItem.OpenAsync(target, ct));
+        }
+        return node;
+    }
+
+    private Task OpenPipelineYamlAsync(PipelineNode node, CancellationToken ct)
+    {
+        var yamlPath = node.Detail?.Configuration?.Path;
+        if (string.IsNullOrEmpty(yamlPath)) { return Task.CompletedTask; }
+        var linkKey = new RepoLinkKey(node.Organization.AccountId, node.Project.Id, node.RepoKey);
+        var branch = _branches.Get(linkKey);
+        var target = new OpenTarget
+        {
+            RepoLinkKey = linkKey,
+            RelativePath = yamlPath!,
+            DisplayName = node.Pipeline.Name,
+            Branch = branch,
+        };
+        return _openItem.OpenAsync(target, ct);
+    }
+
+    private Task OpenTemplateAsync(TemplateNode node, CancellationToken ct)
+    {
+        var linkKey = new RepoLinkKey(node.Organization.AccountId, node.Project.Id, node.PipelineRepoKey);
+        var branch = _branches.Get(linkKey);
+        var target = new OpenTarget
+        {
+            RepoLinkKey = linkKey,
+            RelativePath = node.IsSameRepoExpandable ? node.ResolvedPath : node.Reference.Path,
+            RepositoryAlias = node.Reference.Repository,
+            DisplayName = node.Label,
+            Branch = branch,
+        };
+        return _openItem.OpenAsync(target, ct);
+    }
+
+    private void WireRepositoryCommands(RepositoryNode node)
+    {
+        node.LinkCommand = new AsyncCommand(async (_, _, ct) =>
+        {
+            try
+            {
+                var changed = await _openItem.PickAndLinkAsync(node.LinkKey, node.RepoLabel, ct).ConfigureAwait(false);
+                if (changed)
+                {
+                    node.UpdateState(_links.Get(node.LinkKey), _branches.Get(node.LinkKey));
+                }
+            }
+            catch (Exception ex) { _logger.Error("Link workspace failed", ex); SetError(ex.Message); }
+        });
+        node.UnlinkCommand = new AsyncCommand((_, _, _) =>
+        {
+            try
+            {
+                _links.Remove(node.LinkKey);
+                node.UpdateState(null, _branches.Get(node.LinkKey));
+            }
+            catch (Exception ex) { _logger.Error("Unlink workspace failed", ex); SetError(ex.Message); }
+            return Task.CompletedTask;
+        });
+        node.SelectBranchCommand = new AsyncCommand((_, _, ct) => SelectBranchAsync(node, ct));
+    }
+
+    private async Task SelectBranchAsync(RepositoryNode node, CancellationToken ct)
+    {
+        var ext = _extensibilityProvider();
+        if (ext is null) { return; }
+        try
+        {
+            var branches = await _ado.ListBranchesAsync(node.Organization.AccountName, node.Project.Name, node.RepoKey, ct).ConfigureAwait(false);
+            if (branches.Count == 0)
+            {
+                await ext.Shell().ShowPromptAsync("No branches found.", PromptOptions.OK, ct).ConfigureAwait(false);
+                return;
+            }
+            var options = new PromptOptions<int> { DismissedReturns = -1, DefaultChoiceIndex = 0 };
+            options.Choices.Add("(use default branch)", -2);
+            for (var i = 0; i < branches.Count; i++) { options.Choices.Add(branches[i], i); }
+            var picked = await ext.Shell().ShowPromptAsync($"Pick a branch for {node.RepoLabel}:", options, ct).ConfigureAwait(false);
+            if (picked == -1) { return; }
+            if (picked == -2) { _branches.Clear(node.LinkKey); }
+            else { _branches.Set(node.LinkKey, branches[picked]); }
+            node.UpdateState(_links.Get(node.LinkKey), _branches.Get(node.LinkKey));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("Select branch failed", ex);
+            await ext.Shell().ShowPromptAsync($"Select branch failed: {ex.Message}", PromptOptions.OK, ct).ConfigureAwait(false);
+        }
+    }
+
+    private static string ResolveRepoPath(string baseDir, string reference)
+    {
+        var cleaned = reference.Replace('\\', '/').Trim();
+        var combined = cleaned.StartsWith('/') ? cleaned : $"{baseDir}/{cleaned}";
+        var parts = combined.Split('/', System.StringSplitOptions.RemoveEmptyEntries);
+        var stack = new List<string>();
+        foreach (var seg in parts)
+        {
+            if (seg == ".") { continue; }
+            if (seg == "..") { if (stack.Count > 0) { stack.RemoveAt(stack.Count - 1); } continue; }
+            stack.Add(seg);
+        }
+        return "/" + string.Join('/', stack);
     }
 }
