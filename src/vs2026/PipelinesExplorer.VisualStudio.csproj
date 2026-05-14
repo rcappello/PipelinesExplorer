@@ -25,6 +25,9 @@
     <!-- Microsoft Entra ID sign-in via MSAL with WAM broker on Windows -->
     <PackageReference Include="Microsoft.Identity.Client" Version="4.66.*" />
     <PackageReference Include="Microsoft.Identity.Client.Broker" Version="4.66.*" />
+
+    <!-- JWT helper for extracting the `tid` claim from Microsoft Entra access tokens -->
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.6.*" />
   </ItemGroup>
 
 </Project>
