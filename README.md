@@ -47,7 +47,7 @@ Pipelines
 
 1. Install the `.vsix`:
    ```powershell
-   code --install-extension vscode-pipelinesexplorer-0.1.0.vsix
+   code --install-extension vscode-pipelinesexplorer-0.1.1.vsix
    ```
    (Or, once published, install from the Marketplace.)
 2. Open the **Pipelines Explorer** view in the activity bar.
