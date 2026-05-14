@@ -113,13 +113,12 @@ public sealed class AdoAuthService : IAdoAuthHeaderProvider, IDisposable
         return AcquireSessionAsync(SignInKind.Microsoft, createIfNone: true, cancellationToken);
     }
 
-    public async Task<AdoSession?> SignInWithPatAsync(string token, CancellationToken cancellationToken = default)
+#pragma warning disable IDE0060 // cancellationToken kept for API symmetry with other SignIn methods
+    public Task<AdoSession?> SignInWithPatAsync(string token, CancellationToken cancellationToken = default)
+#pragma warning restore IDE0060
     {
         _logger.Info("SignInWithPat invoked");
-        if (string.IsNullOrWhiteSpace(token))
-        {
-            throw new ArgumentException("PAT is required", nameof(token));
-        }
+        ArgumentException.ThrowIfNullOrWhiteSpace(token);
 
         _patStore.Write(token);
         _store.Set(SignInKindKey, nameof(SignInKind.Pat));
@@ -128,8 +127,7 @@ public sealed class AdoAuthService : IAdoAuthHeaderProvider, IDisposable
         _currentSession = session;
         SessionChanged?.Invoke(this, session);
         _logger.Info("PAT sign-in completed");
-        await Task.CompletedTask.ConfigureAwait(false);
-        return session;
+        return Task.FromResult<AdoSession?>(session);
     }
 
     public Task SignOutAsync(CancellationToken cancellationToken = default) => SignOutInternalAsync(reset: false);

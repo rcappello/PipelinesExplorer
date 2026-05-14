@@ -1,20 +1,111 @@
-# --- VS Code extension client (src/vscode) ---
+# =====================================================================
+# Pipelines Explorer — repo .gitignore
+# Covers both the VS Code client (src/vscode, Node.js/TypeScript) and
+# the Visual Studio 2026 client (src/vs2026, .NET / WPF / VSIX).
+# =====================================================================
+
+# ---------------------------------------------------------------------
+# VS Code extension client (src/vscode)
+# ---------------------------------------------------------------------
 src/vscode/out/
 src/vscode/dist/
 src/vscode/node_modules/
 src/vscode/.vscode-test/
 src/vscode/*.vsix
+src/vscode/*.tsbuildinfo
 
-# --- Visual Studio 2026 client (src/vs2026) ---
+# ---------------------------------------------------------------------
+# Visual Studio 2026 client (src/vs2026) — .NET build outputs
+# ---------------------------------------------------------------------
 src/vs2026/bin/
 src/vs2026/obj/
 src/vs2026/*.vsix
-src/vs2026/.vs/
 
-# --- Catch-all (in case anything is run from the repo root) ---
+# ---------------------------------------------------------------------
+# Visual Studio IDE / MSBuild — local user state
+# (mirrors the relevant entries from github/gitignore VisualStudio.gitignore)
+# ---------------------------------------------------------------------
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.rsuser
+
+# ReSharper / Rider
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+.idea/
+
+# MSBuild Binary and Structured logs
+*.binlog
+msbuild.log
+msbuild.err
+msbuild.wrn
+
+# NuGet
+*.nupkg
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+**/[Pp]ackages/
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+
+# Roslyn cache / analyzer
+.roslyn/
+
+# Test results & coverage
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.coverage
+*.coveragexml
+coverage*.json
+coverage*.xml
+coverage*.info
+TestResults/
+
+# VS profiling / debugging artifacts
+*.psess
+*.vsp
+*.vspx
+*.dmp
+*.cachefile
+*.VC.db
+*.VC.opendb
+
+# Publish profile output
+PublishScripts/
+*.[Pp]ublish.xml
+*.azurePubxml
+
+# VS Code workspace (per-user) — keep shared settings/tasks/launch checked in
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace.user
+
+# ---------------------------------------------------------------------
+# Catch-all (in case anything is run from the repo root)
+# ---------------------------------------------------------------------
 out/
 dist/
 node_modules/
 .vscode-test/
 *.vsix
-.vs/
+bin/
+obj/
+
+# ---------------------------------------------------------------------
+# OS noise
+# ---------------------------------------------------------------------
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store

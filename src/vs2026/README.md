@@ -23,7 +23,7 @@ Visual Studio 2026 port of [Pipelines Explorer](../../README.md) — feature par
 | --- | --- |
 | Target | Visual Studio 2026 (`Microsoft.VisualStudio.{Community,Pro,Enterprise} [18.0,)`) |
 | SDK | [Microsoft.VisualStudio.Extensibility 17.13](https://learn.microsoft.com/visualstudio/extensibility/visualstudio.extensibility/) (out-of-process) |
-| Runtime | `.NET 8` (`net8.0-windows`), WPF Remote UI |
+| Runtime | `.NET 10` (`net10.0-windows`), WPF Remote UI |
 | Auth | MSAL 4.66 + WAM broker, ADO PAT |
 | YAML | `YamlDotNet 15.1` (`RepresentationModel`) |
 | State | JSON file under `%LocalAppData%\PipelinesExplorer\` |
@@ -36,7 +36,7 @@ dotnet restore
 dotnet build PipelinesExplorer.VisualStudio.csproj -c Release
 ```
 
-The produced `.vsix` lands under `bin\Release\net8.0-windows\`. Double-click it (with VS 2026 closed) or use `VSIXInstaller.exe`.
+The produced `.vsix` lands under `bin\Release\net10.0-windows\`. Double-click it (with VS 2026 closed) or use `VSIXInstaller.exe`.
 
 ## Run / debug
 
@@ -46,7 +46,7 @@ The project is set up for the standard Visual Studio Extensibility experimental-
 dotnet build src\vs2026\PipelinesExplorer.VisualStudio.csproj -c Debug
 # install into the experimental hive, then launch VS:
 & "$env:ProgramFiles\Microsoft Visual Studio\2026\Community\Common7\IDE\VSIXInstaller.exe" `
-    /rootSuffix:Exp src\vs2026\bin\Debug\net8.0-windows\PipelinesExplorer.VisualStudio.vsix
+    /rootSuffix:Exp src\vs2026\bin\Debug\net10.0-windows\PipelinesExplorer.VisualStudio.vsix
 ```
 
 Open the tool window from **View → Other Windows → Pipelines Explorer**.

@@ -17,7 +17,7 @@ namespace PipelinesExplorer.VisualStudio;
 /// </summary>
 internal static class ExtensionServices
 {
-    private static readonly object _gate = new();
+    private static readonly System.Threading.Lock _gate = new();
     private static LoggingService? _logger;
     private static AdoAuthService? _auth;
     private static AdoClient? _ado;
@@ -30,10 +30,7 @@ internal static class ExtensionServices
 
     public static void Initialize(VisualStudioExtensibility extensibility)
     {
-        if (extensibility is null)
-        {
-            throw new ArgumentNullException(nameof(extensibility));
-        }
+        ArgumentNullException.ThrowIfNull(extensibility);
         lock (_gate)
         {
             _extensibility ??= extensibility;

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
@@ -28,23 +28,23 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- VisualStudio.Extensibility SDK (out-of-process model, VS 17.13+ / VS 2026) -->
-    <PackageReference Include="Microsoft.VisualStudio.Extensibility.Sdk" Version="17.13.*" />
-    <PackageReference Include="Microsoft.VisualStudio.Extensibility.Build" Version="17.13.*" />
+    <!-- VisualStudio.Extensibility SDK (out-of-process model, VS 17.14+ / VS 2026, .NET 10 ready) -->
+    <PackageReference Include="Microsoft.VisualStudio.Extensibility.Sdk" Version="17.14.*" />
+    <PackageReference Include="Microsoft.VisualStudio.Extensibility.Build" Version="17.14.*" />
 
     <!-- Azure DevOps client SDKs (used to talk to the same REST endpoints as the VS Code client) -->
-    <PackageReference Include="Microsoft.TeamFoundationServer.Client" Version="19.225.*" />
-    <PackageReference Include="Microsoft.VisualStudio.Services.Client" Version="19.225.*" />
+    <PackageReference Include="Microsoft.TeamFoundationServer.Client" Version="20.256.*" />
+    <PackageReference Include="Microsoft.VisualStudio.Services.Client" Version="20.256.*" />
 
     <!-- Microsoft Entra ID sign-in via MSAL with WAM broker on Windows -->
-    <PackageReference Include="Microsoft.Identity.Client" Version="4.66.*" />
-    <PackageReference Include="Microsoft.Identity.Client.Broker" Version="4.66.*" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.84.*" />
+    <PackageReference Include="Microsoft.Identity.Client.Broker" Version="4.84.*" />
 
     <!-- JWT helper for extracting the `tid` claim from Microsoft Entra access tokens -->
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.6.*" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.18.*" />
 
     <!-- YAML parsing for pipeline analysis (templates / PowerShell tasks) -->
-    <PackageReference Include="YamlDotNet" Version="15.1.*" />
+    <PackageReference Include="YamlDotNet" Version="17.1.*" />
   </ItemGroup>
 
   <ItemGroup>

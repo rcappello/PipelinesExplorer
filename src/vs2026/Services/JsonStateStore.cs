@@ -18,7 +18,7 @@ public sealed class JsonStateStore
     private static readonly Lazy<JsonStateStore> _shared = new(() => new JsonStateStore());
 
     private readonly string _filePath;
-    private readonly object _gate = new();
+    private readonly System.Threading.Lock _gate = new();
     private readonly ConcurrentDictionary<string, JsonElement> _values;
     private readonly JsonSerializerOptions _writeOptions = new() { WriteIndented = true };
 

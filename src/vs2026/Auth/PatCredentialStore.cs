@@ -53,10 +53,7 @@ public sealed class PatCredentialStore
 
     public void Write(string token)
     {
-        if (string.IsNullOrEmpty(token))
-        {
-            throw new ArgumentException("Token must not be empty.", nameof(token));
-        }
+        ArgumentException.ThrowIfNullOrEmpty(token);
 
         var blob = Encoding.Unicode.GetBytes(token);
         var blobPtr = Marshal.AllocHGlobal(blob.Length);

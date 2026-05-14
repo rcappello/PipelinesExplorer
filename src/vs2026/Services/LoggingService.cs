@@ -30,7 +30,7 @@ public enum LogLevel
 /// </summary>
 public sealed class LoggingService : IDisposable
 {
-    private readonly object _gate = new();
+    private readonly System.Threading.Lock _gate = new();
     private readonly StreamWriter? _file;
     private readonly string? _logFilePath;
     private LogLevel _level = LogLevel.Info;

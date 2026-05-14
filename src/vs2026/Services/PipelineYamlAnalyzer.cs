@@ -59,11 +59,10 @@ public sealed class PipelineAnalysis
 /// extract referenced templates and PowerShell-style tasks. Mirrors the
 /// VS Code client's <c>PipelineYamlAnalyzer</c>.
 /// </summary>
-public sealed class PipelineYamlAnalyzer
+public sealed partial class PipelineYamlAnalyzer
 {
-    private static readonly Regex PowerShellTaskRe = new(
-        @"^(PowerShell|AzurePowerShell|Powershell|AzureCLI)@\d+$",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    [GeneratedRegex(@"^(PowerShell|AzurePowerShell|Powershell|AzureCLI)@\d+$", RegexOptions.IgnoreCase)]
+    private static partial Regex PowerShellTaskRe();
 
     private readonly AdoClient _client;
     private readonly LoggingService _logger;
@@ -184,7 +183,7 @@ public sealed class PipelineYamlAnalyzer
                     {
                         templates.Add(ParseTemplateRef(tplVal!));
                     }
-                    if (TryGetScalar(map, "task", out var taskVal) && PowerShellTaskRe.IsMatch(taskVal!))
+                    if (TryGetScalar(map, "task", out var taskVal) && PowerShellTaskRe().IsMatch(taskVal!))
                     {
                         YamlNode? inputsNode = null;
                         foreach (var kv in map.Children)
@@ -195,7 +194,7 @@ public sealed class PipelineYamlAnalyzer
                                 break;
                             }
                         }
-                        var line = map.Start.Line > 0 ? map.Start.Line : (int?)null;
+                        var line = map.Start.Line > 0 ? (int?)map.Start.Line : null;
                         scripts.Add(ParseTaskRef(taskVal!, inputsNode, line));
                     }
                     foreach (var kv in map.Children)

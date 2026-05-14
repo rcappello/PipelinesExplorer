@@ -17,6 +17,12 @@ internal sealed class ExtensionEntrypoint : Extension
             version: this.ExtensionAssemblyVersion,
             publisherName: "rcappello",
             displayName: "Pipelines Explorer",
-            description: "Browse Azure DevOps pipelines, drill into referenced YAML templates and PowerShell scripts, and jump to the local files in your solution."),
+            description: "Browse Azure DevOps pipelines, drill into referenced YAML templates and PowerShell scripts, and jump to the local files in your solution.")
+        {
+            // Visual Studio 2026 hosts out-of-process extensions on .NET 10. Declaring the target
+            // here keeps the VisualStudio.Extensibility analyzer happy (VSEXT0010) and lets VS pick
+            // the correct runtime when launching the extension host.
+            DotnetTargetVersions = new[] { DotnetTarget.Custom("net10.0") },
+        },
     };
 }

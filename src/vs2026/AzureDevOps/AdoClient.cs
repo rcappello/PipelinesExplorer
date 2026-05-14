@@ -177,11 +177,7 @@ public sealed class AdoClient : IDisposable
             await ThrowForFailureAsync(response, url, cancellationToken).ConfigureAwait(false);
         }
 
-#if NET6_0_OR_GREATER
         return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-#else
-        return await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-#endif
     }
 
     private async Task<HttpRequestMessage> BuildRequestAsync(string url, CancellationToken cancellationToken)
@@ -206,11 +202,7 @@ public sealed class AdoClient : IDisposable
         string? body = null;
         try
         {
-#if NET6_0_OR_GREATER
             body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-#else
-            body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-#endif
             if (body.Length > 500)
             {
                 body = body.Substring(0, 500) + "…";

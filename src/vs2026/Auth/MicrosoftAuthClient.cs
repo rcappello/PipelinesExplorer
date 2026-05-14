@@ -39,10 +39,11 @@ public sealed class MicrosoftAuthClient
     private readonly string _clientId;
     private IPublicClientApplication? _commonApp;
     private readonly Dictionary<string, IPublicClientApplication> _tenantApps = new(StringComparer.OrdinalIgnoreCase);
-    private readonly object _gate = new();
+    private readonly System.Threading.Lock _gate = new();
 
     public MicrosoftAuthClient(LoggingService logger, string? clientId = null)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
         _clientId = clientId ?? DefaultClientId;
     }
