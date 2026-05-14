@@ -1,0 +1,21 @@
+{
+	"_comment": "Machine-translated preview — please review by a native speaker before publishing.",
+	"displayName": "Pipelines Explorer",
+	"description": "Parcourez les pipelines Azure DevOps, explorez les modèles YAML et les scripts PowerShell référencés, et ouvrez les fichiers locaux correspondants.",
+	"command.signInWithMicrosoft.title": "Pipelines Explorer : Se connecter avec Microsoft",
+	"command.signInWithPat.title": "Pipelines Explorer : Se connecter avec un Personal Access Token",
+	"command.signOut.title": "Pipelines Explorer : Se déconnecter",
+	"command.reset.title": "Pipelines Explorer : Réinitialiser (effacer les identifiants enregistrés)",
+	"command.refresh.title": "Pipelines Explorer : Actualiser",
+	"command.selectTenant.title": "Pipelines Explorer : Sélectionner le tenant Microsoft Entra…",
+	"command.showLogs.title": "Pipelines Explorer : Afficher les journaux",
+	"command.linkWorkspace.title": "Lier un dossier de l'espace de travail…",
+	"command.unlinkWorkspace.title": "Délier le dossier de l'espace de travail",
+	"command.selectBranch.title": "Sélectionner une branche…",
+	"command.openItem.title": "Ouvrir",
+	"view.pipelinesTree.name": "Pipelines",
+	"view.pipelinesTree.contextualTitle": "Pipelines Explorer",
+	"viewsContainer.pipelinesExplorer.title": "Pipelines Explorer",
+	"authentication.azureDevOpsPat.label": "Azure DevOps PAT",
+	"viewsWelcome.signIn.contents": "Connectez-vous à Azure DevOps pour commencer à explorer vos pipelines.\n[Se connecter avec Microsoft](command:pipelinesexplorer.signInWithMicrosoft)\n[Se connecter avec un Personal Access Token](command:pipelinesexplorer.signInWithPat)\n\nUtilisez la connexion Microsoft pour les organisations reliées à Microsoft Entra ID. Utilisez un PAT pour les scénarios hérités ou à autorisations restreintes."
+}

@@ -1,0 +1,20 @@
+{
+	"displayName": "Pipelines Explorer",
+	"description": "Browse Azure DevOps pipelines, drill into referenced YAML templates and PowerShell scripts, and jump to the local files in your workspace.",
+	"command.signInWithMicrosoft.title": "Pipelines Explorer: Sign in with Microsoft",
+	"command.signInWithPat.title": "Pipelines Explorer: Sign in with Personal Access Token",
+	"command.signOut.title": "Pipelines Explorer: Sign out",
+	"command.reset.title": "Pipelines Explorer: Reset (clear stored credentials)",
+	"command.refresh.title": "Pipelines Explorer: Refresh",
+	"command.selectTenant.title": "Pipelines Explorer: Select Microsoft Entra Tenant…",
+	"command.showLogs.title": "Pipelines Explorer: Show Logs",
+	"command.linkWorkspace.title": "Link Workspace Folder…",
+	"command.unlinkWorkspace.title": "Unlink Workspace Folder",
+	"command.selectBranch.title": "Select Branch…",
+	"command.openItem.title": "Open",
+	"view.pipelinesTree.name": "Pipelines",
+	"view.pipelinesTree.contextualTitle": "Pipelines Explorer",
+	"viewsContainer.pipelinesExplorer.title": "Pipelines Explorer",
+	"authentication.azureDevOpsPat.label": "Azure DevOps PAT",
+	"viewsWelcome.signIn.contents": "Sign in to Azure DevOps to start exploring your pipelines.\n[Sign in with Microsoft](command:pipelinesexplorer.signInWithMicrosoft)\n[Sign in with Personal Access Token](command:pipelinesexplorer.signInWithPat)\n\nUse Microsoft sign-in for organizations connected to Microsoft Entra ID. Use a PAT for legacy or fine-grained scenarios."
+}

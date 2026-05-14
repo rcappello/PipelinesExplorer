@@ -1,4 +1,5 @@
 import { isMap, LineCounter, parseDocument, visit, YAMLMap } from 'yaml';
+import * as vscode from 'vscode';
 import { AdoClient, AdoPipelineDetail } from './adoClient';
 import { LoggingService } from './LoggingService';
 
@@ -60,10 +61,10 @@ export class PipelineYamlAnalyzer {
 			yamlText = await this.client.getFileContent(organizationName, projectName, repositoryId, filePath, branch);
 		} catch (err) {
 			this.logger.logError(`Failed to fetch YAML ${filePath}`, err);
-			return { templates: [], scripts: [], rootPath: filePath, warning: 'Could not fetch YAML file.' };
+			return { templates: [], scripts: [], rootPath: filePath, warning: vscode.l10n.t('Could not fetch YAML file.') };
 		}
 		if (!yamlText) {
-			return { templates: [], scripts: [], rootPath: filePath, warning: 'YAML file not found in the repository.' };
+			return { templates: [], scripts: [], rootPath: filePath, warning: vscode.l10n.t('YAML file not found in the repository.') };
 		}
 		try {
 			const lineCounter = new LineCounter();
@@ -74,7 +75,7 @@ export class PipelineYamlAnalyzer {
 			return { templates: dedupeTemplates(templates), scripts: dedupeScripts(scripts), rootPath: filePath };
 		} catch (err) {
 			this.logger.logError(`Failed to parse YAML ${filePath}`, err);
-			return { templates: [], scripts: [], rootPath: filePath, warning: 'YAML parse error.' };
+			return { templates: [], scripts: [], rootPath: filePath, warning: vscode.l10n.t('YAML parse error.') };
 		}
 	}
 
@@ -93,18 +94,18 @@ export class PipelineYamlAnalyzer {
 				detail = await this.client.getPipeline(organizationName, projectName, pipelineId);
 			} catch (err) {
 				this.logger.logError(`Failed to fetch pipeline ${pipelineId} definition`, err);
-				return { templates: [], scripts: [], warning: 'Could not fetch pipeline definition.' };
+				return { templates: [], scripts: [], warning: vscode.l10n.t('Could not fetch pipeline definition.') };
 			}
 		}
 
 		const cfg = detail.configuration;
 		if (!cfg || (cfg.type && cfg.type.toLowerCase() !== 'yaml')) {
-			return { templates: [], scripts: [], warning: 'Pipeline is not YAML-based.' };
+			return { templates: [], scripts: [], warning: vscode.l10n.t('Pipeline is not YAML-based.') };
 		}
 		const repoId = cfg.repository?.id;
 		const yamlPath = cfg.path;
 		if (!repoId || !yamlPath) {
-			return { templates: [], scripts: [], warning: 'Pipeline definition has no repository / path.' };
+			return { templates: [], scripts: [], warning: vscode.l10n.t('Pipeline definition has no repository / path.') };
 		}
 		if (cfg.repository?.type && cfg.repository.type.toLowerCase() !== 'azurereposgit') {
 			return {

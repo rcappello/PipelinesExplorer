@@ -1,0 +1,21 @@
+{
+	"_comment": "Machine-translated preview — please review by a native speaker before publishing.",
+	"displayName": "Pipelines Explorer",
+	"description": "Explora las pipelines de Azure DevOps, navega por las plantillas YAML y los scripts de PowerShell referenciados y abre los archivos locales correspondientes.",
+	"command.signInWithMicrosoft.title": "Pipelines Explorer: Iniciar sesión con Microsoft",
+	"command.signInWithPat.title": "Pipelines Explorer: Iniciar sesión con Personal Access Token",
+	"command.signOut.title": "Pipelines Explorer: Cerrar sesión",
+	"command.reset.title": "Pipelines Explorer: Restablecer (borrar credenciales almacenadas)",
+	"command.refresh.title": "Pipelines Explorer: Actualizar",
+	"command.selectTenant.title": "Pipelines Explorer: Seleccionar tenant de Microsoft Entra…",
+	"command.showLogs.title": "Pipelines Explorer: Mostrar registros",
+	"command.linkWorkspace.title": "Vincular carpeta del área de trabajo…",
+	"command.unlinkWorkspace.title": "Desvincular carpeta del área de trabajo",
+	"command.selectBranch.title": "Seleccionar rama…",
+	"command.openItem.title": "Abrir",
+	"view.pipelinesTree.name": "Pipelines",
+	"view.pipelinesTree.contextualTitle": "Pipelines Explorer",
+	"viewsContainer.pipelinesExplorer.title": "Pipelines Explorer",
+	"authentication.azureDevOpsPat.label": "Azure DevOps PAT",
+	"viewsWelcome.signIn.contents": "Inicia sesión en Azure DevOps para empezar a explorar tus pipelines.\n[Iniciar sesión con Microsoft](command:pipelinesexplorer.signInWithMicrosoft)\n[Iniciar sesión con Personal Access Token](command:pipelinesexplorer.signInWithPat)\n\nUsa el inicio de sesión de Microsoft para las organizaciones conectadas a Microsoft Entra ID. Usa un PAT para escenarios heredados o de permisos detallados."
+}

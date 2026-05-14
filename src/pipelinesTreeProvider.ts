@@ -7,6 +7,7 @@ import { RepoBranchService } from './repoBranchService';
 import { WorkspaceLinkService } from './workspaceLinkService';
 
 type Node =
+	| ConnectionInfoNode
 	| OrganizationNode
 	| ProjectNode
 	| RepositoryNode
@@ -16,6 +17,29 @@ type Node =
 	| ScriptItemNode
 	| InfoNode;
 
+/**
+ * Header row shown at the top of the tree summarising the active sign-in
+ * (kind + account + tenant). Clicking the row opens the tenant picker when
+ * Microsoft sign-in is in use, otherwise it is a no-op informational item.
+ */
+export class ConnectionInfoNode extends vscode.TreeItem {
+	readonly kind = 'connection-info' as const;
+	constructor(label: string, tooltip: string, isMicrosoft: boolean) {
+		super(label, vscode.TreeItemCollapsibleState.None);
+		this.id = 'connection-info';
+		this.tooltip = tooltip;
+		this.iconPath = new vscode.ThemeIcon(isMicrosoft ? 'account' : 'key');
+		this.contextValue = 'pipelinesexplorer.connectionInfo';
+		if (isMicrosoft) {
+			this.command = {
+				command: 'pipelinesexplorer.selectTenant',
+				title: vscode.l10n.t('Select Microsoft Entra tenant'),
+			};
+		}
+		this.accessibilityInformation = { label: tooltip };
+	}
+}
+
 export class OrganizationNode extends vscode.TreeItem {
 	readonly kind = 'organization' as const;
 	constructor(public readonly organization: AdoOrganization) {
@@ -24,6 +48,9 @@ export class OrganizationNode extends vscode.TreeItem {
 		this.contextValue = 'pipelinesexplorer.organization';
 		this.iconPath = new vscode.ThemeIcon('organization');
 		this.tooltip = organization.accountUri;
+		this.accessibilityInformation = {
+			label: vscode.l10n.t('Organization {0}', organization.accountName),
+		};
 	}
 }
 
@@ -39,6 +66,9 @@ export class ProjectNode extends vscode.TreeItem {
 		this.iconPath = new vscode.ThemeIcon('project');
 		this.description = project.description;
 		this.tooltip = project.description ?? project.name;
+		this.accessibilityInformation = {
+			label: vscode.l10n.t('Project {0}', project.name),
+		};
 	}
 }
 
@@ -62,10 +92,13 @@ export class PipelineNode extends vscode.TreeItem {
 		if (rootPath) {
 			this.command = {
 				command: 'pipelinesexplorer.openItem',
-				title: 'Open Pipeline YAML',
+				title: vscode.l10n.t('Open Pipeline YAML'),
 				arguments: [this],
 			};
 		}
+		this.accessibilityInformation = {
+			label: vscode.l10n.t('Pipeline {0}', pipeline.name),
+		};
 	}
 
 	/** Repo id of the pipeline source (TfsGit only). */
@@ -100,15 +133,26 @@ export class RepositoryNode extends vscode.TreeItem {
 		this.iconPath = new vscode.ThemeIcon(linkedFolder ? 'repo-clone' : 'repo');
 		const pieces = [`${pipelines.length}`];
 		if (repoType) { pieces.push(repoType); }
-		if (linkedFolder) { pieces.push('linked'); }
-		if (branchOverride) { pieces.push(`branch: ${branchOverride}`); }
+		if (linkedFolder) { pieces.push(vscode.l10n.t('linked')); }
+		if (branchOverride) { pieces.push(vscode.l10n.t('branch: {0}', branchOverride)); }
 		this.description = pieces.join(' · ');
 		const tooltipLines = [repoType ? `${repoLabel} (${repoType})` : repoLabel];
-		if (linkedFolder) { tooltipLines.push(`Linked: ${linkedFolder}`); }
+		if (linkedFolder) { tooltipLines.push(vscode.l10n.t('Linked: {0}', linkedFolder)); }
 		tooltipLines.push(branchOverride
-			? `Reading YAML from branch: ${branchOverride}`
-			: 'Reading YAML from default branch');
+			? vscode.l10n.t('Reading YAML from branch: {0}', branchOverride)
+			: vscode.l10n.t('Reading YAML from default branch'));
 		this.tooltip = tooltipLines.join('\n');
+		let a11yLabel: string;
+		if (linkedFolder && branchOverride) {
+			a11yLabel = vscode.l10n.t('Repository {0}, {1} pipelines, linked to local folder, branch override {2}', repoLabel, pipelines.length, branchOverride);
+		} else if (linkedFolder) {
+			a11yLabel = vscode.l10n.t('Repository {0}, {1} pipelines, linked to local folder', repoLabel, pipelines.length);
+		} else if (branchOverride) {
+			a11yLabel = vscode.l10n.t('Repository {0}, {1} pipelines, branch override {2}', repoLabel, pipelines.length, branchOverride);
+		} else {
+			a11yLabel = vscode.l10n.t('Repository {0}, {1} pipelines', repoLabel, pipelines.length);
+		}
+		this.accessibilityInformation = { label: a11yLabel };
 	}
 }
 
@@ -121,13 +165,17 @@ export class GroupNode extends vscode.TreeItem {
 		public readonly group: GroupKind,
 		public readonly analysis: PipelineAnalysis,
 	) {
-		super(group === 'templates' ? 'Templates' : 'PowerShell scripts',
+		super(group === 'templates' ? vscode.l10n.t('Templates') : vscode.l10n.t('PowerShell scripts'),
 			vscode.TreeItemCollapsibleState.Collapsed);
 		this.id = `${parent.id}:group:${group}`;
 		this.contextValue = `pipelinesexplorer.group.${group}`;
 		this.iconPath = new vscode.ThemeIcon(group === 'templates' ? 'files' : 'terminal-powershell');
 		const count = group === 'templates' ? analysis.templates.length : analysis.scripts.length;
 		this.description = String(count);
+		const groupLabel = group === 'templates' ? vscode.l10n.t('Templates') : vscode.l10n.t('PowerShell scripts');
+		this.accessibilityInformation = {
+			label: vscode.l10n.t('Group {0}, {1} items', groupLabel, count),
+		};
 	}
 }
 
@@ -156,8 +204,11 @@ export class TemplateItemNode extends vscode.TreeItem {
 		this.contextValue = 'pipelinesexplorer.template';
 		this.command = {
 			command: 'pipelinesexplorer.openItem',
-			title: 'Open Template',
+			title: vscode.l10n.t('Open Template'),
 			arguments: [this],
+		};
+		this.accessibilityInformation = {
+			label: vscode.l10n.t('Template {0}', ref.path),
 		};
 	}
 
@@ -173,11 +224,17 @@ export class TemplateItemNode extends vscode.TreeItem {
 export class ScriptItemNode extends vscode.TreeItem {
 	readonly kind = 'scriptItem' as const;
 	constructor(public readonly parent: GroupNode, public readonly ref: PowerShellRef) {
-		super(
-			ref.filePath ? basename(ref.filePath) : (ref.inline ? '(inline script)' : '(unknown source)'),
-			vscode.TreeItemCollapsibleState.None,
-		);
-		this.id = `${parent.id}:ps:${ref.task}:${ref.filePath ?? (ref.inline ? 'inline' : 'unknown')}`;
+		const itemLabel = ref.filePath
+			? basename(ref.filePath)
+			: (ref.inline ? vscode.l10n.t('(inline script)') : vscode.l10n.t('(unknown source)'));
+		super(itemLabel, vscode.TreeItemCollapsibleState.None);
+		// Include line in the id so that multiple inline scripts of the same task type
+		// (e.g. several `PowerShell@2` `targetType: inline` blocks in the same YAML)
+		// get distinct ids — otherwise VS Code conflates them in the TreeView and
+		// every visual entry routes clicks to a single backing node.
+		const idTail = ref.filePath
+			?? (ref.inline ? `inline@${ref.line ?? '?'}` : 'unknown');
+		this.id = `${parent.id}:ps:${ref.task}:${idTail}`;
 		this.iconPath = new vscode.ThemeIcon(ref.filePath ? 'file' : 'note');
 		this.description = ref.task;
 		this.tooltip = ref.filePath
@@ -187,10 +244,13 @@ export class ScriptItemNode extends vscode.TreeItem {
 		if (ref.filePath || (ref.inline && ref.line)) {
 			this.command = {
 				command: 'pipelinesexplorer.openItem',
-				title: ref.filePath ? 'Open Script' : 'Open Inline Script Location',
+				title: ref.filePath ? vscode.l10n.t('Open Script') : vscode.l10n.t('Open Inline Script Location'),
 				arguments: [this],
 			};
 		}
+		this.accessibilityInformation = {
+			label: vscode.l10n.t('Script {0}', itemLabel),
+		};
 	}
 }
 
@@ -228,6 +288,9 @@ export class InfoNode extends vscode.TreeItem {
 		this.id = `${parentId}:info:${message}`;
 		this.iconPath = new vscode.ThemeIcon(icon);
 		this.contextValue = 'pipelinesexplorer.info';
+		this.accessibilityInformation = {
+			label: vscode.l10n.t('Information: {0}', message),
+		};
 	}
 }
 
@@ -264,6 +327,24 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 		return element;
 	}
 
+	private buildConnectionInfoNode(): ConnectionInfoNode | undefined {
+		const session = this.auth.session;
+		if (!session) {
+			return undefined;
+		}
+		if (session.kind === 'pat') {
+			const label = vscode.l10n.t('Personal Access Token');
+			const tooltip = vscode.l10n.t('Connected as {0} via Personal Access Token', session.accountLabel);
+			return new ConnectionInfoNode(label, tooltip, false);
+		}
+		const tenantName = this.auth.getStoredTenantName();
+		const tenantDisplay = tenantName ?? (session.tenantId && this.auth.getStoredTenant() ? session.tenantId : vscode.l10n.t('Default tenant'));
+		const label = vscode.l10n.t('Microsoft Entra · {0}', tenantDisplay);
+		const tooltipBase = vscode.l10n.t('Connected as {0} — tenant: {1}', session.accountLabel, session.tenantId ?? vscode.l10n.t('Default tenant'));
+		const tooltip = vscode.l10n.t('{0} — click to switch tenant', tooltipBase);
+		return new ConnectionInfoNode(label, tooltip, true);
+	}
+
 	async getChildren(element?: Node): Promise<Node[]> {
 		if (!this.auth.session) {
 			return [];
@@ -273,9 +354,15 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 			if (!element) {
 				const profile = await this.client.getProfile();
 				const orgs = await this.client.listOrganizations(profile.id);
-				return orgs
+				const header = this.buildConnectionInfoNode();
+				if (orgs.length === 0) {
+					const empty = new InfoNode('no-orgs', vscode.l10n.t('No Azure DevOps organizations found for this tenant'));
+					return header ? [header, empty] : [empty];
+				}
+				const orgNodes = orgs
 					.sort((a, b) => a.accountName.localeCompare(b.accountName))
 					.map(o => new OrganizationNode(o));
+				return header ? [header, ...orgNodes] : orgNodes;
 			}
 
 			if (element.kind === 'organization') {
@@ -291,7 +378,7 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 					element.project.name,
 				);
 				if (pipelines.length === 0) {
-					return [new InfoNode(element.id!, 'No pipelines in this project')];
+					return [new InfoNode(element.id!, vscode.l10n.t('No pipelines in this project'))];
 				}
 				return await this.groupPipelinesByRepository(element.organization, element.project, pipelines);
 			}
@@ -341,7 +428,7 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 
 				if (element.group === 'templates') {
 					if (element.analysis.templates.length === 0) {
-						return [new InfoNode(element.id!, 'No templates referenced')];
+						return [new InfoNode(element.id!, vscode.l10n.t('No templates referenced'))];
 					}
 					return element.analysis.templates.map(t => new TemplateItemNode(
 						element, t,
@@ -350,7 +437,7 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 					));
 				}
 				if (element.analysis.scripts.length === 0) {
-					return [new InfoNode(element.id!, 'No PowerShell scripts referenced')];
+					return [new InfoNode(element.id!, vscode.l10n.t('No PowerShell scripts referenced'))];
 				}
 				return element.analysis.scripts.map(s => new ScriptItemNode(element, s));
 			}
@@ -382,7 +469,7 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 			}
 			this.logger.logError('Failed to load tree children', err);
 			vscode.window.showErrorMessage(
-				`Pipelines Explorer: ${err instanceof Error ? err.message : String(err)}`,
+				vscode.l10n.t('Pipelines Explorer: {0}', err instanceof Error ? err.message : String(err)),
 			);
 			return [];
 		}
@@ -400,15 +487,17 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 		} catch (resetErr) {
 			this.logger.logError('Auto-reset failed', resetErr);
 		}
+		const signInMs = vscode.l10n.t('Sign in with Microsoft');
+		const signInPat = vscode.l10n.t('Sign in with PAT');
 		const pick = await vscode.window.showWarningMessage(
-			`Pipelines Explorer: ${err.message} You have been signed out.`,
-			'Sign in with Microsoft',
-			'Sign in with PAT',
+			vscode.l10n.t('Pipelines Explorer: {0} You have been signed out.', err.message),
+			signInMs,
+			signInPat,
 		);
 		this.unauthorizedHandled = false;
-		if (pick === 'Sign in with Microsoft') {
+		if (pick === signInMs) {
 			await vscode.commands.executeCommand('pipelinesexplorer.signInWithMicrosoft');
-		} else if (pick === 'Sign in with PAT') {
+		} else if (pick === signInPat) {
 			await vscode.commands.executeCommand('pipelinesexplorer.signInWithPat');
 		}
 	}
@@ -424,6 +513,7 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 		if (cached) {
 			return cached;
 		}
+		this.logger.logInfo(`Analyzing pipeline "${node.pipeline.name}" (id=${node.pipeline.id}) on branch "${branch ?? '<default>'}"`);
 		const promise = this.analyzer.analyze(
 			node.organization.accountName,
 			node.project.name,
@@ -446,6 +536,7 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 		if (cached) {
 			return cached;
 		}
+		this.logger.logInfo(`Analyzing template "${node.resolvedPath}" on branch "${branch ?? '<default>'}"`);
 		const promise = this.analyzer.analyzeFile(
 			node.organization.accountName,
 			node.project.name,
@@ -498,12 +589,12 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 				}
 				try {
 					const r = await this.client.getRepository(org.accountName, project.name, id);
-					const name = r?.name ?? '(unknown repository)';
+					const name = r?.name ?? vscode.l10n.t('(unknown repository)');
 					this.repoNameCache.set(id, name);
 					return { id, name };
 				} catch (err) {
 					this.logger.logError(`Failed to resolve repository ${id}`, err);
-					return { id, name: '(unknown repository)' };
+					return { id, name: vscode.l10n.t('(unknown repository)') };
 				}
 			},
 		);
@@ -517,7 +608,7 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 				repo?.fullName ??
 				repo?.name ??
 				(repo?.id ? nameById.get(repo.id) : undefined) ??
-				'(unknown repository)';
+				vscode.l10n.t('(unknown repository)');
 			let bucket = buckets.get(repoKey);
 			if (!bucket) {
 				bucket = { label, type: repo?.type, items: [] };

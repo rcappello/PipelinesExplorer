@@ -36,7 +36,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 	context.subscriptions.push(patProvider);
 	context.subscriptions.push(vscode.authentication.registerAuthenticationProvider(
 		AzureDevOpsAuthenticationProvider.id,
-		'Azure DevOps PAT',
+		vscode.l10n.t('Azure DevOps PAT'),
 		patProvider,
 	));
 
@@ -59,12 +59,65 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 			try {
 				const session = await auth.signInWithMicrosoft();
 				if (session) {
-					vscode.window.showInformationMessage(`Signed in as ${session.accountLabel}.`);
+					vscode.window.showInformationMessage(vscode.l10n.t('Signed in as {0}.', session.accountLabel));
 				}
 			} catch (err) {
 				logger.logError('Microsoft sign-in failed', err);
 				vscode.window.showErrorMessage(
-					`Microsoft sign-in failed: ${err instanceof Error ? err.message : String(err)}`,
+					vscode.l10n.t('Microsoft sign-in failed: {0}', err instanceof Error ? err.message : String(err)),
+				);
+			}
+		}),
+		vscode.commands.registerCommand('pipelinesexplorer.selectTenant', async () => {
+			try {
+				const current = auth.getStoredTenant();
+				const tenants = await vscode.window.withProgress(
+					{ location: { viewId: 'pipelinesTree' } },
+					() => auth.listAvailableTenants(),
+				);
+				if (tenants.length === 0) {
+					vscode.window.showWarningMessage(vscode.l10n.t('No Microsoft Entra tenants are available for this account.'));
+					return;
+				}
+				const items: (vscode.QuickPickItem & { tenantId?: string; tenantName?: string })[] = [
+					{
+						label: vscode.l10n.t('$(account) Default tenant'),
+						description: current ? undefined : vscode.l10n.t('(current)'),
+						tenantId: undefined,
+					},
+					{ label: '', kind: vscode.QuickPickItemKind.Separator },
+					...tenants
+						.sort((a, b) => a.displayName.localeCompare(b.displayName))
+						.map(t => ({
+							label: `$(organization) ${t.displayName}`,
+							description: t.tenantId === current ? vscode.l10n.t('(current)') : t.defaultDomain,
+							detail: t.tenantId,
+							tenantId: t.tenantId,
+							tenantName: t.displayName,
+						})),
+				];
+				const pick = await vscode.window.showQuickPick(items, {
+					title: vscode.l10n.t('Select Microsoft Entra tenant'),
+					placeHolder: vscode.l10n.t('Pick the tenant whose Azure DevOps organisations you want to browse'),
+					ignoreFocusOut: true,
+				});
+				if (!pick) {
+					return;
+				}
+				const session = await auth.switchTenant(pick.tenantId, pick.tenantName);
+				if (session) {
+					if (session.tenantId) {
+						vscode.window.showInformationMessage(
+							vscode.l10n.t('Signed in as {0} on tenant {1}.', session.accountLabel, pick.tenantName ?? session.tenantId),
+						);
+					} else {
+						vscode.window.showInformationMessage(vscode.l10n.t('Signed in as {0}.', session.accountLabel));
+					}
+				}
+			} catch (err) {
+				logger.logError('Tenant selection failed', err);
+				vscode.window.showErrorMessage(
+					vscode.l10n.t('Tenant selection failed: {0}', err instanceof Error ? err.message : String(err)),
 				);
 			}
 		}),
@@ -72,37 +125,38 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 			try {
 				const session = await auth.signInWithPat();
 				if (session) {
-					vscode.window.showInformationMessage(`Signed in with PAT (${session.accountLabel}).`);
+					vscode.window.showInformationMessage(vscode.l10n.t('Signed in with PAT ({0}).', session.accountLabel));
 				}
 			} catch (err) {
 				logger.logError('PAT sign-in failed', err);
 				vscode.window.showErrorMessage(
-					`PAT sign-in failed: ${err instanceof Error ? err.message : String(err)}`,
+					vscode.l10n.t('PAT sign-in failed: {0}', err instanceof Error ? err.message : String(err)),
 				);
 			}
 		}),
 		vscode.commands.registerCommand('pipelinesexplorer.signOut', async () => {
 			await auth.signOut();
-			vscode.window.showInformationMessage('Signed out of Azure DevOps.');
+			vscode.window.showInformationMessage(vscode.l10n.t('Signed out of Azure DevOps.'));
 		}),
 		vscode.commands.registerCommand('pipelinesexplorer.reset', async () => {
+			const resetLabel = vscode.l10n.t('Reset');
 			const pick = await vscode.window.showWarningMessage(
-				'This will delete the stored Personal Access Token and forget the chosen sign-in method. Continue?',
+				vscode.l10n.t('This will delete the stored Personal Access Token and forget the chosen sign-in method. Continue?'),
 				{ modal: true },
-				'Reset',
+				resetLabel,
 			);
-			if (pick !== 'Reset') {
+			if (pick !== resetLabel) {
 				return;
 			}
 			await auth.reset();
-			vscode.window.showInformationMessage('Pipelines Explorer credentials cleared.');
+			vscode.window.showInformationMessage(vscode.l10n.t('Pipelines Explorer credentials cleared.'));
 		}),
 		vscode.commands.registerCommand('pipelinesexplorer.refresh', () => tree.refresh()),
 		vscode.commands.registerCommand('pipelinesexplorer.showLogs', () => logger.show()),
 
 		vscode.commands.registerCommand('pipelinesexplorer.linkWorkspace', async (node: RepositoryNode) => {
 			if (!node || node.kind !== 'repository') {
-				vscode.window.showWarningMessage('Run this command from the context menu of a repository node.');
+				vscode.window.showWarningMessage(vscode.l10n.t('Run this command from the context menu of a repository node.'));
 				return;
 			}
 			const folders = vscode.workspace.workspaceFolders ?? [];
@@ -111,10 +165,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 				description: f.uri.fsPath,
 				fsPath: f.uri.fsPath,
 			}));
-			items.push({ label: '$(folder-opened) Browse…', browse: true });
+			items.push({ label: vscode.l10n.t('$(folder-opened) Browse…'), browse: true });
 			const pick = await vscode.window.showQuickPick(items, {
-				title: `Link a workspace folder to "${node.repoLabel}"`,
-				placeHolder: 'Choose the local clone of this repository',
+				title: vscode.l10n.t('Link a workspace folder to "{0}"', node.repoLabel),
+				placeHolder: vscode.l10n.t('Choose the local clone of this repository'),
 			});
 			if (!pick) {
 				return;
@@ -125,7 +179,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 					canSelectFiles: false,
 					canSelectFolders: true,
 					canSelectMany: false,
-					openLabel: 'Link folder',
+					openLabel: vscode.l10n.t('Link folder'),
 				});
 				if (!picked || picked.length === 0) {
 					return;
@@ -141,20 +195,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 				repoKey: node.repoKey,
 			};
 			await links.set(repoKey, fsPath);
-			vscode.window.showInformationMessage(`Linked "${node.repoLabel}" → ${fsPath}`);
+			vscode.window.showInformationMessage(vscode.l10n.t('Linked "{0}" → {1}', node.repoLabel, fsPath));
 			// Auto-detect the current branch of the local clone and offer to use it
 			// as the branch override for this repo.
 			const detected = await detectLocalBranch(fsPath);
 			if (detected) {
 				const current = branches.get(repoKey);
 				if (detected !== current) {
+					const useThisBranch = vscode.l10n.t('Use this branch');
 					const choice = await vscode.window.showInformationMessage(
-						`The linked clone of "${node.repoLabel}" is on branch "${detected}". ` +
-						`Use this branch when reading YAML from Azure DevOps?`,
-						'Use this branch',
-						'Keep default branch',
+						vscode.l10n.t('The linked clone of "{0}" is on branch "{1}". Use this branch when reading YAML from Azure DevOps?', node.repoLabel, detected),
+						useThisBranch,
+						vscode.l10n.t('Keep default branch'),
 					);
-					if (choice === 'Use this branch') {
+					if (choice === useThisBranch) {
 						await branches.set(repoKey, detected);
 					}
 				}
@@ -169,11 +223,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 				projectId: node.project.id,
 				repoKey: node.repoKey,
 			});
-			vscode.window.showInformationMessage(`Unlinked "${node.repoLabel}".`);
+			vscode.window.showInformationMessage(vscode.l10n.t('Unlinked "{0}".', node.repoLabel));
 		}),
 		vscode.commands.registerCommand('pipelinesexplorer.selectBranch', async (node: RepositoryNode) => {
 			if (!node || node.kind !== 'repository') {
-				vscode.window.showWarningMessage('Run this command from the context menu of a repository node.');
+				vscode.window.showWarningMessage(vscode.l10n.t('Run this command from the context menu of a repository node.'));
 				return;
 			}
 			const key = {
@@ -185,32 +239,32 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 			let branchList: string[] = [];
 			try {
 				branchList = await vscode.window.withProgress(
-					{ location: vscode.ProgressLocation.Notification, title: `Loading branches for ${node.repoLabel}…` },
+					{ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('Loading branches for {0}…', node.repoLabel) },
 					() => client.listBranches(node.organization.accountName, node.project.name, node.repoKey),
 				);
 			} catch (err) {
 				logger.logError(`Failed to list branches for ${node.repoLabel}`, err);
 				vscode.window.showErrorMessage(
-					`Could not load branches for "${node.repoLabel}": ${err instanceof Error ? err.message : String(err)}`,
+					vscode.l10n.t('Could not load branches for "{0}": {1}', node.repoLabel, err instanceof Error ? err.message : String(err)),
 				);
 				return;
 			}
 			const defaultItem: vscode.QuickPickItem & { branch?: string; clear?: boolean } = {
-				label: '$(repo) Use default branch',
-				description: current ? `currently overridden to "${current}"` : 'currently in use',
+				label: vscode.l10n.t('$(repo) Use default branch'),
+				description: current ? vscode.l10n.t('currently overridden to "{0}"', current) : vscode.l10n.t('currently in use'),
 				clear: true,
 			};
 			const items: Array<vscode.QuickPickItem & { branch?: string; clear?: boolean }> = [defaultItem];
 			for (const b of branchList) {
 				items.push({
 					label: `$(git-branch) ${b}`,
-					description: b === current ? 'current override' : undefined,
+					description: b === current ? vscode.l10n.t('current override') : undefined,
 					branch: b,
 				});
 			}
 			const pick = await vscode.window.showQuickPick(items, {
-				title: `Select branch for "${node.repoLabel}"`,
-				placeHolder: 'Pipelines Explorer will read YAML from this branch',
+				title: vscode.l10n.t('Select branch for "{0}"', node.repoLabel),
+				placeHolder: vscode.l10n.t('Pipelines Explorer will read YAML from this branch'),
 				matchOnDescription: true,
 			});
 			if (!pick) {
@@ -218,17 +272,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 			}
 			if (pick.clear) {
 				await branches.clear(key);
-				vscode.window.showInformationMessage(`"${node.repoLabel}" now uses the default branch.`);
+				vscode.window.showInformationMessage(vscode.l10n.t('"{0}" now uses the default branch.', node.repoLabel));
 			} else if (pick.branch) {
 				await branches.set(key, pick.branch);
-				vscode.window.showInformationMessage(`"${node.repoLabel}" set to branch "${pick.branch}".`);
+				vscode.window.showInformationMessage(vscode.l10n.t('"{0}" set to branch "{1}".', node.repoLabel, pick.branch));
 			}
 		}),
 		vscode.commands.registerCommand('pipelinesexplorer.openItem',
 			async (node: PipelineNode | TemplateItemNode | ScriptItemNode) => {
 				const target = buildOpenTarget(node);
 				if (!target) {
-					vscode.window.showInformationMessage('Nothing to open for this item.');
+					vscode.window.showInformationMessage(vscode.l10n.t('Nothing to open for this item.'));
 					return;
 				}
 				target.branch = branches.get(target.repoLinkKey);
@@ -237,7 +291,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 				} catch (err) {
 					logger.logError('Open item failed', err);
 					vscode.window.showErrorMessage(
-						`Failed to open: ${err instanceof Error ? err.message : String(err)}`,
+						vscode.l10n.t('Failed to open: {0}', err instanceof Error ? err.message : String(err)),
 					);
 				}
 			}),

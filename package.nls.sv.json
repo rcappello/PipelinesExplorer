@@ -1,0 +1,21 @@
+{
+	"_comment": "Machine-translated preview — please review by a native speaker before publishing.",
+	"displayName": "Pipelines Explorer",
+	"description": "Bläddra bland Azure DevOps-pipelines, utforska refererade YAML-mallar och PowerShell-skript och öppna motsvarande lokala filer.",
+	"command.signInWithMicrosoft.title": "Pipelines Explorer: Logga in med Microsoft",
+	"command.signInWithPat.title": "Pipelines Explorer: Logga in med Personal Access Token",
+	"command.signOut.title": "Pipelines Explorer: Logga ut",
+	"command.reset.title": "Pipelines Explorer: Återställ (ta bort sparade autentiseringsuppgifter)",
+	"command.refresh.title": "Pipelines Explorer: Uppdatera",
+	"command.selectTenant.title": "Pipelines Explorer: Välj Microsoft Entra-tenant…",
+	"command.showLogs.title": "Pipelines Explorer: Visa loggar",
+	"command.linkWorkspace.title": "Länka arbetsytemapp…",
+	"command.unlinkWorkspace.title": "Ta bort länk till arbetsytemapp",
+	"command.selectBranch.title": "Välj branch…",
+	"command.openItem.title": "Öppna",
+	"view.pipelinesTree.name": "Pipelines",
+	"view.pipelinesTree.contextualTitle": "Pipelines Explorer",
+	"viewsContainer.pipelinesExplorer.title": "Pipelines Explorer",
+	"authentication.azureDevOpsPat.label": "Azure DevOps PAT",
+	"viewsWelcome.signIn.contents": "Logga in på Azure DevOps för att börja utforska dina pipelines.\n[Logga in med Microsoft](command:pipelinesexplorer.signInWithMicrosoft)\n[Logga in med Personal Access Token](command:pipelinesexplorer.signInWithPat)\n\nAnvänd Microsoft-inloggning för organisationer anslutna till Microsoft Entra ID. Använd en PAT för äldre scenarier eller behov av detaljerade behörigheter."
+}

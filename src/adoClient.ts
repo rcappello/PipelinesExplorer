@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 import { AuthService } from './authService';
 import { LoggingService } from './LoggingService';
 
@@ -178,7 +179,7 @@ export class AdoClient {
 			if (response.status === 401 || response.status === 403) {
 				throw new AdoUnauthorizedError(
 					response.status,
-					`Azure DevOps rejected the credentials (${response.status}). The stored token may be expired or revoked.`,
+					vscode.l10n.t('Azure DevOps rejected the credentials ({0}). The stored token may be expired or revoked.', response.status),
 				);
 			}
 			throw new Error(msg);
@@ -198,7 +199,7 @@ export class AdoClient {
 			if (response.status === 401 || response.status === 403) {
 				throw new AdoUnauthorizedError(
 					response.status,
-					`Azure DevOps rejected the credentials (${response.status}). The stored token may be expired or revoked.`,
+					vscode.l10n.t('Azure DevOps rejected the credentials ({0}). The stored token may be expired or revoked.', response.status),
 				);
 			}
 			throw new Error(msg);
@@ -209,7 +210,7 @@ export class AdoClient {
 		if (!contentType.includes('application/json')) {
 			throw new AdoUnauthorizedError(
 				401,
-				`Unexpected non-JSON response from ${url}. Authentication may have expired.`,
+				vscode.l10n.t('Unexpected non-JSON response from {0}. Authentication may have expired.', url),
 			);
 		}
 

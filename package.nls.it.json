@@ -1,0 +1,20 @@
+{
+	"displayName": "Pipelines Explorer",
+	"description": "Esplora le pipeline di Azure DevOps, naviga nei template YAML e negli script PowerShell referenziati e apre i file locali corrispondenti.",
+	"command.signInWithMicrosoft.title": "Pipelines Explorer: Accedi con Microsoft",
+	"command.signInWithPat.title": "Pipelines Explorer: Accedi con Personal Access Token",
+	"command.signOut.title": "Pipelines Explorer: Disconnetti",
+	"command.reset.title": "Pipelines Explorer: Reimposta (elimina le credenziali salvate)",
+	"command.refresh.title": "Pipelines Explorer: Aggiorna",
+	"command.selectTenant.title": "Pipelines Explorer: Seleziona tenant Microsoft Entra…",
+	"command.showLogs.title": "Pipelines Explorer: Mostra log",
+	"command.linkWorkspace.title": "Collega cartella dell'area di lavoro…",
+	"command.unlinkWorkspace.title": "Scollega cartella dell'area di lavoro",
+	"command.selectBranch.title": "Seleziona branch…",
+	"command.openItem.title": "Apri",
+	"view.pipelinesTree.name": "Pipeline",
+	"view.pipelinesTree.contextualTitle": "Pipelines Explorer",
+	"viewsContainer.pipelinesExplorer.title": "Pipelines Explorer",
+	"authentication.azureDevOpsPat.label": "Azure DevOps PAT",
+	"viewsWelcome.signIn.contents": "Accedi ad Azure DevOps per iniziare a esplorare le tue pipeline.\n[Accedi con Microsoft](command:pipelinesexplorer.signInWithMicrosoft)\n[Accedi con Personal Access Token](command:pipelinesexplorer.signInWithPat)\n\nUsa l'accesso Microsoft per le organizzazioni collegate a Microsoft Entra ID. Usa un PAT per scenari legacy o a permessi granulari."
+}

@@ -1,7 +1,7 @@
 {
   "name": "vscode-pipelinesexplorer",
-  "displayName": "Pipelines Explorer",
-  "description": "Browse Azure DevOps pipelines, drill into referenced YAML templates and PowerShell scripts, and jump to the local files in your workspace.",
+  "displayName": "%displayName%",
+  "description": "%description%",
   "version": "0.1.0",
   "publisher": "RiccardoCappello",
   "author": {
@@ -38,51 +38,57 @@
   "icon": "media/icon.png",
   "activationEvents": [],
   "main": "./dist/extension.js",
+  "l10n": "./l10n",
   "contributes": {
     "commands": [
       {
         "command": "pipelinesexplorer.signInWithMicrosoft",
-        "title": "Pipelines Explorer: Sign in with Microsoft"
+        "title": "%command.signInWithMicrosoft.title%"
       },
       {
         "command": "pipelinesexplorer.signInWithPat",
-        "title": "Pipelines Explorer: Sign in with Personal Access Token"
+        "title": "%command.signInWithPat.title%"
       },
       {
         "command": "pipelinesexplorer.signOut",
-        "title": "Pipelines Explorer: Sign out"
+        "title": "%command.signOut.title%"
       },
       {
         "command": "pipelinesexplorer.reset",
-        "title": "Pipelines Explorer: Reset (clear stored credentials)"
+        "title": "%command.reset.title%"
       },
       {
         "command": "pipelinesexplorer.refresh",
-        "title": "Pipelines Explorer: Refresh",
+        "title": "%command.refresh.title%",
         "icon": "$(refresh)"
       },
       {
+        "command": "pipelinesexplorer.selectTenant",
+        "title": "%command.selectTenant.title%",
+        "icon": "$(organization)"
+      },
+      {
         "command": "pipelinesexplorer.showLogs",
-        "title": "Pipelines Explorer: Show Logs"
+        "title": "%command.showLogs.title%"
       },
       {
         "command": "pipelinesexplorer.linkWorkspace",
-        "title": "Link Workspace Folder…",
+        "title": "%command.linkWorkspace.title%",
         "icon": "$(link)"
       },
       {
         "command": "pipelinesexplorer.unlinkWorkspace",
-        "title": "Unlink Workspace Folder",
+        "title": "%command.unlinkWorkspace.title%",
         "icon": "$(debug-disconnect)"
       },
       {
         "command": "pipelinesexplorer.selectBranch",
-        "title": "Select Branch…",
+        "title": "%command.selectBranch.title%",
         "icon": "$(git-branch)"
       },
       {
         "command": "pipelinesexplorer.openItem",
-        "title": "Open"
+        "title": "%command.openItem.title%"
       }
     ],
     "menus": {
@@ -90,6 +96,11 @@
         {
           "command": "pipelinesexplorer.refresh",
           "when": "view == pipelinesTree && pipelinesexplorer.signedIn",
+          "group": "navigation"
+        },
+        {
+          "command": "pipelinesexplorer.selectTenant",
+          "when": "view == pipelinesTree && pipelinesexplorer.signedIn && pipelinesexplorer.signInKind == microsoft",
           "group": "navigation"
         },
         {
@@ -108,6 +119,10 @@
         {
           "command": "pipelinesexplorer.refresh",
           "when": "pipelinesexplorer.signedIn"
+        },
+        {
+          "command": "pipelinesexplorer.selectTenant",
+          "when": "pipelinesexplorer.signedIn && pipelinesexplorer.signInKind == microsoft"
         },
         {
           "command": "pipelinesexplorer.showLogs"
@@ -157,21 +172,21 @@
     "viewsWelcome": [
       {
         "view": "pipelinesTree",
-        "contents": "Sign in to Azure DevOps to start exploring your pipelines.\n[Sign in with Microsoft](command:pipelinesexplorer.signInWithMicrosoft)\n[Sign in with Personal Access Token](command:pipelinesexplorer.signInWithPat)\n\nUse Microsoft sign-in for organizations connected to Microsoft Entra ID. Use a PAT for legacy or fine-grained scenarios.",
+        "contents": "%viewsWelcome.signIn.contents%",
         "when": "!pipelinesexplorer.signedIn"
       }
     ],
     "authentication": [
       {
         "id": "azuredevopspat",
-        "label": "Azure DevOps PAT"
+        "label": "%authentication.azureDevOpsPat.label%"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "pipelines-explorer",
-          "title": "Pipelines Explorer",
+          "title": "%viewsContainer.pipelinesExplorer.title%",
           "icon": "media/pipelines-explorer.svg"
         }
       ]
@@ -180,9 +195,9 @@
       "pipelines-explorer": [
         {
           "id": "pipelinesTree",
-          "name": "Pipelines",
+          "name": "%view.pipelinesTree.name%",
           "icon": "media/pipelines-explorer.svg",
-          "contextualTitle": "Pipelines Explorer"
+          "contextualTitle": "%view.pipelinesTree.contextualTitle%"
         }
       ]
     }

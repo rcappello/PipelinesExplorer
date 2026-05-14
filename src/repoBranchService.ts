@@ -16,7 +16,15 @@ export class RepoBranchService {
 	constructor(
 		private readonly context: vscode.ExtensionContext,
 		private readonly logger: LoggingService,
-	) {}
+	) {
+		const all = this.readAll();
+		const count = Object.keys(all).length;
+		if (count > 0) {
+			this.logger.logInfo(`RepoBranchService: loaded ${count} branch override(s) from globalState: ${JSON.stringify(all)}`);
+		} else {
+			this.logger.logInfo('RepoBranchService: no branch overrides stored');
+		}
+	}
 
 	private encodeKey(k: RepoLinkKey): string {
 		return `${k.orgAccountId}::${k.projectId}::${k.repoKey}`;

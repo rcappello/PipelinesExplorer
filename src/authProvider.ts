@@ -6,6 +6,7 @@ import {
 	Disposable,
 	Event,
 	EventEmitter,
+	l10n,
 	SecretStorage,
 	window,
 } from 'vscode';
@@ -113,8 +114,8 @@ export class AzureDevOpsAuthenticationProvider implements AuthenticationProvider
 		// Prompt for the PAT.
 		const token = await window.showInputBox({
 			ignoreFocusOut: true,
-			placeHolder: 'Personal access token',
-			prompt: 'Enter an Azure DevOps Personal Access Token (PAT).',
+			placeHolder: l10n.t('Personal access token'),
+			prompt: l10n.t('Enter an Azure DevOps Personal Access Token (PAT).'),
 			password: true,
 		});
 

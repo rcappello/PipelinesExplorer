@@ -12,7 +12,7 @@ actual file in your editor.
 
 ## Features
 
-- 🔐 **Two sign-in modes** — Microsoft Entra ID single sign-on, or a classic Azure DevOps Personal Access Token. Expired or revoked tokens are detected automatically: the extension clears the stored credential and prompts you to sign in again.
+- 🔐 **Two sign-in modes** — Microsoft Entra ID single sign-on or a classic Azure DevOps Personal Access Token. When signed in with Microsoft, a top-of-tree row shows the active account and tenant, and a button in the view title bar opens a tenant picker populated with the tenants your account can access. Expired or revoked tokens are detected automatically: the extension clears the stored credential and prompts you to sign in again.
 - 🌳 **Org → Project → Repository → Pipeline** tree, with friendly empty states (`No pipelines in this project`, missing-permission warnings, etc.).
 - 🔍 **Recursive YAML analysis** — every `template:` reference and every `PowerShell@2`, `AzurePowerShell@5` and `AzureCLI@2` task is surfaced under each pipeline. Same-repo templates can be expanded to reveal *their* templates and scripts. Empty groups are hidden.
 - 🔗 **Link a workspace folder to a repository** and click any pipeline / template / script to open the local file. Pipeline variables like `$(System.DefaultWorkingDirectory)` and `$(Build.SourcesDirectory)`, repo-absolute paths and relative `../` segments are all resolved automatically.
@@ -56,6 +56,8 @@ Pipelines
    - **Sign in with Personal Access Token** — paste a PAT with at least `Code (Read)`, `Build (Read)` and `Project and Team (Read)` scopes.
 4. Browse organizations → projects → repositories → pipelines.
 
+A header row at the top of the tree shows the active connection (account name and, for Microsoft sign-in, the current tenant). Clicking the row — or the **organization** icon next to **Refresh** in the view title bar — opens a quick-pick listing the Entra ID tenants your account belongs to, so you can switch tenant without signing out. The choice is persisted across restarts; **Reset** clears it.
+
 ### Linking a local clone
 
 If you already have a local clone of one of your repositories open in VS Code:
@@ -84,12 +86,52 @@ When you link a workspace folder that is a Git working copy, the extension auto-
 | --- | --- |
 | `Pipelines Explorer: Sign in with Microsoft` | Sign in with the Microsoft authentication provider. |
 | `Pipelines Explorer: Sign in with Personal Access Token` | Sign in with a stored PAT (asked on first use). |
+| `Pipelines Explorer: Select Microsoft Entra Tenant…` | Pick an Entra ID tenant (from the list of tenants your account can access) to scope the Azure DevOps sign-in. Available only with Microsoft sign-in. |
 | `Pipelines Explorer: Sign out` | Clear the active session. |
 | `Pipelines Explorer: Reset (clear stored credentials)` | Wipe the stored PAT and forget the chosen sign-in method. |
 | `Pipelines Explorer: Refresh` | Re-fetch the tree and re-analyse pipelines. |
 | `Pipelines Explorer: Show Logs` | Open the extension output channel. |
 | Link / Unlink Workspace Folder | Available from the repository node context menu. |
 | Select Branch… | Available from the repository node context menu. Overrides the branch from which YAML is read. |
+
+## Languages
+
+The brand prefix **Pipelines Explorer** is preserved in every locale (untranslated).
+
+| Locale | Status |
+| --- | --- |
+| English (`en`) | Stable, source language. |
+| Italian (`it`) | Stable, author quality. |
+| French (`fr`) | **Preview** — machine-translated, awaiting native review. |
+| German (`de`) | **Preview** — machine-translated, awaiting native review. |
+| Spanish (`es`) | **Preview** — machine-translated, awaiting native review. |
+| Swedish (`sv`) | **Preview** — machine-translated, awaiting native review. |
+
+Manifest strings live in [`package.nls.<lang>.json`](package.nls.json) and runtime
+strings in [`l10n/bundle.l10n.<lang>.json`](l10n). To improve a translation,
+open a PR editing the relevant files — preview locales include a `_comment`
+field in the manifest flagging their status.
+
+## Accessibility
+
+Pipelines Explorer follows the
+[VS Code accessibility guidelines](https://code.visualstudio.com/docs/configure/accessibility/accessibility):
+
+- **Keyboard navigation** — every action is reachable via the command palette
+  (`Pipelines Explorer: …`), the tree's built-in keyboard support, and context
+  menu commands. No mouse-only interactions.
+- **Screen reader support** — every tree item provides
+  [`accessibilityInformation`](https://code.visualstudio.com/api/references/vscode-api#TreeItem)
+  with a localized label that summarises the node type and key metadata
+  (e.g. *"Repository foo, 12 pipelines, linked to local folder, branch override main"*).
+  Tested with the VS Code built-in screen reader optimised mode.
+- **No color-only signals** — node states (linked, branch override, warnings)
+  are conveyed through icons (`ThemeIcon`) and text labels, never color alone.
+- **High contrast & themes** — all icons use VS Code `ThemeIcon` ids so they
+  follow the user's theme, including high contrast and high contrast light.
+- **Localized announcements** — accessibility labels and warning messages
+  (e.g. *"YAML file not found in the repository."*) are translated through the
+  same `vscode.l10n` bundles used for the UI.
 
 ## Requirements
 

@@ -89,20 +89,19 @@ export class OpenItemService {
 		this.logger.logWarning(
 			`Could not find ${target.relativePath} under ${linkedRoot} for ${target.displayName}`,
 		);
-		const branchHint = target.branch
-			? `Pipelines Explorer is reading YAML from branch "${target.branch}" on Azure DevOps; `
-			: `Pipelines Explorer reads YAML from the repository's default branch on Azure DevOps; `;
+		const message = target.branch
+			? vscode.l10n.t('File not found in linked workspace: {0}. Pipelines Explorer is reading YAML from branch "{1}" on Azure DevOps; your local clone may be on a different branch or out of date. Try pulling the latest changes (or switching branch) and retry.', target.relativePath, target.branch)
+			: vscode.l10n.t('File not found in linked workspace: {0}. Pipelines Explorer reads YAML from the repository\'s default branch on Azure DevOps; your local clone may be on a different branch or out of date. Try pulling the latest changes (or switching branch) and retry.', target.relativePath);
+		const openInBrowserLabel = vscode.l10n.t('Open in Browser');
+		const relinkLabel = vscode.l10n.t('Re-link Workspace');
 		const pick = await vscode.window.showWarningMessage(
-			`File not found in linked workspace: ${target.relativePath}. ` +
-			branchHint +
-			`your local clone may be on a different branch or out of date. ` +
-			`Try pulling the latest changes (or switching branch) and retry.`,
-			...(target.webUrl ? ['Open in Browser'] : []),
-			'Re-link Workspace',
+			message,
+			...(target.webUrl ? [openInBrowserLabel] : []),
+			relinkLabel,
 		);
-		if (pick === 'Open in Browser' && target.webUrl) {
+		if (pick === openInBrowserLabel && target.webUrl) {
 			await vscode.env.openExternal(vscode.Uri.parse(target.webUrl));
-		} else if (pick === 'Re-link Workspace') {
+		} else if (pick === relinkLabel) {
 			await this.promptToLink(target);
 		}
 	}
@@ -110,11 +109,12 @@ export class OpenItemService {
 	private async promptToLink(target: OpenTarget): Promise<void> {
 		const folders = vscode.workspace.workspaceFolders ?? [];
 		if (folders.length === 0) {
+			const openInBrowserLabel = vscode.l10n.t('Open in Browser');
 			const choice = await vscode.window.showInformationMessage(
-				`No workspace folder is open. Open the local clone of the repository to enable file navigation.`,
-				...(target.webUrl ? ['Open in Browser'] : []),
+				vscode.l10n.t('No workspace folder is open. Open the local clone of the repository to enable file navigation.'),
+				...(target.webUrl ? [openInBrowserLabel] : []),
 			);
-			if (choice === 'Open in Browser' && target.webUrl) {
+			if (choice === openInBrowserLabel && target.webUrl) {
 				await vscode.env.openExternal(vscode.Uri.parse(target.webUrl));
 			}
 			return;
@@ -124,14 +124,14 @@ export class OpenItemService {
 			description: f.uri.fsPath,
 			fsPath: f.uri.fsPath,
 		}));
-		items.push({ label: '$(folder-opened) Browse…', browse: true });
+		items.push({ label: vscode.l10n.t('$(folder-opened) Browse…'), browse: true });
 		if (target.webUrl) {
-			items.push({ label: '$(globe) Open in Browser instead', description: target.webUrl });
+			items.push({ label: vscode.l10n.t('$(globe) Open in Browser instead'), description: target.webUrl });
 		}
 
 		const pick = await vscode.window.showQuickPick(items, {
-			title: `Link a workspace folder to repository "${target.repoLinkKey.repoKey}"`,
-			placeHolder: 'Choose the local clone of this repository',
+			title: vscode.l10n.t('Link a workspace folder to repository "{0}"', target.repoLinkKey.repoKey),
+			placeHolder: vscode.l10n.t('Choose the local clone of this repository'),
 		});
 		if (!pick) {
 			return;
@@ -141,7 +141,7 @@ export class OpenItemService {
 				canSelectFiles: false,
 				canSelectFolders: true,
 				canSelectMany: false,
-				openLabel: 'Link folder',
+				openLabel: vscode.l10n.t('Link folder'),
 			});
 			if (!picked || picked.length === 0) {
 				return;
