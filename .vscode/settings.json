@@ -1,0 +1,7 @@
+{
+	// F5 should not block on pre-existing problems in the workspace.
+	// In particular the GitHub Actions extension reports false-positive
+	// "Unable to resolve action" errors on actions/checkout@v4 etc. when
+	// it can't reach the GitHub registry; those are unrelated to debugging.
+	"debug.onTaskErrors": "debugAnyway"
+}

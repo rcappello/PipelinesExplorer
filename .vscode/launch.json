@@ -1,0 +1,37 @@
+// Root launch config for the monorepo.
+// Press F5 and pick:
+//   - "Run VS Code Extension" → launches an Extension Development Host
+//     with src/vscode loaded.
+//   - "Run VS 2026 Extension"  → builds src/vs2026 and starts Visual Studio
+//     with the experimental hive so the VSIX is loaded for debugging.
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Run VS Code Extension",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}/src/vscode"
+			],
+			"outFiles": [
+				"${workspaceFolder}/src/vscode/dist/**/*.js"
+			],
+			"preLaunchTask": "npm: watch - src/vscode"
+		},
+		{
+			"name": "Run VS 2026 Extension",
+			"type": "coreclr",
+			"request": "launch",
+			"program": "${env:ProgramFiles}/Microsoft Visual Studio/18/Enterprise/Common7/IDE/devenv.exe",
+			"args": [
+				"/rootSuffix",
+				"Exp"
+			],
+			"cwd": "${workspaceFolder}/src/vs2026",
+			"console": "internalConsole",
+			"stopAtEntry": false,
+			"preLaunchTask": "build - src/vs2026"
+		}
+	]
+}

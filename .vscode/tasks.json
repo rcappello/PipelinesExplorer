@@ -1,0 +1,42 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "npm: watch - src/vscode",
+			"type": "npm",
+			"script": "watch",
+			"path": "src/vscode",
+			"isBackground": true,
+			"problemMatcher": [
+				"$ts-webpack-watch",
+				"$tsc-watch",
+				"$esbuild-watch"
+			],
+			"presentation": {
+				"reveal": "never",
+				"group": "watchers"
+			},
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"label": "build - src/vs2026",
+			"type": "process",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/src/vs2026/PipelinesExplorer.VisualStudio.csproj",
+				"-c",
+				"Debug"
+			],
+			"problemMatcher": "$msCompile",
+			"presentation": {
+				"reveal": "silent",
+				"clear": true
+			},
+			"group": "build"
+		}
+	]
+}

@@ -1,0 +1,32 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "vs2026", "vs2026", "{1EA2DADB-4A55-4096-8093-EDD265E4C5BF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PipelinesExplorer.VisualStudio", "src\vs2026\PipelinesExplorer.VisualStudio.csproj", "{6F7B171F-1F62-1936-7286-B4B21C9EBD05}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6F7B171F-1F62-1936-7286-B4B21C9EBD05}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6F7B171F-1F62-1936-7286-B4B21C9EBD05}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6F7B171F-1F62-1936-7286-B4B21C9EBD05}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6F7B171F-1F62-1936-7286-B4B21C9EBD05}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{1EA2DADB-4A55-4096-8093-EDD265E4C5BF} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{6F7B171F-1F62-1936-7286-B4B21C9EBD05} = {1EA2DADB-4A55-4096-8093-EDD265E4C5BF}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {84CF0D2F-FB75-4581-96B5-28D8AA286A3A}
+	EndGlobalSection
+EndGlobal
