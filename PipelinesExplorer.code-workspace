@@ -1,0 +1,31 @@
+{
+	"folders": [
+		{
+			"name": "Pipelines Explorer (root)",
+			"path": "."
+		},
+		{
+			"name": "VS Code client",
+			"path": "src/vscode"
+		},
+		{
+			"name": "VS 2026 client",
+			"path": "src/vs2026"
+		}
+	],
+	"settings": {
+		"files.exclude": {
+			"**/node_modules": true,
+			"**/bin": true,
+			"**/obj": true,
+			"**/dist": true,
+			"**/out": true
+		}
+	},
+	"extensions": {
+		"recommendations": [
+			"dbaeumer.vscode-eslint",
+			"ms-dotnettools.csharp"
+		]
+	}
+}

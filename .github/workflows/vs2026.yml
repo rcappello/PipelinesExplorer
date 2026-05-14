@@ -1,0 +1,43 @@
+name: Visual Studio 2026 client CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/vs2026/**'
+      - '.github/workflows/vs2026.yml'
+  pull_request:
+    paths:
+      - 'src/vs2026/**'
+      - '.github/workflows/vs2026.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: src/vs2026
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore PipelinesExplorer.VisualStudio.csproj
+
+      - name: Build (Release)
+        run: dotnet build PipelinesExplorer.VisualStudio.csproj -c Release --no-restore
+
+      - name: Upload VSIX as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipelines-explorer-vs2026-vsix
+          path: src/vs2026/bin/Release/**/*.vsix
+          if-no-files-found: warn

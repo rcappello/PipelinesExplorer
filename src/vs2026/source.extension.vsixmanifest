@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PackageManifest Version="2.0.0"
+                 xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011"
+                 xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
+  <Metadata>
+    <Identity Id="PipelinesExplorer.VisualStudio.f6c47e2e-5b33-4d3a-8d79-2f5e1c1b9a01"
+              Version="0.1.0"
+              Language="en-US"
+              Publisher="rcappello" />
+    <DisplayName>Pipelines Explorer</DisplayName>
+    <Description xml:space="preserve">Browse Azure DevOps pipelines, drill into referenced YAML templates and PowerShell scripts, and jump to the local files in your solution — directly from Visual Studio 2026.</Description>
+    <MoreInfo>https://github.com/rcappello/PipelinesExplorer</MoreInfo>
+    <License>LICENSE</License>
+    <Tags>azure devops; pipelines; yaml; ci/cd</Tags>
+  </Metadata>
+  <Installation>
+    <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[18.0,)" />
+    <InstallationTarget Id="Microsoft.VisualStudio.Pro" Version="[18.0,)" />
+    <InstallationTarget Id="Microsoft.VisualStudio.Enterprise" Version="[18.0,)" />
+  </Installation>
+  <Dependencies>
+    <Dependency Id="Microsoft.Framework.NDP" DisplayName="Microsoft .NET Framework" d:Source="Manual" Version="[4.7.2,)" />
+  </Dependencies>
+  <Prerequisites>
+    <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[18.0,)" DisplayName="Visual Studio core editor" />
+  </Prerequisites>
+</PackageManifest>

@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- VisualStudio.Extensibility VSIX outputs -->
+    <RootNamespace>PipelinesExplorer.VisualStudio</RootNamespace>
+    <AssemblyName>PipelinesExplorer.VisualStudio</AssemblyName>
+    <PackageId>PipelinesExplorer.VisualStudio</PackageId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- VisualStudio.Extensibility SDK (out-of-process model, VS 17.13+ / VS 2026) -->
+    <PackageReference Include="Microsoft.VisualStudio.Extensibility.Sdk" Version="17.13.*" />
+    <PackageReference Include="Microsoft.VisualStudio.Extensibility.Build" Version="17.13.*" />
+
+    <!-- Azure DevOps client SDKs (used to talk to the same REST endpoints as the VS Code client) -->
+    <PackageReference Include="Microsoft.TeamFoundationServer.Client" Version="19.225.*" />
+    <PackageReference Include="Microsoft.VisualStudio.Services.Client" Version="19.225.*" />
+
+    <!-- Microsoft Entra ID sign-in via MSAL with WAM broker on Windows -->
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.66.*" />
+    <PackageReference Include="Microsoft.Identity.Client.Broker" Version="4.66.*" />
+  </ItemGroup>
+
+</Project>

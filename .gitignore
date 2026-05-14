@@ -1,5 +1,20 @@
-out
-dist
-node_modules
+# --- VS Code extension client (src/vscode) ---
+src/vscode/out/
+src/vscode/dist/
+src/vscode/node_modules/
+src/vscode/.vscode-test/
+src/vscode/*.vsix
+
+# --- Visual Studio 2026 client (src/vs2026) ---
+src/vs2026/bin/
+src/vs2026/obj/
+src/vs2026/*.vsix
+src/vs2026/.vs/
+
+# --- Catch-all (in case anything is run from the repo root) ---
+out/
+dist/
+node_modules/
 .vscode-test/
 *.vsix
+.vs/
