@@ -38,7 +38,13 @@
 
     <!-- Microsoft Entra ID sign-in via MSAL with WAM broker on Windows -->
     <PackageReference Include="Microsoft.Identity.Client" Version="4.84.*" />
-    <PackageReference Include="Microsoft.Identity.Client.Broker" Version="4.84.*" />
+    <!--
+      Cross-platform MSAL token cache (DPAPI on Windows). Without this the
+      token cache is in-memory only and the user has to interactively sign
+      in again every time Visual Studio is restarted. See:
+      https://learn.microsoft.com/entra/msal/dotnet/how-to/token-cache-serialization?tabs=desktop
+    -->
+    <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" Version="4.84.*" />
 
     <!-- JWT helper for extracting the `tid` claim from Microsoft Entra access tokens -->
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.18.*" />
@@ -51,6 +57,8 @@
     <!-- Remote UI XAML must be shipped as embedded resources, not WPF Pages -->
     <EmbeddedResource Include="ToolWindows\PipelinesToolWindowControl.xaml" />
     <Page Remove="ToolWindows\PipelinesToolWindowControl.xaml" />
+    <EmbeddedResource Include="ToolWindows\TenantPickerDialog.xaml" />
+    <Page Remove="ToolWindows\TenantPickerDialog.xaml" />
   </ItemGroup>
 
 </Project>

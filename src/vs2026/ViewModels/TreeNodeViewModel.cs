@@ -77,6 +77,20 @@ public class TreeNodeViewModel : NotifyPropertyChangedObject
     [DataMember]
     public ObservableList<TreeNodeViewModel> Children { get; }
 
+    /// <summary>
+    /// String form of an <c>ImageMoniker</c> (e.g. <c>"KnownMonikers.GitRepository"</c>)
+    /// resolved by <c>vs:Image.Source</c> at render time. Mirrors the
+    /// <c>vscode.ThemeIcon</c> assigned to each node by the VS Code provider.
+    /// </summary>
+    [DataMember]
+    public virtual string IconMoniker => Kind switch
+    {
+        TreeNodeKind.Loading => "KnownMonikers.StatusInformation",
+        TreeNodeKind.Info => "KnownMonikers.StatusInformation",
+        TreeNodeKind.Error => "KnownMonikers.StatusError",
+        _ => "KnownMonikers.None",
+    };
+
     [DataMember]
     public bool IsExpanded
     {
@@ -106,6 +120,9 @@ public sealed class OrganizationNode : TreeNodeViewModel
     }
 
     public AdoOrganization Organization { get; }
+
+    [DataMember]
+    public override string IconMoniker => "KnownMonikers.Cloud";
 }
 
 [DataContract]
@@ -122,6 +139,9 @@ public sealed class ProjectNode : TreeNodeViewModel
 
     public AdoOrganization Organization { get; }
     public AdoProject Project { get; }
+
+    [DataMember]
+    public override string IconMoniker => "KnownMonikers.TeamProject";
 }
 
 [DataContract]
@@ -193,6 +213,9 @@ public sealed class RepositoryNode : TreeNodeViewModel
     [DataMember]
     public bool HasBranchOverride => !string.IsNullOrEmpty(BranchOverride);
 
+    [DataMember]
+    public override string IconMoniker => IsLinked ? "KnownMonikers.GitRepositoryLocal" : "KnownMonikers.GitRepository";
+
     /// <summary>Refresh the link/branch state from the latest service data.</summary>
     internal void UpdateState(string? linkedFolder, string? branchOverride)
     {
@@ -202,6 +225,7 @@ public sealed class RepositoryNode : TreeNodeViewModel
         Tooltip = BuildTooltip();
         RaiseNotifyPropertyChangedEvent(nameof(IsLinked));
         RaiseNotifyPropertyChangedEvent(nameof(HasBranchOverride));
+        RaiseNotifyPropertyChangedEvent(nameof(IconMoniker));
     }
 
     private string BuildDescription()
@@ -255,6 +279,9 @@ public sealed class PipelineNode : TreeNodeViewModel
     public string YamlDir => DirOfRepoPath(Detail?.Configuration?.Path ?? "/");
 
     [DataMember]
+    public override string IconMoniker => "KnownMonikers.Pipeline";
+
+    [DataMember]
     public AsyncCommand? OpenCommand
     {
         get => _openCommand;
@@ -280,6 +307,11 @@ public sealed class GroupNode : TreeNodeViewModel
     }
 
     public GroupKind Group { get; }
+
+    [DataMember]
+    public override string IconMoniker => Group == GroupKind.Templates
+        ? "KnownMonikers.FolderClosed"
+        : "KnownMonikers.PowershellFile";
 }
 
 [DataContract]
@@ -320,6 +352,9 @@ public sealed class TemplateNode : TreeNodeViewModel
 
     /// <summary>True for same-repo templates whose body can be analysed and expanded.</summary>
     public bool IsSameRepoExpandable => Reference.Repository is null && !string.IsNullOrEmpty(ContainingRepoId);
+
+    [DataMember]
+    public override string IconMoniker => "KnownMonikers.YamlFile";
 
     [DataMember]
     public AsyncCommand? OpenCommand
@@ -376,6 +411,11 @@ public sealed class ScriptNode : TreeNodeViewModel
     }
 
     public PowerShellRef Reference { get; }
+
+    [DataMember]
+    public override string IconMoniker => Reference.FilePath is not null
+        ? "KnownMonikers.PowershellFile"
+        : "KnownMonikers.PowershellInteractiveWindow";
 
     [DataMember]
     public AsyncCommand? OpenCommand

@@ -1,12 +1,94 @@
 <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
               xmlns:vs="http://schemas.microsoft.com/visualstudio/extensibility/2022/xaml"
-              xmlns:sys="clr-namespace:System;assembly=mscorlib">
+              xmlns:sys="clr-namespace:System;assembly=mscorlib"
+              xmlns:platform="clr-namespace:Microsoft.VisualStudio.PlatformUI;assembly=Microsoft.VisualStudio.Shell.15.0"
+              xmlns:shell="clr-namespace:Microsoft.VisualStudio.Shell;assembly=Microsoft.VisualStudio.Shell.15.0">
     <DataTemplate.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+        <!-- Pull the right brushes/fonts for the current Visual Studio theme so the
+             tool window adapts to Light/Dark/Blue/HC automatically. The Shell.15.0
+             assembly is loaded by the VS process that hosts the Remote UI XAML;
+             it is intentionally NOT a PackageReference of the (out-of-process)
+             extension. -->
+
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource {x:Static platform:EnvironmentColors.ToolWindowTextBrushKey}}" />
+            <Setter Property="FontFamily" Value="{DynamicResource VsFont.EnvironmentFontFamily}" />
+            <Setter Property="FontSize"   Value="{DynamicResource VsFont.EnvironmentFontSize}" />
+            <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Background"     Value="{DynamicResource {x:Static platform:CommonControlsColors.TextBoxBackgroundBrushKey}}" />
+            <Setter Property="Foreground"     Value="{DynamicResource {x:Static platform:CommonControlsColors.TextBoxTextBrushKey}}" />
+            <Setter Property="BorderBrush"    Value="{DynamicResource {x:Static platform:CommonControlsColors.TextBoxBorderBrushKey}}" />
+            <Setter Property="CaretBrush"     Value="{DynamicResource {x:Static platform:CommonControlsColors.TextBoxTextBrushKey}}" />
+            <Setter Property="SelectionBrush" Value="{DynamicResource {x:Static platform:CommonControlsColors.TextBoxBackgroundFocusedBrushKey}}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="6,4" />
+            <Setter Property="MinHeight" Value="26" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FontFamily" Value="{DynamicResource VsFont.EnvironmentFontFamily}" />
+            <Setter Property="FontSize"   Value="{DynamicResource VsFont.EnvironmentFontSize}" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static platform:CommonControlsColors.TextBoxBorderFocusedBrushKey}}" />
+                </Trigger>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static platform:CommonControlsColors.TextBoxBorderFocusedBrushKey}}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="Button">
+            <Setter Property="Background"  Value="{DynamicResource {x:Static platform:CommonControlsColors.ButtonDefaultBrushKey}}" />
+            <Setter Property="Foreground"  Value="{DynamicResource {x:Static platform:CommonControlsColors.ButtonDefaultTextBrushKey}}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource {x:Static platform:CommonControlsColors.ButtonBorderDefaultBrushKey}}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="MinHeight" Value="26" />
+            <Setter Property="FontFamily" Value="{DynamicResource VsFont.EnvironmentFontFamily}" />
+            <Setter Property="FontSize"   Value="{DynamicResource VsFont.EnvironmentFontSize}" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background"  Value="{DynamicResource {x:Static platform:CommonControlsColors.ButtonHoverBrushKey}}" />
+                    <Setter Property="Foreground"  Value="{DynamicResource {x:Static platform:CommonControlsColors.ButtonHoverTextBrushKey}}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static platform:CommonControlsColors.ButtonBorderHoverBrushKey}}" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background"  Value="{DynamicResource {x:Static platform:CommonControlsColors.ButtonPressedBrushKey}}" />
+                    <Setter Property="Foreground"  Value="{DynamicResource {x:Static platform:CommonControlsColors.ButtonPressedTextBrushKey}}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static platform:CommonControlsColors.ButtonBorderPressedBrushKey}}" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background"  Value="{DynamicResource {x:Static platform:CommonControlsColors.ButtonDisabledBrushKey}}" />
+                    <Setter Property="Foreground"  Value="{DynamicResource {x:Static platform:CommonControlsColors.ButtonDisabledTextBrushKey}}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static platform:CommonControlsColors.ButtonBorderDisabledBrushKey}}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="TreeView">
+            <Setter Property="Background"  Value="Transparent" />
+            <Setter Property="Foreground"  Value="{DynamicResource {x:Static platform:EnvironmentColors.ToolWindowTextBrushKey}}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontFamily" Value="{DynamicResource VsFont.EnvironmentFontFamily}" />
+            <Setter Property="FontSize"   Value="{DynamicResource VsFont.EnvironmentFontSize}" />
+        </Style>
+
+        <Style TargetType="TreeViewItem">
+            <Setter Property="Foreground" Value="{DynamicResource {x:Static platform:EnvironmentColors.ToolWindowTextBrushKey}}" />
+            <!-- Tighter rows mirror the SQL Server Object Explorer / VS Code tree
+                 spacing instead of the very airy WPF default. -->
+            <Setter Property="Padding" Value="2,1,2,1" />
+        </Style>
     </DataTemplate.Resources>
 
-    <Grid Margin="6">
+    <Grid Margin="6"
+          Background="{DynamicResource {x:Static platform:EnvironmentColors.ToolWindowBackgroundBrushKey}}"
+          TextElement.Foreground="{DynamicResource {x:Static platform:EnvironmentColors.ToolWindowTextBrushKey}}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -18,17 +100,74 @@
         <DockPanel Grid.Row="0"
                    Margin="0,0,0,6"
                    Visibility="{Binding IsSignedIn, Converter={StaticResource BoolToVis}}">
+            <!-- Right-aligned image buttons mirror the VS Code view/title icons.
+                 Borderless / transparent so they look like the icon-only buttons
+                 in the built-in SQL Server Object Explorer toolbar. -->
+            <DockPanel.Resources>
+                <Style x:Key="IconToolbarButton" TargetType="Button">
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="BorderBrush" Value="Transparent" />
+                    <Setter Property="BorderThickness" Value="1" />
+                    <Setter Property="Padding" Value="3" />
+                    <Setter Property="Width" Value="22" />
+                    <Setter Property="Height" Value="22" />
+                    <Setter Property="MinWidth" Value="0" />
+                    <Setter Property="MinHeight" Value="0" />
+                    <Setter Property="Cursor" Value="Hand" />
+                    <Setter Property="Focusable" Value="True" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="Bd"
+                                        Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        SnapsToDevicePixels="True">
+                                    <ContentPresenter HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      Margin="{TemplateBinding Padding}" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Background"
+                                                Value="{DynamicResource {x:Static platform:EnvironmentColors.CommandBarHoverBrushKey}}" />
+                                        <Setter TargetName="Bd" Property="BorderBrush"
+                                                Value="{DynamicResource {x:Static platform:EnvironmentColors.CommandBarHoverOverSelectedIconBorderBrushKey}}" />
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter TargetName="Bd" Property="Background"
+                                                Value="{DynamicResource {x:Static platform:EnvironmentColors.CommandBarMouseDownBackgroundBeginBrushKey}}" />
+                                    </Trigger>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter Property="Opacity" Value="0.5" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </DockPanel.Resources>
             <Button DockPanel.Dock="Right"
-                    Content="Sign out"
-                    Margin="6,0,0,0"
-                    Padding="8,2"
-                    Command="{Binding SignOutCommand}" />
+                    Style="{StaticResource IconToolbarButton}"
+                    ToolTip="Sign out"
+                    Command="{Binding SignOutCommand}">
+                <vs:Image Source="KnownMonikers.Disconnect" Width="16" Height="16" />
+            </Button>
             <Button DockPanel.Dock="Right"
-                    Content="Refresh"
-                    Margin="6,0,0,0"
-                    Padding="8,2"
-                    Command="{Binding RefreshCommand}" />
+                    Style="{StaticResource IconToolbarButton}"
+                    ToolTip="Switch Microsoft Entra tenant"
+                    Visibility="{Binding IsMicrosoftSignIn, Converter={StaticResource BoolToVis}}"
+                    Command="{Binding SelectTenantCommand}">
+                <vs:Image Source="KnownMonikers.AzureActiveDirectory" Width="16" Height="16" />
+            </Button>
+            <Button DockPanel.Dock="Right"
+                    Style="{StaticResource IconToolbarButton}"
+                    ToolTip="Refresh"
+                    Command="{Binding RefreshCommand}">
+                <vs:Image Source="KnownMonikers.Refresh" Width="16" Height="16" />
+            </Button>
             <TextBlock Text="{Binding ConnectionLabel}"
+                       ToolTip="{Binding ConnectionTooltip}"
                        VerticalAlignment="Center"
                        TextTrimming="CharacterEllipsis"
                        FontWeight="SemiBold" />
@@ -44,21 +183,36 @@
                        TextWrapping="Wrap" />
             <WrapPanel>
                 <Button Content="Sign in with Microsoft"
-                        Padding="10,4"
                         Margin="0,0,8,0"
                         Command="{Binding SignInWithMicrosoftCommand}" />
             </WrapPanel>
             <TextBlock Text="Or paste an Azure DevOps personal access token (Build Read, Code Read):"
                        Margin="0,12,0,4"
                        TextWrapping="Wrap" />
-            <DockPanel>
+            <DockPanel HorizontalAlignment="Left">
                 <Button DockPanel.Dock="Right"
                         Content="Sign in with PAT"
-                        Padding="10,4"
                         Margin="6,0,0,0"
                         Command="{Binding SignInWithPatCommand}" />
-                <TextBox Text="{Binding PatInputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                         FontFamily="Consolas" />
+                <!-- "Password-like" field: a transparent-foreground TextBox sits
+                     on top of a TextBlock that renders one bullet per character
+                     in PatInputText. Real WPF PasswordBox cannot be used here
+                     because Remote UI cannot bridge its non-DependencyProperty
+                     Password value back to the out-of-process view-model. -->
+                <Grid Width="260">
+                    <TextBlock Text="{Binding PatMaskedText}"
+                               IsHitTestVisible="False"
+                               VerticalAlignment="Center"
+                               Margin="7,0,7,0"
+                               TextTrimming="CharacterEllipsis"
+                               Foreground="{DynamicResource {x:Static platform:CommonControlsColors.TextBoxTextBrushKey}}"
+                               FontFamily="Consolas" />
+                    <TextBox Text="{Binding PatInputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             FontFamily="Consolas"
+                             Foreground="Transparent"
+                             SelectionOpacity="0.35"
+                             ToolTip="Personal access token (hidden)" />
+                </Grid>
             </DockPanel>
         </StackPanel>
 
@@ -77,10 +231,9 @@
         <!-- Tree -->
         <TreeView Grid.Row="3"
                   ItemsSource="{Binding Roots}"
-                  Visibility="{Binding IsSignedIn, Converter={StaticResource BoolToVis}}"
-                  BorderThickness="0">
+                  Visibility="{Binding IsSignedIn, Converter={StaticResource BoolToVis}}">
             <TreeView.ItemContainerStyle>
-                <Style TargetType="{x:Type TreeViewItem}">
+                <Style TargetType="{x:Type TreeViewItem}" BasedOn="{StaticResource {x:Type TreeViewItem}}">
                     <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
                     <Setter Property="ToolTip" Value="{Binding Tooltip}" />
                 </Style>
@@ -93,17 +246,22 @@
                                 <MenuItem Header="Open"
                                           Command="{Binding OpenCommand}" />
                                 <Separator />
-                                <MenuItem Header="Link workspace folder\u2026"
+                                <MenuItem Header="Link workspace folder…"
                                           Command="{Binding LinkCommand}" />
                                 <MenuItem Header="Unlink workspace folder"
                                           Command="{Binding UnlinkCommand}" />
-                                <MenuItem Header="Select branch\u2026"
+                                <MenuItem Header="Select branch…"
                                           Command="{Binding SelectBranchCommand}" />
                             </ContextMenu>
                         </StackPanel.ContextMenu>
-                        <TextBlock Text="{Binding Label}" />
+                        <vs:Image Source="{Binding IconMoniker}"
+                                  Width="16" Height="16"
+                                  Margin="0,0,6,0"
+                                  VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
                         <TextBlock Text="{Binding Description}"
                                    Margin="6,0,0,0"
+                                   VerticalAlignment="Center"
                                    Opacity="0.7" />
                     </StackPanel>
                 </HierarchicalDataTemplate>

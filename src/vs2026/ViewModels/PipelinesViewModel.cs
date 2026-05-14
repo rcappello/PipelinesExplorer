@@ -31,11 +31,22 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     private readonly Func<VisualStudioExtensibility?> _extensibilityProvider;
 
     private bool _isSignedIn;
+    private bool _isMicrosoftSignIn;
     private bool _isBusy;
     private string? _connectionLabel;
+    private string? _connectionTooltip;
     private string? _errorMessage;
     private string _patInputText = string.Empty;
     private CancellationTokenSource? _loadCts;
+
+    /// <summary>
+    /// Cache of TfsGit repository ids -> display name. Mirrors the
+    /// <c>repoNameCache</c> in the VS Code provider: the pipelines list API
+    /// only returns the repository GUID for <c>azureReposGit</c> sources, so
+    /// we resolve the name once via <see cref="AdoClient.GetRepositoryAsync"/>
+    /// and reuse it for every pipeline pointing at the same repo.
+    /// </summary>
+    private readonly Dictionary<string, string> _repoNameCache = new(StringComparer.OrdinalIgnoreCase);
 
     public PipelinesViewModel(
         LoggingService logger,
@@ -68,6 +79,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
             try { await _auth.SignInWithMicrosoftAsync(cancellationToken: cancellationToken).ConfigureAwait(false); }
             catch (Exception ex) { _logger.Error("Microsoft sign in failed", ex); SetError(ex.Message); }
         });
+        SelectTenantCommand = new AsyncCommand((parameter, clientContext, cancellationToken) => SelectTenantAsync(cancellationToken));
         SignInWithPatCommand = new AsyncCommand(async (parameter, clientContext, cancellationToken) =>
         {
             try
@@ -107,6 +119,14 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         }
     }
 
+    /// <summary>True only when the active session was created via Microsoft Entra (drives tenant-switch button).</summary>
+    [DataMember]
+    public bool IsMicrosoftSignIn
+    {
+        get => _isMicrosoftSignIn;
+        private set => SetProperty(ref _isMicrosoftSignIn, value);
+    }
+
     /// <summary>True when the user has not signed in yet — drives welcome-panel visibility.</summary>
     [DataMember]
     public bool IsSignedOut => !_isSignedIn;
@@ -123,6 +143,14 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     {
         get => _connectionLabel;
         private set => SetProperty(ref _connectionLabel, value);
+    }
+
+    /// <summary>Detailed multi-line tooltip shown when hovering the connection label.</summary>
+    [DataMember]
+    public string? ConnectionTooltip
+    {
+        get => _connectionTooltip;
+        private set => SetProperty(ref _connectionTooltip, value);
     }
 
     [DataMember]
@@ -146,8 +174,25 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     public string PatInputText
     {
         get => _patInputText;
-        set => SetProperty(ref _patInputText, value ?? string.Empty);
+        set
+        {
+            if (SetProperty(ref _patInputText, value ?? string.Empty))
+            {
+                RaiseNotifyPropertyChangedEvent(nameof(PatMaskedText));
+            }
+        }
     }
+
+    /// <summary>
+    /// String of bullet characters with the same length as <see cref="PatInputText"/>.
+    /// Rendered as a <c>TextBlock</c> overlay on top of a transparent-foreground
+    /// <c>TextBox</c> so the PAT looks like a password field. Remote UI does not
+    /// flow attached behaviours from the extension assembly across the
+    /// out-of-process boundary, so a real <c>PasswordBox</c> with two-way
+    /// password binding is not viable here.
+    /// </summary>
+    [DataMember]
+    public string PatMaskedText => new('\u2022', _patInputText.Length);
 
     [DataMember]
     public AsyncCommand RefreshCommand { get; }
@@ -157,6 +202,10 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
 
     [DataMember]
     public AsyncCommand SignInWithMicrosoftCommand { get; }
+
+    /// <summary>Open a popup to switch the Microsoft Entra tenant.</summary>
+    [DataMember]
+    public AsyncCommand SelectTenantCommand { get; }
 
     [DataMember]
     public AsyncCommand SignInWithPatCommand { get; }
@@ -180,13 +229,23 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         {
             var profile = await _ado.GetProfileAsync(ct).ConfigureAwait(false);
             var orgs = await _ado.ListOrganizationsAsync(profile.Id, ct).ConfigureAwait(false);
-            var orgNodes = orgs
-                .OrderBy(o => o.AccountName, StringComparer.OrdinalIgnoreCase)
-                .Select(BuildOrganizationNode)
-                .Cast<TreeNodeViewModel>()
-                .ToList();
-            ReplaceList(Roots, orgNodes);
-            _logger.Info($"Loaded {orgNodes.Count} organization(s)");
+            _logger.Info($"Loaded {orgs.Count} organization(s) for {profile.DisplayName ?? profile.Id}");
+            if (orgs.Count == 0)
+            {
+                ReplaceList(Roots, new TreeNodeViewModel[]
+                {
+                    new InfoNode("No Azure DevOps organizations found for this tenant.", TreeNodeKind.Info),
+                });
+            }
+            else
+            {
+                var orgNodes = orgs
+                    .OrderBy(o => o.AccountName, StringComparer.OrdinalIgnoreCase)
+                    .Select(BuildOrganizationNode)
+                    .Cast<TreeNodeViewModel>()
+                    .ToList();
+                ReplaceList(Roots, orgNodes);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -274,9 +333,62 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
             var byRepo = new Dictionary<string, List<(AdoPipeline pipe, AdoPipelineDetail? detail)>>(StringComparer.OrdinalIgnoreCase);
             string KeyOf(AdoPipelineDetail? d) =>
                 d?.Configuration?.Repository?.Id ?? d?.Configuration?.Repository?.FullName ?? "(unknown)";
-            string LabelOf(AdoPipelineDetail? d) =>
-                d?.Configuration?.Repository?.Name ?? d?.Configuration?.Repository?.FullName ?? "(unknown repository)";
             string? TypeOf(AdoPipelineDetail? d) => d?.Configuration?.Repository?.Type;
+
+            // Resolve display names for TfsGit repositories that the pipelines API
+            // didn't include (those come back with only an Id + type=azureReposGit).
+            // Mirrors the equivalent block in the VS Code provider.
+            var missingIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in details)
+            {
+                var repo = entry.detail?.Configuration?.Repository;
+                if (repo?.Id is { Length: > 0 } id
+                    && string.IsNullOrEmpty(repo.Name)
+                    && string.IsNullOrEmpty(repo.FullName)
+                    && (string.IsNullOrEmpty(repo.Type)
+                        || string.Equals(repo.Type, "azureReposGit", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(repo.Type, "TfsGit", StringComparison.OrdinalIgnoreCase))
+                    && !_repoNameCache.ContainsKey(id))
+                {
+                    missingIds.Add(id);
+                }
+            }
+            if (missingIds.Count > 0)
+            {
+                foreach (var batch in Chunk(missingIds.ToList(), 8))
+                {
+                    var tasks = batch.Select(async id =>
+                    {
+                        try
+                        {
+                            var r = await _ado.GetRepositoryAsync(node.Organization.AccountName, node.Project.Name, id).ConfigureAwait(false);
+                            return new KeyValuePair<string, string?>(id, r?.Name);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.Warn($"Resolve repo {id} failed: {ex.Message}");
+                            return new KeyValuePair<string, string?>(id, null);
+                        }
+                    });
+                    foreach (var kv in await Task.WhenAll(tasks).ConfigureAwait(false))
+                    {
+                        _repoNameCache[kv.Key] = kv.Value ?? "(unknown repository)";
+                    }
+                }
+            }
+
+            string LabelOf(AdoPipelineDetail? d)
+            {
+                var repo = d?.Configuration?.Repository;
+                if (repo is null) { return "(unknown repository)"; }
+                if (!string.IsNullOrEmpty(repo.FullName)) { return repo.FullName!; }
+                if (!string.IsNullOrEmpty(repo.Name)) { return repo.Name!; }
+                if (!string.IsNullOrEmpty(repo.Id) && _repoNameCache.TryGetValue(repo.Id!, out var cached))
+                {
+                    return cached;
+                }
+                return "(unknown repository)";
+            }
 
             foreach (var entry in details)
             {
@@ -324,11 +436,39 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     private void OnSessionChanged(AdoSession? session)
     {
         IsSignedIn = session is not null;
-        ConnectionLabel = session is null
-            ? null
-            : session.Kind == SignInKind.Microsoft
-                ? $"Microsoft \u00b7 {session.AccountLabel}{(string.IsNullOrEmpty(session.TenantId) ? string.Empty : $" \u00b7 {session.TenantId}")}"
-                : $"PAT \u00b7 {session.AccountLabel}";
+        IsMicrosoftSignIn = session is not null && session.Kind == SignInKind.Microsoft;
+
+        if (session is null)
+        {
+            ConnectionLabel = null;
+            ConnectionTooltip = null;
+        }
+        else if (session.Kind == SignInKind.Microsoft)
+        {
+            // Mirrors the VS Code tree header: "Microsoft Entra · <tenant>" with a
+            // multi-line tooltip showing the account UPN and the tenant id.
+            var storedTenantId = _auth.GetStoredTenant();
+            var tenantName = _auth.GetStoredTenantName();
+            string tenantDisplay;
+            if (string.IsNullOrEmpty(storedTenantId))
+            {
+                // No explicit override -> the home tenant. Show "Default tenant"
+                // (matches VS Code's behaviour) and put the actual id in the tooltip.
+                tenantDisplay = "Default tenant";
+            }
+            else
+            {
+                tenantDisplay = !string.IsNullOrEmpty(tenantName) ? tenantName! : storedTenantId!;
+            }
+            ConnectionLabel = $"Microsoft Entra \u00b7 {tenantDisplay}";
+            var tenantLine = string.IsNullOrEmpty(session.TenantId) ? "Default tenant" : session.TenantId!;
+            ConnectionTooltip = $"Connected as {session.AccountLabel}\nTenant: {tenantLine}\nClick the organization icon to switch tenant.";
+        }
+        else
+        {
+            ConnectionLabel = "Personal Access Token";
+            ConnectionTooltip = $"Connected as {session.AccountLabel} via Personal Access Token";
+        }
 
         if (session is null)
         {
@@ -337,6 +477,97 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         else
         {
             RefreshFireAndForget();
+
+            // Pre-warm the tenant list in the background so the switch-tenant
+            // dialog opens instantly and does not have to launch a browser
+            // sign-in flow on first click.
+            if (session.Kind == SignInKind.Microsoft)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _auth.ListAvailableTenantsAsync(CancellationToken.None).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Warn($"Tenant prefetch failed: {ex.Message}");
+                    }
+                });
+            }
+        }
+    }
+
+    /// <summary>
+    /// Lists the Microsoft Entra tenants the signed-in account has access to,
+    /// shows a Visual Studio modal dialog with a vertical ComboBox and switches
+    /// to the chosen one. Mirrors the <c>pipelinesexplorer.selectTenant</c>
+    /// command in the VS Code client.
+    /// </summary>
+    private async Task SelectTenantAsync(CancellationToken cancellationToken)
+    {
+        var ext = _extensibilityProvider();
+        if (ext is null)
+        {
+            _logger.Warn("SelectTenantCommand: extensibility unavailable");
+            return;
+        }
+
+        try
+        {
+            IsBusy = true;
+            // Cached on first fetch -> instantaneous on subsequent invocations.
+            var tenants = await _auth.ListAvailableTenantsAsync(cancellationToken).ConfigureAwait(false);
+            if (tenants.Count == 0)
+            {
+                await ext.Shell().ShowPromptAsync(
+                    "No Microsoft Entra tenants are available for this account.",
+                    PromptOptions.OK,
+                    cancellationToken).ConfigureAwait(false);
+                return;
+            }
+
+            var sorted = tenants
+                .OrderBy(t => t.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var current = _auth.GetStoredTenant();
+            var dialogVm = new TenantPickerDialogViewModel(sorted, current);
+            using var dialog = new ToolWindows.TenantPickerDialog(dialogVm);
+
+            var result = await ext.Shell().ShowDialogAsync(
+                dialog,
+                "Switch Microsoft Entra tenant",
+                Microsoft.VisualStudio.RpcContracts.Notifications.DialogOption.OKCancel,
+                cancellationToken).ConfigureAwait(false);
+            if (result != Microsoft.VisualStudio.RpcContracts.Notifications.DialogResult.OK)
+            {
+                return;
+            }
+
+            var picked = dialogVm.SelectedChoice;
+            if (picked is null)
+            {
+                return;
+            }
+
+            if (string.IsNullOrEmpty(picked.TenantId))
+            {
+                await _auth.SwitchTenantAsync(null, null, cancellationToken).ConfigureAwait(false);
+            }
+            else if (!string.Equals(picked.TenantId, current, StringComparison.OrdinalIgnoreCase))
+            {
+                await _auth.SwitchTenantAsync(picked.TenantId, picked.Title, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("Select tenant failed", ex);
+            SetError(ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
         }
     }
 

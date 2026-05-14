@@ -33,6 +33,7 @@ public sealed class AdoAuthService : IAdoAuthHeaderProvider, IDisposable
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
 
     private AdoSession? _currentSession;
+    private IReadOnlyList<TenantInfo>? _cachedTenants;
 
     public AdoAuthService(
         LoggingService logger,
@@ -138,9 +139,16 @@ public sealed class AdoAuthService : IAdoAuthHeaderProvider, IDisposable
     /// <summary>
     /// Lists the Microsoft Entra tenants the signed-in account has access to,
     /// by calling ARM's <c>/tenants</c> endpoint with a tenant-agnostic token.
+    /// The result is cached for the lifetime of the session so that the
+    /// switch-tenant dialog does not have to re-prompt for credentials.
     /// </summary>
-    public async Task<IReadOnlyList<TenantInfo>> ListAvailableTenantsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<TenantInfo>> ListAvailableTenantsAsync(CancellationToken cancellationToken = default, bool forceRefresh = false)
     {
+        if (!forceRefresh && _cachedTenants is not null)
+        {
+            return _cachedTenants;
+        }
+
         var arm = await _msal.AcquireArmTokenAsync(cancellationToken).ConfigureAwait(false);
         using var request = new HttpRequestMessage(HttpMethod.Get, $"{MicrosoftAuthClient.ArmResource}/tenants?api-version=2022-12-01");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", arm.AccessToken);
@@ -183,6 +191,7 @@ public sealed class AdoAuthService : IAdoAuthHeaderProvider, IDisposable
                 result.Add(new TenantInfo(tid.GetString()!, displayName, defaultDomain));
             }
         }
+        _cachedTenants = result;
         return result;
     }
 
@@ -222,15 +231,18 @@ public sealed class AdoAuthService : IAdoAuthHeaderProvider, IDisposable
         if (kind == SignInKind.Microsoft)
         {
             var tenant = GetStoredTenant();
+            _logger.Info($"AcquireSessionAsync: Microsoft (tenant={tenant ?? "<default>"}, createIfNone={createIfNone})");
             var token = await _msal.AcquireAdoTokenAsync(tenant, createIfNone, cancellationToken).ConfigureAwait(false);
             if (token is null)
             {
+                _logger.Info("AcquireSessionAsync: Microsoft returned null token—clearing session.");
                 ClearSession();
                 return null;
             }
 
             var tid = ExtractTenantFromJwt(token.AccessToken) ?? tenant;
             var label = token.Account?.Username ?? "Microsoft Account";
+            _logger.Info($"AcquireSessionAsync: Microsoft session ready for {label} (tid={tid ?? "<unknown>"}).");
             var session = new AdoSession(SignInKind.Microsoft, token.AccessToken, label, tid);
             ApplySession(session);
             return session;
@@ -265,8 +277,23 @@ public sealed class AdoAuthService : IAdoAuthHeaderProvider, IDisposable
                 return null;
             }
             var tid = ExtractTenantFromJwt(token.AccessToken) ?? tenant;
-            var session = new AdoSession(SignInKind.Microsoft, token.AccessToken, token.Account?.Username ?? "Microsoft Account", tid);
-            ApplySession(session);
+            var label = token.Account?.Username ?? "Microsoft Account";
+            var session = new AdoSession(SignInKind.Microsoft, token.AccessToken, label, tid);
+
+            // Silent refresh path: update the in-memory token but only raise
+            // SessionChanged when the identity actually changed. Otherwise every
+            // outbound HTTP request would re-trigger view-model refreshes,
+            // which in turn issue more HTTP requests -> infinite loop.
+            var previous = _currentSession;
+            _currentSession = session;
+            var identityChanged = previous is null
+                || previous.Kind != SignInKind.Microsoft
+                || !string.Equals(previous.AccountLabel, label, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(previous.TenantId, tid, StringComparison.OrdinalIgnoreCase);
+            if (identityChanged)
+            {
+                ApplySession(session);
+            }
             return session;
         }
         catch (Exception ex)
@@ -284,6 +311,7 @@ public sealed class AdoAuthService : IAdoAuthHeaderProvider, IDisposable
     {
         _currentSession = session;
         _store.Set(SignInKindKey, session.Kind == SignInKind.Microsoft ? nameof(SignInKind.Microsoft) : nameof(SignInKind.Pat));
+        _logger.Info($"ApplySession: {session.Kind} session active ({session.AccountLabel}). Raising SessionChanged.");
         SessionChanged?.Invoke(this, session);
     }
 
@@ -294,6 +322,7 @@ public sealed class AdoAuthService : IAdoAuthHeaderProvider, IDisposable
             return;
         }
         _currentSession = null;
+        _cachedTenants = null;
         SessionChanged?.Invoke(this, null);
     }
 

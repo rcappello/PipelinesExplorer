@@ -1,10 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Identity.Client;
-using Microsoft.Identity.Client.Broker;
+using Microsoft.Identity.Client.Extensions.Msal;
 using PipelinesExplorer.VisualStudio.Services;
 
 namespace PipelinesExplorer.VisualStudio.Auth;
@@ -41,6 +42,15 @@ public sealed class MicrosoftAuthClient
     private readonly Dictionary<string, IPublicClientApplication> _tenantApps = new(StringComparer.OrdinalIgnoreCase);
     private readonly System.Threading.Lock _gate = new();
 
+    /// <summary>
+    /// Cross-platform MSAL token cache shared by every <see cref="IPublicClientApplication"/>
+    /// instance owned by this client (common authority + every tenant-pinned
+    /// authority). Created lazily on first <see cref="GetAppAsync"/> call.
+    /// Documented at https://learn.microsoft.com/entra/msal/dotnet/how-to/token-cache-serialization?tabs=desktop.
+    /// </summary>
+    private MsalCacheHelper? _cacheHelper;
+    private readonly SemaphoreSlim _cacheGate = new(1, 1);
+
     public MicrosoftAuthClient(LoggingService logger, string? clientId = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
@@ -56,34 +66,52 @@ public sealed class MicrosoftAuthClient
     /// </summary>
     public async Task<AuthenticationResult?> AcquireAdoTokenAsync(string? tenantId, bool createIfNone, CancellationToken cancellationToken)
     {
-        var app = GetApp(tenantId);
-        var account = (await app.GetAccountsAsync().ConfigureAwait(false)).FirstOrDefault();
+        var app = await GetAppAsync(tenantId, cancellationToken).ConfigureAwait(false);
+        _logger.Info($"MSAL ADO token requested (tenant={tenantId ?? "common"}, createIfNone={createIfNone})");
 
+        // 1. Cached MSAL account (previous interactive sign-in).
+        var accounts = (await app.GetAccountsAsync().ConfigureAwait(false)).ToList();
+        _logger.Info($"MSAL cache has {accounts.Count} account(s).");
+        var account = accounts.FirstOrDefault();
         if (account is not null)
         {
             try
             {
-                return await app.AcquireTokenSilent(AdoScopes, account).ExecuteAsync(cancellationToken).ConfigureAwait(false);
+                var r = await app.AcquireTokenSilent(AdoScopes, account).ExecuteAsync(cancellationToken).ConfigureAwait(false);
+                _logger.Info($"MSAL silent (cached) ok for {r.Account?.Username}.");
+                return r;
             }
             catch (MsalUiRequiredException ex)
             {
-                _logger.Info($"MSAL silent failed ({ex.ErrorCode}); will {(createIfNone ? "prompt" : "skip")}.");
-                if (!createIfNone)
-                {
-                    return null;
-                }
+                _logger.Info($"MSAL silent (cached) failed ({ex.ErrorCode}).");
             }
         }
-        else if (!createIfNone)
+
+        // 2. Try the OS-signed-in account (best-effort SSO with the Windows /
+        //    Visual Studio user). Works only on AAD-joined / WAM-capable boxes
+        //    when the OS account is licensed for the tenant.
+        try
         {
+            var r = await app.AcquireTokenSilent(AdoScopes, PublicClientApplication.OperatingSystemAccount)
+                .ExecuteAsync(cancellationToken)
+                .ConfigureAwait(false);
+            _logger.Info($"MSAL silent (OS) ok for {r.Account?.Username}.");
+            return r;
+        }
+        catch (MsalUiRequiredException) { /* fall through */ }
+        catch (MsalException ex) { _logger.Info($"MSAL OS-account silent failed: {ex.ErrorCode}"); }
+
+        if (!createIfNone)
+        {
+            _logger.Info("MSAL: no cached account and createIfNone=false; returning null.");
             return null;
         }
 
-        return await app.AcquireTokenInteractive(AdoScopes)
-            .WithUseEmbeddedWebView(false)
-            .WithParentActivityOrWindow(() => (object)GetForegroundWindow())
-            .ExecuteAsync(cancellationToken)
-            .ConfigureAwait(false);
+        // 3. Interactive sign-in via the system browser. The system browser
+        //    flow does not require a parent HWND, which is critical because
+        //    this extension runs out-of-process and has no top-level window
+        //    of its own to hand to WAM.
+        return await ExecuteInteractiveAsync(app, AdoScopes, "ADO", cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -92,7 +120,7 @@ public sealed class MicrosoftAuthClient
     /// </summary>
     public async Task<AuthenticationResult> AcquireArmTokenAsync(CancellationToken cancellationToken)
     {
-        var app = GetApp(tenantId: null);
+        var app = await GetAppAsync(tenantId: null, cancellationToken).ConfigureAwait(false);
         var account = (await app.GetAccountsAsync().ConfigureAwait(false)).FirstOrDefault();
 
         if (account is not null)
@@ -101,17 +129,66 @@ public sealed class MicrosoftAuthClient
             {
                 return await app.AcquireTokenSilent(ArmScopes, account).ExecuteAsync(cancellationToken).ConfigureAwait(false);
             }
-            catch (MsalUiRequiredException)
-            {
-                // fall through to interactive
-            }
+            catch (MsalUiRequiredException) { /* fall through */ }
         }
 
-        return await app.AcquireTokenInteractive(ArmScopes)
-            .WithUseEmbeddedWebView(false)
-            .WithParentActivityOrWindow(() => (object)GetForegroundWindow())
-            .ExecuteAsync(cancellationToken)
-            .ConfigureAwait(false);
+        try
+        {
+            return await app.AcquireTokenSilent(ArmScopes, PublicClientApplication.OperatingSystemAccount)
+                .ExecuteAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (MsalUiRequiredException) { /* fall through */ }
+        catch (MsalException ex) { _logger.Info($"MSAL OS-account silent (ARM) failed: {ex.ErrorCode}"); }
+
+        return (await ExecuteInteractiveAsync(app, ArmScopes, "ARM", cancellationToken).ConfigureAwait(false))!;
+    }
+
+    /// <summary>
+    /// Wrap <see cref="AcquireTokenInteractiveParameterBuilder"/> with a
+    /// generous timeout (the user might take a few minutes to sign in) and
+    /// detailed logging so we can tell from the Output window whether the
+    /// browser flow completed, was cancelled, or timed out.
+    /// </summary>
+    private async Task<AuthenticationResult?> ExecuteInteractiveAsync(
+        IPublicClientApplication app,
+        string[] scopes,
+        string label,
+        CancellationToken cancellationToken)
+    {
+        // The command-level CancellationToken can be cancelled while the
+        // browser is still open (e.g. the user clicks elsewhere in VS), which
+        // would silently abort sign-in. Detach from it and impose a 5-minute
+        // timeout instead so the listener is reclaimed if the user walks away.
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken.None);
+        cts.CancelAfter(TimeSpan.FromMinutes(5));
+
+        _logger.Info($"MSAL interactive ({label}) starting system-browser flow…");
+        try
+        {
+            var r = await app.AcquireTokenInteractive(scopes)
+                .WithUseEmbeddedWebView(false)
+                .WithPrompt(Prompt.SelectAccount)
+                .ExecuteAsync(cts.Token)
+                .ConfigureAwait(false);
+            _logger.Info($"MSAL interactive ({label}) succeeded for {r.Account?.Username}.");
+            return r;
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            _logger.Warn($"MSAL interactive ({label}) timed out after 5 minutes.");
+            throw;
+        }
+        catch (MsalException ex)
+        {
+            _logger.Error($"MSAL interactive ({label}) failed: {ex.ErrorCode} - {ex.Message}", ex);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error($"MSAL interactive ({label}) crashed", ex);
+            throw;
+        }
     }
 
     /// <summary>Sign out by removing every cached account from MSAL/WAM.</summary>
@@ -138,38 +215,112 @@ public sealed class MicrosoftAuthClient
         }
     }
 
-    private IPublicClientApplication GetApp(string? tenantId)
+    private async Task<IPublicClientApplication> GetAppAsync(string? tenantId, CancellationToken cancellationToken)
     {
+        IPublicClientApplication app;
+        bool justCreated = false;
         lock (_gate)
         {
             if (string.IsNullOrEmpty(tenantId))
             {
-                return _commonApp ??= Build("common");
+                if (_commonApp is null)
+                {
+                    _commonApp = Build("common");
+                    justCreated = true;
+                }
+                app = _commonApp;
             }
-            if (!_tenantApps.TryGetValue(tenantId!, out var app))
+            else if (_tenantApps.TryGetValue(tenantId!, out var existing))
+            {
+                app = existing;
+            }
+            else
             {
                 app = Build(tenantId!);
                 _tenantApps[tenantId!] = app;
+                justCreated = true;
             }
-            return app;
+        }
+
+        if (justCreated)
+        {
+            await RegisterCacheAsync(app, cancellationToken).ConfigureAwait(false);
+        }
+        return app;
+    }
+
+    /// <summary>
+    /// Hook the cross-platform DPAPI-protected token cache into a freshly built
+    /// <see cref="IPublicClientApplication"/>. The same <see cref="MsalCacheHelper"/>
+    /// is shared by every app instance so accounts persist across the
+    /// "common" authority + every tenant-pinned authority.
+    /// </summary>
+    private async Task RegisterCacheAsync(IPublicClientApplication app, CancellationToken cancellationToken)
+    {
+        var helper = await GetCacheHelperAsync(cancellationToken).ConfigureAwait(false);
+        if (helper is null)
+        {
+            return;
+        }
+        try
+        {
+            helper.RegisterCache(app.UserTokenCache);
+        }
+        catch (Exception ex)
+        {
+            _logger.Warn($"MSAL cache RegisterCache failed: {ex.Message}");
+        }
+    }
+
+    private async Task<MsalCacheHelper?> GetCacheHelperAsync(CancellationToken cancellationToken)
+    {
+        if (_cacheHelper is not null)
+        {
+            return _cacheHelper;
+        }
+        await _cacheGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_cacheHelper is not null)
+            {
+                return _cacheHelper;
+            }
+            try
+            {
+                var dir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "PipelinesExplorer");
+                Directory.CreateDirectory(dir);
+                // StorageCreationProperties uses DPAPI on Windows by default
+                // (see learn.microsoft.com/entra/msal/dotnet/how-to/token-cache-serialization?tabs=desktop).
+                var props = new StorageCreationPropertiesBuilder("msalcache.bin", dir).Build();
+                _cacheHelper = await MsalCacheHelper.CreateAsync(props).ConfigureAwait(false);
+                return _cacheHelper;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"MSAL cache initialization failed; tokens will not persist: {ex.Message}");
+                return null;
+            }
+        }
+        finally
+        {
+            _cacheGate.Release();
         }
     }
 
     private IPublicClientApplication Build(string tenant)
     {
-        var builder = PublicClientApplicationBuilder
+        // Out-of-process VS extensions don't own a top-level HWND, so we cannot
+        // reliably parent the WAM dialog. We use the system browser flow which
+        // needs a loopback redirect URI instead of the WAM "nativeclient" one.
+        return PublicClientApplicationBuilder
             .Create(_clientId)
             .WithAuthority(AzureCloudInstance.AzurePublic, tenant)
-            .WithRedirectUri("https://login.microsoftonline.com/common/oauth2/nativeclient")
-            .WithBroker(new BrokerOptions(BrokerOptions.OperatingSystems.Windows)
-            {
-                Title = "Pipelines Explorer (Visual Studio)",
-                ListOperatingSystemAccounts = true,
-            });
-
-        return builder.Build();
+            .WithDefaultRedirectUri()
+            // Skip the legacy ADAL cache compatibility scan – big perf win,
+            // see https://learn.microsoft.com/entra/msal/dotnet/advanced/high-availability#use-the-token-cache
+            .WithLegacyCacheCompatibility(false)
+            .Build();
     }
-
-    [System.Runtime.InteropServices.DllImport("user32.dll")]
-    private static extern IntPtr GetForegroundWindow();
 }
