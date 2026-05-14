@@ -213,14 +213,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     {
         var node = new OrganizationNode(org);
         node.Children.Add(new InfoNode("Loading…", TreeNodeKind.Loading));
-        node.PropertyChanged += async (_, e) =>
-        {
-            if (e.PropertyName == nameof(TreeNodeViewModel.IsExpanded) && node.IsExpanded
-                && node.Children.Count == 1 && node.Children[0].Kind == TreeNodeKind.Loading)
-            {
-                await LoadProjectsAsync(node).ConfigureAwait(false);
-            }
-        };
+        SubscribeLazyLoad(node, () => LoadProjectsAsync(node));
         return node;
     }
 
@@ -249,14 +242,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     {
         var node = new ProjectNode(org, project);
         node.Children.Add(new InfoNode("Loading…", TreeNodeKind.Loading));
-        node.PropertyChanged += async (_, e) =>
-        {
-            if (e.PropertyName == nameof(TreeNodeViewModel.IsExpanded) && node.IsExpanded
-                && node.Children.Count == 1 && node.Children[0].Kind == TreeNodeKind.Loading)
-            {
-                await LoadPipelinesAsync(node).ConfigureAwait(false);
-            }
-        };
+        SubscribeLazyLoad(node, () => LoadPipelinesAsync(node));
         return node;
     }
 
@@ -407,14 +393,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
             node.OpenCommand = new AsyncCommand((_, _, ct) => OpenPipelineYamlAsync(node, ct));
         }
         node.Children.Add(new InfoNode("Loading\u2026", TreeNodeKind.Loading));
-        node.PropertyChanged += async (_, e) =>
-        {
-            if (e.PropertyName == nameof(TreeNodeViewModel.IsExpanded) && node.IsExpanded
-                && node.Children.Count == 1 && node.Children[0].Kind == TreeNodeKind.Loading)
-            {
-                await LoadPipelineAnalysisAsync(node).ConfigureAwait(false);
-            }
-        };
+        SubscribeLazyLoad(node, () => LoadPipelineAnalysisAsync(node));
         return node;
     }
 
@@ -522,16 +501,27 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         if (node.IsSameRepoExpandable)
         {
             node.Children.Add(new InfoNode("Loading\u2026", TreeNodeKind.Loading));
-            node.PropertyChanged += async (_, e) =>
-            {
-                if (e.PropertyName == nameof(TreeNodeViewModel.IsExpanded) && node.IsExpanded
-                    && node.Children.Count == 1 && node.Children[0].Kind == TreeNodeKind.Loading)
-                {
-                    await LoadTemplateAnalysisAsync(node).ConfigureAwait(false);
-                }
-            };
+            SubscribeLazyLoad(node, () => LoadTemplateAnalysisAsync(node));
         }
         return node;
+    }
+
+    /// <summary>
+    /// Hook a one-shot async loader to the first expansion of <paramref name="node"/>.
+    /// Avoids <c>async void</c> event-handler lambdas (VSTHRD101).
+    /// </summary>
+    private void SubscribeLazyLoad(TreeNodeViewModel node, Func<Task> loader)
+    {
+        node.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != nameof(TreeNodeViewModel.IsExpanded) || !node.IsExpanded) { return; }
+            if (node.Children.Count != 1 || node.Children[0].Kind != TreeNodeKind.Loading) { return; }
+            _ = Task.Run(async () =>
+            {
+                try { await loader().ConfigureAwait(false); }
+                catch (Exception ex) { _logger.Error("Lazy load failed", ex); }
+            });
+        };
     }
 
     private ScriptNode BuildScriptNode(

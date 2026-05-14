@@ -11,6 +11,20 @@
     <RootNamespace>PipelinesExplorer.VisualStudio</RootNamespace>
     <AssemblyName>PipelinesExplorer.VisualStudio</AssemblyName>
     <PackageId>PipelinesExplorer.VisualStudio</PackageId>
+
+    <!-- VSTHRD103 (sync Cancel on CTS) is the documented pattern for replacing in-flight loads;
+         CEE0027 asks for resource-localized command titles which we will tackle when we add l10n. -->
+    <NoWarn>$(NoWarn);VSTHRD103;CEE0027</NoWarn>
+  </PropertyGroup>
+
+  <!-- F5 inside Visual Studio: launch devenv.exe in the Experimental hive AND auto-deploy
+       the VSIX there. Guarded by BuildingInsideVisualStudio so `dotnet build` from CLI
+       (which does not implement VSIX deployment) is unaffected. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug' and '$(BuildingInsideVisualStudio)' == 'true'">
+    <DeployExtension>true</DeployExtension>
+    <StartAction>Program</StartAction>
+    <StartProgram>$(DevEnvDir)devenv.exe</StartProgram>
+    <StartArguments>/rootSuffix Exp</StartArguments>
   </PropertyGroup>
 
   <ItemGroup>

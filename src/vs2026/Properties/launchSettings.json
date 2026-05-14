@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "Visual Studio (Experimental Instance)": {
+      "commandName": "Executable",
+      "executablePath": "$(DevEnvDir)devenv.exe",
+      "commandLineArgs": "/rootSuffix Exp"
+    }
+  }
+}
