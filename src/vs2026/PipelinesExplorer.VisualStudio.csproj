@@ -30,4 +30,10 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.6.*" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Remote UI XAML must be shipped as embedded resources, not WPF Pages -->
+    <EmbeddedResource Include="ToolWindows\PipelinesToolWindowControl.xaml" />
+    <Page Remove="ToolWindows\PipelinesToolWindowControl.xaml" />
+  </ItemGroup>
+
 </Project>
