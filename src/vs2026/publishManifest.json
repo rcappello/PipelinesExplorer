@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/vsix-publish.json",
+  "categories": [
+    "build",
+    "coding"
+  ],
+  "identity": {
+    "internalName": "PipelinesExplorer.VisualStudio"
+  },
+  "overview": "marketplace-overview.md",
+  "priceCategory": "free",
+  "publisher": "RiccardoCappello",
+  "private": false,
+  "qna": true,
+  "repo": "https://github.com/rcappello/PipelinesExplorer"
+}

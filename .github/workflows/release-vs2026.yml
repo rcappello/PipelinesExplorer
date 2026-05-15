@@ -1,0 +1,100 @@
+name: Release VSIX (VS 2026)
+
+on:
+  push:
+    tags:
+      - 'vs2026-v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build VSIX & attach to GitHub Release
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: src/vs2026
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          # Project targets net10.0-windows; keep in sync with the csproj.
+          dotnet-version: '10.0.x'
+
+      - name: Derive version from tag and patch vsixmanifest
+        if: startsWith(github.ref, 'refs/tags/vs2026-v')
+        shell: pwsh
+        run: |
+          # Strip the 'vs2026-v' prefix to get a SemVer (e.g. vs2026-v1.2.3 -> 1.2.3).
+          $version = $env:GITHUB_REF_NAME -replace '^vs2026-v', ''
+          Write-Host "Setting source.extension.vsixmanifest Version to $version"
+          $manifestPath = 'source.extension.vsixmanifest'
+          [xml]$xml = Get-Content $manifestPath
+          $xml.PackageManifest.Metadata.Identity.Version = $version
+          $xml.Save((Resolve-Path $manifestPath))
+
+      - name: Restore
+        run: dotnet restore PipelinesExplorer.VisualStudio.csproj
+
+      - name: Build (Release)
+        run: dotnet build PipelinesExplorer.VisualStudio.csproj -c Release --no-restore
+
+      - name: Locate VSIX
+        id: locate
+        shell: pwsh
+        run: |
+          $vsix = Get-ChildItem -Path bin/Release -Recurse -Filter *.vsix | Select-Object -First 1
+          if (-not $vsix) { throw 'No VSIX produced under bin/Release' }
+          Write-Host "Found: $($vsix.FullName)"
+          "vsix=$($vsix.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Upload VSIX as workflow artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: pipelines-explorer-vs2026-vsix
+          path: ${{ steps.locate.outputs.vsix }}
+
+      - name: Attach VSIX to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/vs2026-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.locate.outputs.vsix }}
+          generate_release_notes: true
+
+  publish-marketplace:
+    name: Publish to Visual Studio Marketplace
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/vs2026-v')
+    runs-on: windows-latest
+    # The 'marketplace' environment scopes the VC_MARKETPLACE_PAT secret.
+    # No reviewer gate (intentional — tag push is the gate).
+    environment:
+      name: marketplace
+      url: https://marketplace.visualstudio.com/items?itemName=RiccardoCappello.PipelinesExplorer.VisualStudio
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download VSIX artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: pipelines-explorer-vs2026-vsix
+          path: artifact
+
+      - name: Resolve VSIX path
+        id: resolve
+        shell: pwsh
+        run: |
+          $vsix = Get-ChildItem -Path artifact -Recurse -Filter *.vsix | Select-Object -First 1
+          if (-not $vsix) { throw 'No VSIX found in artifact' }
+          "vsix=$($vsix.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Publish to Visual Studio Marketplace
+        uses: cezarypiatek/VsixPublisherAction@1.2
+        with:
+          extension-file: ${{ steps.resolve.outputs.vsix }}
+          publish-manifest-file: src/vs2026/publishManifest.json
+          personal-access-token: ${{ secrets.VC_MARKETPLACE_PAT }}
+
