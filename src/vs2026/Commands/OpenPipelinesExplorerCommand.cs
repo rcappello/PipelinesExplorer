@@ -11,7 +11,7 @@ namespace PipelinesExplorer.VisualStudio.Commands;
 [VisualStudioContribution]
 internal sealed class OpenPipelinesExplorerCommand : Command
 {
-    public override CommandConfiguration CommandConfiguration => new("Pipelines Explorer")
+    public override CommandConfiguration CommandConfiguration => new("%PipelinesExplorer.Command.OpenToolWindow.DisplayName%")
     {
         Placements = [CommandPlacement.KnownPlacements.ViewOtherWindowsMenu],
         Icon = new(ImageMoniker.KnownValues.User, IconSettings.IconAndText),

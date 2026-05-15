@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Runtime.Serialization;
 using Microsoft.VisualStudio.Extensibility.UI;
 using PipelinesExplorer.VisualStudio.Auth;
+using PipelinesExplorer.VisualStudio.Resources;
 
 namespace PipelinesExplorer.VisualStudio.ViewModels;
 
@@ -24,8 +25,8 @@ public sealed class TenantPickerDialogViewModel : NotifyPropertyChangedObject
         var defaultChoice = new TenantChoice
         {
             TenantId = null,
-            Title = "Default tenant",
-            Subtitle = "Use the home tenant of the signed-in account",
+            Title = Strings.Connection_DefaultTenant,
+            Subtitle = Strings.TenantPicker_DefaultSubtitle,
         };
         Choices.Add(defaultChoice);
 

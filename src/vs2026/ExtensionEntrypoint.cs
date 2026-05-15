@@ -16,8 +16,8 @@ internal sealed class ExtensionEntrypoint : Extension
             id: "PipelinesExplorer.VisualStudio.f6c47e2e-5b33-4d3a-8d79-2f5e1c1b9a01",
             version: this.ExtensionAssemblyVersion,
             publisherName: "rcappello",
-            displayName: "Pipelines Explorer",
-            description: "Browse Azure DevOps pipelines, drill into referenced YAML templates and PowerShell scripts, and jump to the local files in your solution.")
+            displayName: "%PipelinesExplorer.Extension.DisplayName%",
+            description: "%PipelinesExplorer.Extension.Description%")
         {
             // Visual Studio 2026 hosts out-of-process extensions on .NET 10. Declaring the target
             // here keeps the VisualStudio.Extensibility analyzer happy (VSEXT0010) and lets VS pick

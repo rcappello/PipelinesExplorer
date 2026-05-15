@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e088</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e088</value></resheader>
+
+  <data name="Toolbar_Refresh_Tooltip" xml:space="preserve"><value>Uppdatera</value></data>
+  <data name="Toolbar_SwitchTenant_Tooltip" xml:space="preserve"><value>Byt Microsoft Entra-klientorganisation</value></data>
+  <data name="Toolbar_SignOut_Tooltip" xml:space="preserve"><value>Logga ut</value></data>
+
+  <data name="Welcome_SignInPrompt" xml:space="preserve"><value>Logga in på Azure DevOps för att bläddra bland pipelines.</value></data>
+  <data name="Welcome_SignInWithMicrosoft" xml:space="preserve"><value>Logga in med Microsoft</value></data>
+  <data name="Welcome_PatHelp" xml:space="preserve"><value>Eller klistra in en personlig åtkomsttoken för Azure DevOps (Build Read, Code Read):</value></data>
+  <data name="Welcome_SignInWithPat" xml:space="preserve"><value>Logga in med PAT</value></data>
+  <data name="Welcome_PatField_Tooltip" xml:space="preserve"><value>Personlig åtkomsttoken (dold)</value></data>
+
+  <data name="Connection_MicrosoftEntra_Format" xml:space="preserve"><value>Microsoft Entra · {0}</value></data>
+  <data name="Connection_DefaultTenant" xml:space="preserve"><value>Standardklientorganisation</value></data>
+  <data name="Connection_Pat_Label" xml:space="preserve"><value>Personlig åtkomsttoken</value></data>
+  <data name="Connection_Microsoft_Tooltip_Format" xml:space="preserve"><value>Ansluten som {0}
+Klientorganisation: {1}
+Klicka på organisationsikonen för att byta klientorganisation.</value></data>
+  <data name="Connection_Pat_Tooltip_Format" xml:space="preserve"><value>Ansluten som {0} via en personlig åtkomsttoken</value></data>
+
+  <data name="Tree_Loading" xml:space="preserve"><value>Läser in…</value></data>
+  <data name="Tree_NoOrganizations" xml:space="preserve"><value>Inga Azure DevOps-organisationer hittades för den här klientorganisationen.</value></data>
+  <data name="Tree_NoProjects" xml:space="preserve"><value>(inga projekt)</value></data>
+  <data name="Tree_NoPipelines" xml:space="preserve"><value>(inga pipelines)</value></data>
+  <data name="Tree_NoTemplatesOrScripts" xml:space="preserve"><value>(inga mallar eller skript)</value></data>
+  <data name="Tree_UnknownRepository" xml:space="preserve"><value>(okänt repository)</value></data>
+  <data name="Tree_UnknownSource" xml:space="preserve"><value>(okänd källa)</value></data>
+  <data name="Tree_InlineScript" xml:space="preserve"><value>(infogat skript)</value></data>
+  <data name="Tree_Group_Templates" xml:space="preserve"><value>Mallar</value></data>
+  <data name="Tree_Group_PowerShellScripts" xml:space="preserve"><value>PowerShell-skript</value></data>
+
+  <data name="Context_Open" xml:space="preserve"><value>Öppna</value></data>
+  <data name="Context_LinkWorkspace" xml:space="preserve"><value>Länka arbetsytemapp…</value></data>
+  <data name="Context_UnlinkWorkspace" xml:space="preserve"><value>Avlänka arbetsytemapp</value></data>
+  <data name="Context_SelectBranch" xml:space="preserve"><value>Välj gren…</value></data>
+
+  <data name="TenantPicker_Title" xml:space="preserve"><value>Byt Microsoft Entra-klientorganisation</value></data>
+  <data name="TenantPicker_Prompt" xml:space="preserve"><value>Välj den Microsoft Entra-klientorganisation som ska användas för Azure DevOps.</value></data>
+  <data name="TenantPicker_DefaultSubtitle" xml:space="preserve"><value>Använd hemklientorganisationen för det inloggade kontot</value></data>
+  <data name="TenantPicker_NoTenants" xml:space="preserve"><value>Inga Microsoft Entra-klientorganisationer är tillgängliga för det här kontot.</value></data>
+
+  <data name="BranchPicker_NoBranches" xml:space="preserve"><value>Inga grenar hittades.</value></data>
+  <data name="BranchPicker_Prompt_Format" xml:space="preserve"><value>Välj en gren för {0}:</value></data>
+  <data name="BranchPicker_Failed_Format" xml:space="preserve"><value>Det gick inte att välja gren: {0}</value></data>
+  <data name="BranchPicker_UseDefault" xml:space="preserve"><value>(använd standardgrenen)</value></data>
+  <data name="BranchPicker_Title" xml:space="preserve"><value>Välj gren</value></data>
+  <data name="Reset_Confirm" xml:space="preserve"><value>Detta tar bort den cachelagrade sessionen, alla länkade arbetsytemappar och grenåsidosättningar. Fortsätta?</value></data>
+  <data name="Reset_Failed_Format" xml:space="preserve"><value>Återställning misslyckades: {0}</value></data>
+
+  <data name="MicrosoftSignIn_Failed_Format" xml:space="preserve"><value>Microsoft-inloggning misslyckades: {0}</value></data>
+  <data name="ShowLogs_Failed_Format" xml:space="preserve"><value>Det gick inte att visa loggarna: {0}</value></data>
+  <data name="SelectTenant_Prompt" xml:space="preserve"><value>Välj en Microsoft Entra-klientorganisation:</value></data>
+  <data name="SelectTenant_Failed_Format" xml:space="preserve"><value>Det gick inte att välja klientorganisation: {0}</value></data>
+  <data name="OpenItem_OpenFailed_Format" xml:space="preserve"><value>Det gick inte att öppna {0}: {1}</value></data>
+  <data name="OpenItem_FileNotFoundOnBranch_Format" xml:space="preserve"><value>Filen hittades inte i den länkade arbetsytan: {0}. Pipelines Explorer läser YAML från grenen ”{1}” i Azure DevOps; din lokala klon kan vara på en annan gren eller inaktuell. Försök hämta de senaste ändringarna (eller byt gren) och försök igen.</value></data>
+  <data name="OpenItem_FileNotFoundDefault_Format" xml:space="preserve"><value>Filen hittades inte i den länkade arbetsytan: {0}. Pipelines Explorer läser YAML från repositoryts standardgren i Azure DevOps; din lokala klon kan vara på en annan gren eller inaktuell. Försök hämta de senaste ändringarna (eller byt gren) och försök igen.</value></data>
+  <data name="OpenItem_RelinkWorkspace" xml:space="preserve"><value>Länka om arbetsytan</value></data>
+  <data name="OpenItem_OpenInBrowser" xml:space="preserve"><value>Öppna i webbläsaren</value></data>
+  <data name="OpenItem_PickFolder_Title_Format" xml:space="preserve"><value>Länka en arbetsytemapp till repositoryt ”{0}”</value></data>
+
+  <data name="A11y_Tree_Name" xml:space="preserve"><value>Azure DevOps-pipelines</value></data>
+  <data name="A11y_PatField_Name" xml:space="preserve"><value>Personlig åtkomsttoken</value></data>
+  <data name="A11y_TenantPicker_ComboBox_Name" xml:space="preserve"><value>Microsoft Entra-klientorganisation</value></data>
+  <data name="A11y_BranchPicker_ComboBox_Name" xml:space="preserve"><value>Gren</value></data>
+</root>

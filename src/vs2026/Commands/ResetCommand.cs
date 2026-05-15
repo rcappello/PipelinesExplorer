@@ -5,13 +5,15 @@ using Microsoft.VisualStudio.Extensibility;
 using Microsoft.VisualStudio.Extensibility.Commands;
 using Microsoft.VisualStudio.Extensibility.Shell;
 
+using PipelinesExplorer.VisualStudio.Resources;
+
 namespace PipelinesExplorer.VisualStudio.Commands;
 
 /// <summary>Wipes credentials, links and branch overrides. Mirrors VS Code's <c>pipelinesexplorer.reset</c>.</summary>
 [VisualStudioContribution]
 internal sealed class ResetCommand : Command
 {
-    public override CommandConfiguration CommandConfiguration => new("Pipelines Explorer: Reset all settings")
+    public override CommandConfiguration CommandConfiguration => new("%PipelinesExplorer.Command.Reset.DisplayName%")
     {
         Placements = [CommandPlacement.KnownPlacements.ToolsMenu],
     };
@@ -21,7 +23,7 @@ internal sealed class ResetCommand : Command
         ExtensionServices.Initialize(this.Extensibility);
 
         var confirm = await this.Extensibility.Shell().ShowPromptAsync(
-            "This wipes the cached session, all linked workspace folders and branch overrides. Continue?",
+            Strings.Reset_Confirm,
             PromptOptions.OKCancel,
             cancellationToken).ConfigureAwait(false);
         if (!confirm) { return; }
@@ -35,7 +37,7 @@ internal sealed class ResetCommand : Command
         {
             ExtensionServices.Logger.Error("Reset failed", ex);
             await this.Extensibility.Shell().ShowPromptAsync(
-                $"Reset failed: {ex.Message}",
+                string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.Reset_Failed_Format, ex.Message),
                 PromptOptions.OK,
                 cancellationToken).ConfigureAwait(false);
         }

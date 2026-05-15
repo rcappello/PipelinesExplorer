@@ -10,29 +10,22 @@
             <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
         </Style>
 
-        <!-- Item template for the ComboBox: stacks the title (display name) and a
-             muted subtitle (default domain + tenant id) for clarity. -->
-        <DataTemplate x:Key="TenantItemTemplate">
-            <StackPanel Orientation="Vertical" Margin="2,3,2,3">
-                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
-                <TextBlock Text="{Binding Subtitle}"
-                           Opacity="0.75"
-                           FontSize="11" />
-            </StackPanel>
+        <DataTemplate x:Key="BranchItemTemplate">
+            <TextBlock Text="{Binding Title}" Margin="2,3,2,3" />
         </DataTemplate>
     </DataTemplate.Resources>
 
     <StackPanel Orientation="Vertical"
                 MinWidth="420"
                 Margin="12,12,12,8">
-        <TextBlock Text="{x:Static loc:Strings.TenantPicker_Prompt}"
+        <TextBlock Text="{Binding Prompt}"
                    TextWrapping="Wrap"
                    Margin="0,0,0,10" />
 
         <ComboBox ItemsSource="{Binding Choices}"
                   SelectedItem="{Binding SelectedChoice, Mode=TwoWay}"
-                  ItemTemplate="{StaticResource TenantItemTemplate}"
-                  AutomationProperties.Name="{x:Static loc:Strings.A11y_TenantPicker_ComboBox_Name}"
+                  ItemTemplate="{StaticResource BranchItemTemplate}"
+                  AutomationProperties.Name="{x:Static loc:Strings.A11y_BranchPicker_ComboBox_Name}"
                   MaxDropDownHeight="380"
                   HorizontalAlignment="Stretch"
                   MinHeight="32" />

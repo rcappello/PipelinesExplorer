@@ -1,0 +1,13 @@
+{
+  "PipelinesExplorer.Extension.DisplayName": "Pipelines Explorer",
+  "PipelinesExplorer.Extension.Description": "Durchsuchen Sie Azure DevOps-Pipelines, navigieren Sie zu referenzierten YAML-Vorlagen und PowerShell-Skripten und springen Sie zu den lokalen Dateien in Ihrer Projektmappe.",
+  "PipelinesExplorer.ToolWindow.Title": "Pipelines Explorer",
+  "PipelinesExplorer.Command.OpenToolWindow.DisplayName": "Pipelines Explorer",
+  "PipelinesExplorer.Command.SignInMicrosoft.DisplayName": "Pipelines Explorer: Mit Microsoft anmelden",
+  "PipelinesExplorer.Command.SignInPat.DisplayName": "Pipelines Explorer: Mit PAT anmelden",
+  "PipelinesExplorer.Command.SignOut.DisplayName": "Pipelines Explorer: Abmelden",
+  "PipelinesExplorer.Command.SelectTenant.DisplayName": "Pipelines Explorer: Microsoft-Mandanten auswählen",
+  "PipelinesExplorer.Command.Refresh.DisplayName": "Pipelines Explorer: Aktualisieren",
+  "PipelinesExplorer.Command.Reset.DisplayName": "Pipelines Explorer: Alle Einstellungen zurücksetzen",
+  "PipelinesExplorer.Command.ShowLogs.DisplayName": "Pipelines Explorer: Protokolle anzeigen"
+}

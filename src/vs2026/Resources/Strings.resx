@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    Default (invariant / English) UI strings for Pipelines Explorer.
+    Localized variants live in Strings.<culture>.resx (it, fr, de, es, sv).
+    The brand "Pipelines Explorer" is intentionally NOT translated — see
+    PipelinesExplorer.VisualStudio.Branding.ProductName.
+  -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e088</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e088</value></resheader>
+
+  <!-- ==== Toolbar (icon-only buttons inside the tool window header) ==== -->
+  <data name="Toolbar_Refresh_Tooltip" xml:space="preserve"><value>Refresh</value></data>
+  <data name="Toolbar_SwitchTenant_Tooltip" xml:space="preserve"><value>Switch Microsoft Entra tenant</value></data>
+  <data name="Toolbar_SignOut_Tooltip" xml:space="preserve"><value>Sign out</value></data>
+
+  <!-- ==== Welcome / signed-out panel ==== -->
+  <data name="Welcome_SignInPrompt" xml:space="preserve"><value>Sign in to Azure DevOps to browse pipelines.</value></data>
+  <data name="Welcome_SignInWithMicrosoft" xml:space="preserve"><value>Sign in with Microsoft</value></data>
+  <data name="Welcome_PatHelp" xml:space="preserve"><value>Or paste an Azure DevOps personal access token (Build Read, Code Read):</value></data>
+  <data name="Welcome_SignInWithPat" xml:space="preserve"><value>Sign in with PAT</value></data>
+  <data name="Welcome_PatField_Tooltip" xml:space="preserve"><value>Personal access token (hidden)</value></data>
+
+  <!-- ==== Connection header (signed-in state) ==== -->
+  <data name="Connection_MicrosoftEntra_Format" xml:space="preserve"><value>Microsoft Entra · {0}</value><comment>{0} = tenant display name (or "Default tenant").</comment></data>
+  <data name="Connection_DefaultTenant" xml:space="preserve"><value>Default tenant</value></data>
+  <data name="Connection_Pat_Label" xml:space="preserve"><value>Personal Access Token</value></data>
+  <data name="Connection_Microsoft_Tooltip_Format" xml:space="preserve"><value>Connected as {0}
+Tenant: {1}
+Click the organization icon to switch tenant.</value><comment>{0} = account UPN, {1} = tenant id (or "Default tenant").</comment></data>
+  <data name="Connection_Pat_Tooltip_Format" xml:space="preserve"><value>Connected as {0} via Personal Access Token</value></data>
+
+  <!-- ==== Tree info / placeholder nodes ==== -->
+  <data name="Tree_Loading" xml:space="preserve"><value>Loading…</value></data>
+  <data name="Tree_NoOrganizations" xml:space="preserve"><value>No Azure DevOps organizations found for this tenant.</value></data>
+  <data name="Tree_NoProjects" xml:space="preserve"><value>(no projects)</value></data>
+  <data name="Tree_NoPipelines" xml:space="preserve"><value>(no pipelines)</value></data>
+  <data name="Tree_NoTemplatesOrScripts" xml:space="preserve"><value>(no templates or scripts)</value></data>
+  <data name="Tree_UnknownRepository" xml:space="preserve"><value>(unknown repository)</value></data>
+  <data name="Tree_UnknownSource" xml:space="preserve"><value>(unknown source)</value></data>
+  <data name="Tree_InlineScript" xml:space="preserve"><value>(inline script)</value></data>
+  <data name="Tree_Group_Templates" xml:space="preserve"><value>Templates</value></data>
+  <data name="Tree_Group_PowerShellScripts" xml:space="preserve"><value>PowerShell scripts</value></data>
+
+  <!-- ==== Tree context menu ==== -->
+  <data name="Context_Open" xml:space="preserve"><value>Open</value></data>
+  <data name="Context_LinkWorkspace" xml:space="preserve"><value>Link workspace folder…</value></data>
+  <data name="Context_UnlinkWorkspace" xml:space="preserve"><value>Unlink workspace folder</value></data>
+  <data name="Context_SelectBranch" xml:space="preserve"><value>Select branch…</value></data>
+
+  <!-- ==== Tenant picker dialog ==== -->
+  <data name="TenantPicker_Title" xml:space="preserve"><value>Switch Microsoft Entra tenant</value></data>
+  <data name="TenantPicker_Prompt" xml:space="preserve"><value>Select the Microsoft Entra tenant to use for Azure DevOps.</value></data>
+  <data name="TenantPicker_DefaultSubtitle" xml:space="preserve"><value>Use the home tenant of the signed-in account</value></data>
+  <data name="TenantPicker_NoTenants" xml:space="preserve"><value>No Microsoft Entra tenants are available for this account.</value></data>
+
+  <!-- ==== Branch picker (ShowPromptAsync) ==== -->
+  <data name="BranchPicker_NoBranches" xml:space="preserve"><value>No branches found.</value></data>
+  <data name="BranchPicker_Prompt_Format" xml:space="preserve"><value>Pick a branch for {0}:</value></data>
+  <data name="BranchPicker_Failed_Format" xml:space="preserve"><value>Select branch failed: {0}</value></data>
+  <data name="BranchPicker_UseDefault" xml:space="preserve"><value>(use default branch)</value></data>
+  <data name="BranchPicker_Title" xml:space="preserve"><value>Select branch</value></data>
+
+  <!-- ==== Reset confirmation ==== -->
+  <data name="Reset_Confirm" xml:space="preserve"><value>This wipes the cached session, all linked workspace folders and branch overrides. Continue?</value></data>
+  <data name="Reset_Failed_Format" xml:space="preserve"><value>Reset failed: {0}</value></data>
+
+  <!-- ==== Generic error / failure prompts ==== -->
+  <data name="MicrosoftSignIn_Failed_Format" xml:space="preserve"><value>Microsoft sign in failed: {0}</value></data>
+  <data name="ShowLogs_Failed_Format" xml:space="preserve"><value>Show logs failed: {0}</value></data>
+  <data name="SelectTenant_Prompt" xml:space="preserve"><value>Pick a Microsoft Entra tenant:</value></data>
+  <data name="SelectTenant_Failed_Format" xml:space="preserve"><value>Select tenant failed: {0}</value></data>
+  <data name="OpenItem_OpenFailed_Format" xml:space="preserve"><value>Could not open {0}: {1}</value></data>
+  <data name="OpenItem_FileNotFoundOnBranch_Format" xml:space="preserve"><value>File not found in linked workspace: {0}. Pipelines Explorer is reading YAML from branch "{1}" on Azure DevOps; your local clone may be on a different branch or out of date. Try pulling the latest changes (or switching branch) and retry.</value></data>
+  <data name="OpenItem_FileNotFoundDefault_Format" xml:space="preserve"><value>File not found in linked workspace: {0}. Pipelines Explorer reads YAML from the repository's default branch on Azure DevOps; your local clone may be on a different branch or out of date. Try pulling the latest changes (or switching branch) and retry.</value></data>
+  <data name="OpenItem_RelinkWorkspace" xml:space="preserve"><value>Re-link workspace</value></data>
+  <data name="OpenItem_OpenInBrowser" xml:space="preserve"><value>Open in browser</value></data>
+  <data name="OpenItem_PickFolder_Title_Format" xml:space="preserve"><value>Link a workspace folder to repository "{0}"</value></data>
+
+  <!-- ==== Accessibility — AutomationProperties.Name for non-textual elements ==== -->
+  <data name="A11y_Tree_Name" xml:space="preserve"><value>Azure DevOps pipelines</value></data>
+  <data name="A11y_PatField_Name" xml:space="preserve"><value>Personal access token</value></data>
+  <data name="A11y_TenantPicker_ComboBox_Name" xml:space="preserve"><value>Microsoft Entra tenant</value></data>
+  <data name="A11y_BranchPicker_ComboBox_Name" xml:space="preserve"><value>Branch</value></data>
+</root>

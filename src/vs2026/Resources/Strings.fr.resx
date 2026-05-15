@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e088</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e088</value></resheader>
+
+  <data name="Toolbar_Refresh_Tooltip" xml:space="preserve"><value>Actualiser</value></data>
+  <data name="Toolbar_SwitchTenant_Tooltip" xml:space="preserve"><value>Changer le locataire Microsoft Entra</value></data>
+  <data name="Toolbar_SignOut_Tooltip" xml:space="preserve"><value>Se déconnecter</value></data>
+
+  <data name="Welcome_SignInPrompt" xml:space="preserve"><value>Connectez-vous à Azure DevOps pour parcourir les pipelines.</value></data>
+  <data name="Welcome_SignInWithMicrosoft" xml:space="preserve"><value>Se connecter avec Microsoft</value></data>
+  <data name="Welcome_PatHelp" xml:space="preserve"><value>Ou collez un jeton d'accès personnel Azure DevOps (Build Read, Code Read) :</value></data>
+  <data name="Welcome_SignInWithPat" xml:space="preserve"><value>Se connecter avec un PAT</value></data>
+  <data name="Welcome_PatField_Tooltip" xml:space="preserve"><value>Jeton d'accès personnel (masqué)</value></data>
+
+  <data name="Connection_MicrosoftEntra_Format" xml:space="preserve"><value>Microsoft Entra · {0}</value></data>
+  <data name="Connection_DefaultTenant" xml:space="preserve"><value>Locataire par défaut</value></data>
+  <data name="Connection_Pat_Label" xml:space="preserve"><value>Jeton d'accès personnel</value></data>
+  <data name="Connection_Microsoft_Tooltip_Format" xml:space="preserve"><value>Connecté en tant que {0}
+Locataire : {1}
+Cliquez sur l'icône de l'organisation pour changer de locataire.</value></data>
+  <data name="Connection_Pat_Tooltip_Format" xml:space="preserve"><value>Connecté en tant que {0} via un jeton d'accès personnel</value></data>
+
+  <data name="Tree_Loading" xml:space="preserve"><value>Chargement…</value></data>
+  <data name="Tree_NoOrganizations" xml:space="preserve"><value>Aucune organisation Azure DevOps trouvée pour ce locataire.</value></data>
+  <data name="Tree_NoProjects" xml:space="preserve"><value>(aucun projet)</value></data>
+  <data name="Tree_NoPipelines" xml:space="preserve"><value>(aucune pipeline)</value></data>
+  <data name="Tree_NoTemplatesOrScripts" xml:space="preserve"><value>(aucun modèle ou script)</value></data>
+  <data name="Tree_UnknownRepository" xml:space="preserve"><value>(référentiel inconnu)</value></data>
+  <data name="Tree_UnknownSource" xml:space="preserve"><value>(source inconnue)</value></data>
+  <data name="Tree_InlineScript" xml:space="preserve"><value>(script en ligne)</value></data>
+  <data name="Tree_Group_Templates" xml:space="preserve"><value>Modèles</value></data>
+  <data name="Tree_Group_PowerShellScripts" xml:space="preserve"><value>Scripts PowerShell</value></data>
+
+  <data name="Context_Open" xml:space="preserve"><value>Ouvrir</value></data>
+  <data name="Context_LinkWorkspace" xml:space="preserve"><value>Lier le dossier de l'espace de travail…</value></data>
+  <data name="Context_UnlinkWorkspace" xml:space="preserve"><value>Délier le dossier de l'espace de travail</value></data>
+  <data name="Context_SelectBranch" xml:space="preserve"><value>Sélectionner une branche…</value></data>
+
+  <data name="TenantPicker_Title" xml:space="preserve"><value>Changer le locataire Microsoft Entra</value></data>
+  <data name="TenantPicker_Prompt" xml:space="preserve"><value>Sélectionnez le locataire Microsoft Entra à utiliser pour Azure DevOps.</value></data>
+  <data name="TenantPicker_DefaultSubtitle" xml:space="preserve"><value>Utiliser le locataire d'origine du compte connecté</value></data>
+  <data name="TenantPicker_NoTenants" xml:space="preserve"><value>Aucun locataire Microsoft Entra disponible pour ce compte.</value></data>
+
+  <data name="BranchPicker_NoBranches" xml:space="preserve"><value>Aucune branche trouvée.</value></data>
+  <data name="BranchPicker_Prompt_Format" xml:space="preserve"><value>Choisissez une branche pour {0} :</value></data>
+  <data name="BranchPicker_Failed_Format" xml:space="preserve"><value>La sélection de la branche a échoué : {0}</value></data>
+  <data name="BranchPicker_UseDefault" xml:space="preserve"><value>(utiliser la branche par défaut)</value></data>
+  <data name="BranchPicker_Title" xml:space="preserve"><value>Sélectionner une branche</value></data>
+  <data name="Reset_Confirm" xml:space="preserve"><value>Cette opération efface la session mise en cache, tous les dossiers d'espace de travail liés et les substitutions de branche. Continuer ?</value></data>
+  <data name="Reset_Failed_Format" xml:space="preserve"><value>La réinitialisation a échoué : {0}</value></data>
+
+  <data name="MicrosoftSignIn_Failed_Format" xml:space="preserve"><value>La connexion Microsoft a échoué : {0}</value></data>
+  <data name="ShowLogs_Failed_Format" xml:space="preserve"><value>L'affichage des journaux a échoué : {0}</value></data>
+  <data name="SelectTenant_Prompt" xml:space="preserve"><value>Choisissez un locataire Microsoft Entra :</value></data>
+  <data name="SelectTenant_Failed_Format" xml:space="preserve"><value>La sélection du locataire a échoué : {0}</value></data>
+  <data name="OpenItem_OpenFailed_Format" xml:space="preserve"><value>Impossible d'ouvrir {0} : {1}</value></data>
+  <data name="OpenItem_FileNotFoundOnBranch_Format" xml:space="preserve"><value>Fichier introuvable dans l'espace de travail lié : {0}. Pipelines Explorer lit le YAML depuis la branche « {1} » sur Azure DevOps ; votre clone local peut être sur une branche différente ou obsolète. Essayez de récupérer les dernières modifications (ou de changer de branche) puis réessayez.</value></data>
+  <data name="OpenItem_FileNotFoundDefault_Format" xml:space="preserve"><value>Fichier introuvable dans l'espace de travail lié : {0}. Pipelines Explorer lit le YAML depuis la branche par défaut du référentiel sur Azure DevOps ; votre clone local peut être sur une branche différente ou obsolète. Essayez de récupérer les dernières modifications (ou de changer de branche) puis réessayez.</value></data>
+  <data name="OpenItem_RelinkWorkspace" xml:space="preserve"><value>Relier l'espace de travail</value></data>
+  <data name="OpenItem_OpenInBrowser" xml:space="preserve"><value>Ouvrir dans le navigateur</value></data>
+  <data name="OpenItem_PickFolder_Title_Format" xml:space="preserve"><value>Lier un dossier d'espace de travail au référentiel « {0} »</value></data>
+
+  <data name="A11y_Tree_Name" xml:space="preserve"><value>Pipelines Azure DevOps</value></data>
+  <data name="A11y_PatField_Name" xml:space="preserve"><value>Jeton d'accès personnel</value></data>
+  <data name="A11y_TenantPicker_ComboBox_Name" xml:space="preserve"><value>Locataire Microsoft Entra</value></data>
+  <data name="A11y_BranchPicker_ComboBox_Name" xml:space="preserve"><value>Branche</value></data>
+</root>

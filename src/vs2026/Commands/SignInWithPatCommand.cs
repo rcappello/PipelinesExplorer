@@ -11,7 +11,7 @@ namespace PipelinesExplorer.VisualStudio.Commands;
 [VisualStudioContribution]
 internal sealed class SignInWithPatCommand : Command
 {
-    public override CommandConfiguration CommandConfiguration => new("Pipelines Explorer: Sign in with PAT")
+    public override CommandConfiguration CommandConfiguration => new("%PipelinesExplorer.Command.SignInPat.DisplayName%")
     {
         Placements = [CommandPlacement.KnownPlacements.ToolsMenu],
         Icon = new(ImageMoniker.KnownValues.Lock, IconSettings.IconAndText),

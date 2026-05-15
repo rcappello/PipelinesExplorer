@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Runtime.Serialization;
 using Microsoft.VisualStudio.Extensibility.UI;
 using PipelinesExplorer.VisualStudio.AzureDevOps;
+using PipelinesExplorer.VisualStudio.Resources;
 using PipelinesExplorer.VisualStudio.Services;
 
 namespace PipelinesExplorer.VisualStudio.ViewModels;
@@ -213,8 +214,7 @@ public sealed class RepositoryNode : TreeNodeViewModel
     [DataMember]
     public bool HasBranchOverride => !string.IsNullOrEmpty(BranchOverride);
 
-    [DataMember]
-    public override string IconMoniker => IsLinked ? "KnownMonikers.GitRepositoryLocal" : "KnownMonikers.GitRepository";
+    public override string IconMoniker => "KnownMonikers.GitRepository";
 
     /// <summary>Refresh the link/branch state from the latest service data.</summary>
     internal void UpdateState(string? linkedFolder, string? branchOverride)
@@ -302,7 +302,7 @@ public sealed class GroupNode : TreeNodeViewModel
     public GroupNode(GroupKind group, int count) : base(TreeNodeKind.Group)
     {
         Group = group;
-        Label = group == GroupKind.Templates ? "Templates" : "PowerShell scripts";
+        Label = group == GroupKind.Templates ? Strings.Tree_Group_Templates : Strings.Tree_Group_PowerShellScripts;
         Description = count.ToString(CultureInfo.InvariantCulture);
     }
 
@@ -403,7 +403,7 @@ public sealed class ScriptNode : TreeNodeViewModel
         Reference = reference;
         Label = reference.FilePath is not null
             ? BaseName(reference.FilePath)
-            : (reference.Inline ? "(inline script)" : "(unknown source)");
+            : (reference.Inline ? Strings.Tree_InlineScript : Strings.Tree_UnknownSource);
         Description = reference.Task;
         Tooltip = reference.FilePath is not null
             ? $"{reference.Task} \u2192 {reference.FilePath}"

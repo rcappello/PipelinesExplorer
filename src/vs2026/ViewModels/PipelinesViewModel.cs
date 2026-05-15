@@ -9,6 +9,7 @@ using Microsoft.VisualStudio.Extensibility.Shell;
 using Microsoft.VisualStudio.Extensibility.UI;
 using PipelinesExplorer.VisualStudio.Auth;
 using PipelinesExplorer.VisualStudio.AzureDevOps;
+using PipelinesExplorer.VisualStudio.Resources;
 using PipelinesExplorer.VisualStudio.Services;
 
 namespace PipelinesExplorer.VisualStudio.ViewModels;
@@ -174,25 +175,8 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     public string PatInputText
     {
         get => _patInputText;
-        set
-        {
-            if (SetProperty(ref _patInputText, value ?? string.Empty))
-            {
-                RaiseNotifyPropertyChangedEvent(nameof(PatMaskedText));
-            }
-        }
+        set => SetProperty(ref _patInputText, value ?? string.Empty);
     }
-
-    /// <summary>
-    /// String of bullet characters with the same length as <see cref="PatInputText"/>.
-    /// Rendered as a <c>TextBlock</c> overlay on top of a transparent-foreground
-    /// <c>TextBox</c> so the PAT looks like a password field. Remote UI does not
-    /// flow attached behaviours from the extension assembly across the
-    /// out-of-process boundary, so a real <c>PasswordBox</c> with two-way
-    /// password binding is not viable here.
-    /// </summary>
-    [DataMember]
-    public string PatMaskedText => new('\u2022', _patInputText.Length);
 
     [DataMember]
     public AsyncCommand RefreshCommand { get; }
@@ -234,7 +218,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
             {
                 ReplaceList(Roots, new TreeNodeViewModel[]
                 {
-                    new InfoNode("No Azure DevOps organizations found for this tenant.", TreeNodeKind.Info),
+                    new InfoNode(Strings.Tree_NoOrganizations, TreeNodeKind.Info),
                 });
             }
             else
@@ -271,7 +255,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     private OrganizationNode BuildOrganizationNode(AdoOrganization org)
     {
         var node = new OrganizationNode(org);
-        node.Children.Add(new InfoNode("Loading…", TreeNodeKind.Loading));
+        node.Children.Add(new InfoNode(Strings.Tree_Loading, TreeNodeKind.Loading));
         SubscribeLazyLoad(node, () => LoadProjectsAsync(node));
         return node;
     }
@@ -287,7 +271,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
                 .Cast<TreeNodeViewModel>()
                 .ToList();
             ReplaceList(node.Children, children.Count == 0
-                ? new TreeNodeViewModel[] { new InfoNode("(no projects)", TreeNodeKind.Info) }
+                ? new TreeNodeViewModel[] { new InfoNode(Strings.Tree_NoProjects, TreeNodeKind.Info) }
                 : children);
         }
         catch (Exception ex)
@@ -300,7 +284,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     private ProjectNode BuildProjectNode(AdoOrganization org, AdoProject project)
     {
         var node = new ProjectNode(org, project);
-        node.Children.Add(new InfoNode("Loading…", TreeNodeKind.Loading));
+        node.Children.Add(new InfoNode(Strings.Tree_Loading, TreeNodeKind.Loading));
         SubscribeLazyLoad(node, () => LoadPipelinesAsync(node));
         return node;
     }
@@ -372,7 +356,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
                     });
                     foreach (var kv in await Task.WhenAll(tasks).ConfigureAwait(false))
                     {
-                        _repoNameCache[kv.Key] = kv.Value ?? "(unknown repository)";
+                        _repoNameCache[kv.Key] = kv.Value ?? Strings.Tree_UnknownRepository;
                     }
                 }
             }
@@ -380,14 +364,14 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
             string LabelOf(AdoPipelineDetail? d)
             {
                 var repo = d?.Configuration?.Repository;
-                if (repo is null) { return "(unknown repository)"; }
+                if (repo is null) { return Strings.Tree_UnknownRepository; }
                 if (!string.IsNullOrEmpty(repo.FullName)) { return repo.FullName!; }
                 if (!string.IsNullOrEmpty(repo.Name)) { return repo.Name!; }
                 if (!string.IsNullOrEmpty(repo.Id) && _repoNameCache.TryGetValue(repo.Id!, out var cached))
                 {
                     return cached;
                 }
-                return "(unknown repository)";
+                return Strings.Tree_UnknownRepository;
             }
 
             foreach (var entry in details)
@@ -423,7 +407,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
             }
 
             ReplaceList(node.Children, repoNodes.Count == 0
-                ? new TreeNodeViewModel[] { new InfoNode("(no pipelines)", TreeNodeKind.Info) }
+                ? new TreeNodeViewModel[] { new InfoNode(Strings.Tree_NoPipelines, TreeNodeKind.Info) }
                 : repoNodes);
         }
         catch (Exception ex)
@@ -454,20 +438,20 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
             {
                 // No explicit override -> the home tenant. Show "Default tenant"
                 // (matches VS Code's behaviour) and put the actual id in the tooltip.
-                tenantDisplay = "Default tenant";
+                tenantDisplay = Strings.Connection_DefaultTenant;
             }
             else
             {
                 tenantDisplay = !string.IsNullOrEmpty(tenantName) ? tenantName! : storedTenantId!;
             }
-            ConnectionLabel = $"Microsoft Entra \u00b7 {tenantDisplay}";
-            var tenantLine = string.IsNullOrEmpty(session.TenantId) ? "Default tenant" : session.TenantId!;
-            ConnectionTooltip = $"Connected as {session.AccountLabel}\nTenant: {tenantLine}\nClick the organization icon to switch tenant.";
+            ConnectionLabel = string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.Connection_MicrosoftEntra_Format, tenantDisplay);
+            var tenantLine = string.IsNullOrEmpty(session.TenantId) ? Strings.Connection_DefaultTenant : session.TenantId!;
+            ConnectionTooltip = string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.Connection_Microsoft_Tooltip_Format, session.AccountLabel, tenantLine);
         }
         else
         {
-            ConnectionLabel = "Personal Access Token";
-            ConnectionTooltip = $"Connected as {session.AccountLabel} via Personal Access Token";
+            ConnectionLabel = Strings.Connection_Pat_Label;
+            ConnectionTooltip = string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.Connection_Pat_Tooltip_Format, session.AccountLabel);
         }
 
         if (session is null)
@@ -521,7 +505,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
             if (tenants.Count == 0)
             {
                 await ext.Shell().ShowPromptAsync(
-                    "No Microsoft Entra tenants are available for this account.",
+                    Strings.TenantPicker_NoTenants,
                     PromptOptions.OK,
                     cancellationToken).ConfigureAwait(false);
                 return;
@@ -537,7 +521,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
 
             var result = await ext.Shell().ShowDialogAsync(
                 dialog,
-                "Switch Microsoft Entra tenant",
+                Strings.TenantPicker_Title,
                 Microsoft.VisualStudio.RpcContracts.Notifications.DialogOption.OKCancel,
                 cancellationToken).ConfigureAwait(false);
             if (result != Microsoft.VisualStudio.RpcContracts.Notifications.DialogResult.OK)
@@ -623,7 +607,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         {
             node.OpenCommand = new AsyncCommand((_, _, ct) => OpenPipelineYamlAsync(node, ct));
         }
-        node.Children.Add(new InfoNode("Loading\u2026", TreeNodeKind.Loading));
+        node.Children.Add(new InfoNode(Strings.Tree_Loading, TreeNodeKind.Loading));
         SubscribeLazyLoad(node, () => LoadPipelineAnalysisAsync(node));
         return node;
     }
@@ -684,7 +668,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
 
         if (analysis.Templates.Count == 0 && analysis.Scripts.Count == 0 && string.IsNullOrEmpty(analysis.Warning))
         {
-            children.Add(new InfoNode("(no templates or scripts)", TreeNodeKind.Info));
+            children.Add(new InfoNode(Strings.Tree_NoTemplatesOrScripts, TreeNodeKind.Info));
         }
 
         var org = parent switch
@@ -731,7 +715,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
 
         if (node.IsSameRepoExpandable)
         {
-            node.Children.Add(new InfoNode("Loading\u2026", TreeNodeKind.Loading));
+            node.Children.Add(new InfoNode(Strings.Tree_Loading, TreeNodeKind.Loading));
             SubscribeLazyLoad(node, () => LoadTemplateAnalysisAsync(node));
         }
         return node;
@@ -844,22 +828,35 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
             var branches = await _ado.ListBranchesAsync(node.Organization.AccountName, node.Project.Name, node.RepoKey, ct).ConfigureAwait(false);
             if (branches.Count == 0)
             {
-                await ext.Shell().ShowPromptAsync("No branches found.", PromptOptions.OK, ct).ConfigureAwait(false);
+                await ext.Shell().ShowPromptAsync(Strings.BranchPicker_NoBranches, PromptOptions.OK, ct).ConfigureAwait(false);
                 return;
             }
-            var options = new PromptOptions<int> { DismissedReturns = -1, DefaultChoiceIndex = 0 };
-            options.Choices.Add("(use default branch)", -2);
-            for (var i = 0; i < branches.Count; i++) { options.Choices.Add(branches[i], i); }
-            var picked = await ext.Shell().ShowPromptAsync($"Pick a branch for {node.RepoLabel}:", options, ct).ConfigureAwait(false);
-            if (picked == -1) { return; }
-            if (picked == -2) { _branches.Clear(node.LinkKey); }
-            else { _branches.Set(node.LinkKey, branches[picked]); }
+
+            var current = _branches.Get(node.LinkKey);
+            var dialogVm = new BranchPickerDialogViewModel(node.RepoLabel, branches, current);
+            using var dialog = new ToolWindows.BranchPickerDialog(dialogVm);
+
+            var result = await ext.Shell().ShowDialogAsync(
+                dialog,
+                Strings.BranchPicker_Title,
+                Microsoft.VisualStudio.RpcContracts.Notifications.DialogOption.OKCancel,
+                ct).ConfigureAwait(false);
+            if (result != Microsoft.VisualStudio.RpcContracts.Notifications.DialogResult.OK)
+            {
+                return;
+            }
+
+            var picked = dialogVm.SelectedChoice;
+            if (picked is null) { return; }
+
+            if (string.IsNullOrEmpty(picked.Name)) { _branches.Clear(node.LinkKey); }
+            else { _branches.Set(node.LinkKey, picked.Name); }
             node.UpdateState(_links.Get(node.LinkKey), _branches.Get(node.LinkKey));
         }
         catch (Exception ex)
         {
             _logger.Error("Select branch failed", ex);
-            await ext.Shell().ShowPromptAsync($"Select branch failed: {ex.Message}", PromptOptions.OK, ct).ConfigureAwait(false);
+            await ext.Shell().ShowPromptAsync(string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.BranchPicker_Failed_Format, ex.Message), PromptOptions.OK, ct).ConfigureAwait(false);
         }
     }
 

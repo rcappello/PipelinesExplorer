@@ -11,7 +11,7 @@ namespace PipelinesExplorer.VisualStudio.Commands;
 [VisualStudioContribution]
 internal sealed class RefreshCommand : Command
 {
-    public override CommandConfiguration CommandConfiguration => new("Pipelines Explorer: Refresh")
+    public override CommandConfiguration CommandConfiguration => new("%PipelinesExplorer.Command.Refresh.DisplayName%")
     {
         Placements = [CommandPlacement.KnownPlacements.ToolsMenu],
         Icon = new(ImageMoniker.KnownValues.Refresh, IconSettings.IconAndText),

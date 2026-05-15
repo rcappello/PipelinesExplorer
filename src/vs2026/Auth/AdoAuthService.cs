@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using PipelinesExplorer.VisualStudio.AzureDevOps;
+using PipelinesExplorer.VisualStudio.Resources;
 using PipelinesExplorer.VisualStudio.Services;
 
 namespace PipelinesExplorer.VisualStudio.Auth;
@@ -124,7 +125,7 @@ public sealed class AdoAuthService : IAdoAuthHeaderProvider, IDisposable
         _patStore.Write(token);
         _store.Set(SignInKindKey, nameof(SignInKind.Pat));
 
-        var session = new AdoSession(SignInKind.Pat, token, "Personal Access Token");
+        var session = new AdoSession(SignInKind.Pat, token, Strings.Connection_Pat_Label);
         _currentSession = session;
         SessionChanged?.Invoke(this, session);
         _logger.Info("PAT sign-in completed");
@@ -255,7 +256,7 @@ public sealed class AdoAuthService : IAdoAuthHeaderProvider, IDisposable
             ClearSession();
             return null;
         }
-        var patSession = new AdoSession(SignInKind.Pat, pat!, "Personal Access Token");
+        var patSession = new AdoSession(SignInKind.Pat, pat!, Strings.Connection_Pat_Label);
         ApplySession(patSession);
         return patSession;
     }

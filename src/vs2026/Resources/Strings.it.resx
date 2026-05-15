@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e088</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e088</value></resheader>
+
+  <data name="Toolbar_Refresh_Tooltip" xml:space="preserve"><value>Aggiorna</value></data>
+  <data name="Toolbar_SwitchTenant_Tooltip" xml:space="preserve"><value>Cambia tenant Microsoft Entra</value></data>
+  <data name="Toolbar_SignOut_Tooltip" xml:space="preserve"><value>Disconnetti</value></data>
+
+  <data name="Welcome_SignInPrompt" xml:space="preserve"><value>Accedi ad Azure DevOps per esplorare le pipeline.</value></data>
+  <data name="Welcome_SignInWithMicrosoft" xml:space="preserve"><value>Accedi con Microsoft</value></data>
+  <data name="Welcome_PatHelp" xml:space="preserve"><value>Oppure incolla un token di accesso personale di Azure DevOps (Build Read, Code Read):</value></data>
+  <data name="Welcome_SignInWithPat" xml:space="preserve"><value>Accedi con PAT</value></data>
+  <data name="Welcome_PatField_Tooltip" xml:space="preserve"><value>Token di accesso personale (nascosto)</value></data>
+
+  <data name="Connection_MicrosoftEntra_Format" xml:space="preserve"><value>Microsoft Entra · {0}</value></data>
+  <data name="Connection_DefaultTenant" xml:space="preserve"><value>Tenant predefinito</value></data>
+  <data name="Connection_Pat_Label" xml:space="preserve"><value>Token di accesso personale</value></data>
+  <data name="Connection_Microsoft_Tooltip_Format" xml:space="preserve"><value>Connesso come {0}
+Tenant: {1}
+Fai clic sull'icona dell'organizzazione per cambiare tenant.</value></data>
+  <data name="Connection_Pat_Tooltip_Format" xml:space="preserve"><value>Connesso come {0} tramite token di accesso personale</value></data>
+
+  <data name="Tree_Loading" xml:space="preserve"><value>Caricamento…</value></data>
+  <data name="Tree_NoOrganizations" xml:space="preserve"><value>Nessuna organizzazione di Azure DevOps trovata per questo tenant.</value></data>
+  <data name="Tree_NoProjects" xml:space="preserve"><value>(nessun progetto)</value></data>
+  <data name="Tree_NoPipelines" xml:space="preserve"><value>(nessuna pipeline)</value></data>
+  <data name="Tree_NoTemplatesOrScripts" xml:space="preserve"><value>(nessun template o script)</value></data>
+  <data name="Tree_UnknownRepository" xml:space="preserve"><value>(repository sconosciuto)</value></data>
+  <data name="Tree_UnknownSource" xml:space="preserve"><value>(origine sconosciuta)</value></data>
+  <data name="Tree_InlineScript" xml:space="preserve"><value>(script inline)</value></data>
+  <data name="Tree_Group_Templates" xml:space="preserve"><value>Template</value></data>
+  <data name="Tree_Group_PowerShellScripts" xml:space="preserve"><value>Script PowerShell</value></data>
+
+  <data name="Context_Open" xml:space="preserve"><value>Apri</value></data>
+  <data name="Context_LinkWorkspace" xml:space="preserve"><value>Collega cartella dell'area di lavoro…</value></data>
+  <data name="Context_UnlinkWorkspace" xml:space="preserve"><value>Scollega cartella dell'area di lavoro</value></data>
+  <data name="Context_SelectBranch" xml:space="preserve"><value>Seleziona branch…</value></data>
+
+  <data name="TenantPicker_Title" xml:space="preserve"><value>Cambia tenant Microsoft Entra</value></data>
+  <data name="TenantPicker_Prompt" xml:space="preserve"><value>Seleziona il tenant Microsoft Entra da usare per Azure DevOps.</value></data>
+  <data name="TenantPicker_DefaultSubtitle" xml:space="preserve"><value>Usa il tenant principale dell'account connesso</value></data>
+  <data name="TenantPicker_NoTenants" xml:space="preserve"><value>Nessun tenant Microsoft Entra disponibile per questo account.</value></data>
+
+  <data name="BranchPicker_NoBranches" xml:space="preserve"><value>Nessun branch trovato.</value></data>
+  <data name="BranchPicker_Prompt_Format" xml:space="preserve"><value>Scegli un branch per {0}:</value></data>
+  <data name="BranchPicker_Failed_Format" xml:space="preserve"><value>Selezione del branch non riuscita: {0}</value></data>
+  <data name="BranchPicker_UseDefault" xml:space="preserve"><value>(usa il branch predefinito)</value></data>
+  <data name="BranchPicker_Title" xml:space="preserve"><value>Seleziona branch</value></data>
+  <data name="Reset_Confirm" xml:space="preserve"><value>L'operazione cancella la sessione memorizzata, tutte le cartelle dell'area di lavoro collegate e gli override dei branch. Continuare?</value></data>
+  <data name="Reset_Failed_Format" xml:space="preserve"><value>Reimpostazione non riuscita: {0}</value></data>
+
+  <data name="MicrosoftSignIn_Failed_Format" xml:space="preserve"><value>Accesso Microsoft non riuscito: {0}</value></data>
+  <data name="ShowLogs_Failed_Format" xml:space="preserve"><value>Visualizzazione dei log non riuscita: {0}</value></data>
+  <data name="SelectTenant_Prompt" xml:space="preserve"><value>Scegli un tenant Microsoft Entra:</value></data>
+  <data name="SelectTenant_Failed_Format" xml:space="preserve"><value>Selezione del tenant non riuscita: {0}</value></data>
+  <data name="OpenItem_OpenFailed_Format" xml:space="preserve"><value>Impossibile aprire {0}: {1}</value></data>
+  <data name="OpenItem_FileNotFoundOnBranch_Format" xml:space="preserve"><value>File non trovato nell'area di lavoro collegata: {0}. Pipelines Explorer legge il file YAML dal branch "{1}" su Azure DevOps; il clone locale potrebbe essere su un branch diverso o non aggiornato. Prova a recuperare le ultime modifiche (o a cambiare branch) e riprova.</value></data>
+  <data name="OpenItem_FileNotFoundDefault_Format" xml:space="preserve"><value>File non trovato nell'area di lavoro collegata: {0}. Pipelines Explorer legge il file YAML dal branch predefinito del repository su Azure DevOps; il clone locale potrebbe essere su un branch diverso o non aggiornato. Prova a recuperare le ultime modifiche (o a cambiare branch) e riprova.</value></data>
+  <data name="OpenItem_RelinkWorkspace" xml:space="preserve"><value>Ricollega area di lavoro</value></data>
+  <data name="OpenItem_OpenInBrowser" xml:space="preserve"><value>Apri nel browser</value></data>
+  <data name="OpenItem_PickFolder_Title_Format" xml:space="preserve"><value>Collega una cartella dell'area di lavoro al repository "{0}"</value></data>
+
+  <data name="A11y_Tree_Name" xml:space="preserve"><value>Pipeline di Azure DevOps</value></data>
+  <data name="A11y_PatField_Name" xml:space="preserve"><value>Token di accesso personale</value></data>
+  <data name="A11y_TenantPicker_ComboBox_Name" xml:space="preserve"><value>Tenant Microsoft Entra</value></data>
+  <data name="A11y_BranchPicker_ComboBox_Name" xml:space="preserve"><value>Branch</value></data>
+</root>

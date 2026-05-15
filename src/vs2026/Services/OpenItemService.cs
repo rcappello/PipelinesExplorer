@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.VisualStudio.Extensibility;
 using Microsoft.VisualStudio.Extensibility.Documents;
 using Microsoft.VisualStudio.Extensibility.Shell;
+using PipelinesExplorer.VisualStudio.Resources;
 
 namespace PipelinesExplorer.VisualStudio.Services;
 
@@ -88,7 +89,7 @@ public sealed class OpenItemService
         catch (Exception ex)
         {
             _logger.Error($"OpenDocumentAsync failed for {fsPath}", ex);
-            await ext.Shell().ShowPromptAsync($"Could not open {fsPath}: {ex.Message}", PromptOptions.OK, ct).ConfigureAwait(false);
+            await ext.Shell().ShowPromptAsync(string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.OpenItem_OpenFailed_Format, fsPath, ex.Message), PromptOptions.OK, ct).ConfigureAwait(false);
         }
     }
 
@@ -98,16 +99,12 @@ public sealed class OpenItemService
         if (ext is null) { return; }
 
         var msg = target.Branch is not null
-            ? $"File not found in linked workspace: {target.RelativePath}. " +
-              $"Pipelines Explorer is reading YAML from branch \"{target.Branch}\" on Azure DevOps; " +
-              $"your local clone may be on a different branch or out of date. Try pulling the latest changes (or switching branch) and retry."
-            : $"File not found in linked workspace: {target.RelativePath}. " +
-              $"Pipelines Explorer reads YAML from the repository's default branch on Azure DevOps; " +
-              $"your local clone may be on a different branch or out of date. Try pulling the latest changes (or switching branch) and retry.";
+            ? string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.OpenItem_FileNotFoundOnBranch_Format, target.RelativePath, target.Branch)
+            : string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.OpenItem_FileNotFoundDefault_Format, target.RelativePath);
 
         var options = new PromptOptions<int> { DismissedReturns = -1, DefaultChoiceIndex = 0 };
-        options.Choices.Add("Re-link workspace", 0);
-        if (!string.IsNullOrEmpty(target.WebUrl)) { options.Choices.Add("Open in browser", 1); }
+        options.Choices.Add(Strings.OpenItem_RelinkWorkspace, 0);
+        if (!string.IsNullOrEmpty(target.WebUrl)) { options.Choices.Add(Strings.OpenItem_OpenInBrowser, 1); }
         var pick = await ext.Shell().ShowPromptAsync(msg, options, ct).ConfigureAwait(false);
         if (pick == 0)
         {
@@ -125,7 +122,7 @@ public sealed class OpenItemService
         if (ext is null) { return; }
 
         // Folder picker has to run on a UI (STA) thread.
-        var picked = await PickFolderAsync($"Link a workspace folder to repository \"{target.RepoLinkKey.RepoKey}\"", ct).ConfigureAwait(false);
+        var picked = await PickFolderAsync(string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.OpenItem_PickFolder_Title_Format, target.RepoLinkKey.RepoKey), ct).ConfigureAwait(false);
         if (string.IsNullOrEmpty(picked)) { return; }
 
         _links.Set(target.RepoLinkKey, picked!);
@@ -135,7 +132,7 @@ public sealed class OpenItemService
     /// <summary>Public wrapper used by the "Link workspace" command.</summary>
     public async Task<bool> PickAndLinkAsync(RepoLinkKey key, string repoLabel, CancellationToken ct = default)
     {
-        var picked = await PickFolderAsync($"Link a workspace folder to repository \"{repoLabel}\"", ct).ConfigureAwait(false);
+        var picked = await PickFolderAsync(string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.OpenItem_PickFolder_Title_Format, repoLabel), ct).ConfigureAwait(false);
         if (string.IsNullOrEmpty(picked)) { return false; }
         _links.Set(key, picked!);
         return true;

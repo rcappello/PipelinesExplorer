@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e088</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e088</value></resheader>
+
+  <data name="Toolbar_Refresh_Tooltip" xml:space="preserve"><value>Aktualisieren</value></data>
+  <data name="Toolbar_SwitchTenant_Tooltip" xml:space="preserve"><value>Microsoft Entra-Mandant wechseln</value></data>
+  <data name="Toolbar_SignOut_Tooltip" xml:space="preserve"><value>Abmelden</value></data>
+
+  <data name="Welcome_SignInPrompt" xml:space="preserve"><value>Bei Azure DevOps anmelden, um Pipelines zu durchsuchen.</value></data>
+  <data name="Welcome_SignInWithMicrosoft" xml:space="preserve"><value>Mit Microsoft anmelden</value></data>
+  <data name="Welcome_PatHelp" xml:space="preserve"><value>Oder fügen Sie ein persönliches Zugriffstoken für Azure DevOps ein (Build Read, Code Read):</value></data>
+  <data name="Welcome_SignInWithPat" xml:space="preserve"><value>Mit PAT anmelden</value></data>
+  <data name="Welcome_PatField_Tooltip" xml:space="preserve"><value>Persönliches Zugriffstoken (ausgeblendet)</value></data>
+
+  <data name="Connection_MicrosoftEntra_Format" xml:space="preserve"><value>Microsoft Entra · {0}</value></data>
+  <data name="Connection_DefaultTenant" xml:space="preserve"><value>Standardmandant</value></data>
+  <data name="Connection_Pat_Label" xml:space="preserve"><value>Persönliches Zugriffstoken</value></data>
+  <data name="Connection_Microsoft_Tooltip_Format" xml:space="preserve"><value>Verbunden als {0}
+Mandant: {1}
+Klicken Sie auf das Organisationssymbol, um den Mandanten zu wechseln.</value></data>
+  <data name="Connection_Pat_Tooltip_Format" xml:space="preserve"><value>Verbunden als {0} über ein persönliches Zugriffstoken</value></data>
+
+  <data name="Tree_Loading" xml:space="preserve"><value>Wird geladen…</value></data>
+  <data name="Tree_NoOrganizations" xml:space="preserve"><value>Keine Azure DevOps-Organisationen für diesen Mandanten gefunden.</value></data>
+  <data name="Tree_NoProjects" xml:space="preserve"><value>(keine Projekte)</value></data>
+  <data name="Tree_NoPipelines" xml:space="preserve"><value>(keine Pipelines)</value></data>
+  <data name="Tree_NoTemplatesOrScripts" xml:space="preserve"><value>(keine Vorlagen oder Skripte)</value></data>
+  <data name="Tree_UnknownRepository" xml:space="preserve"><value>(unbekanntes Repository)</value></data>
+  <data name="Tree_UnknownSource" xml:space="preserve"><value>(unbekannte Quelle)</value></data>
+  <data name="Tree_InlineScript" xml:space="preserve"><value>(Inline-Skript)</value></data>
+  <data name="Tree_Group_Templates" xml:space="preserve"><value>Vorlagen</value></data>
+  <data name="Tree_Group_PowerShellScripts" xml:space="preserve"><value>PowerShell-Skripte</value></data>
+
+  <data name="Context_Open" xml:space="preserve"><value>Öffnen</value></data>
+  <data name="Context_LinkWorkspace" xml:space="preserve"><value>Arbeitsbereichsordner verknüpfen…</value></data>
+  <data name="Context_UnlinkWorkspace" xml:space="preserve"><value>Arbeitsbereichsordner trennen</value></data>
+  <data name="Context_SelectBranch" xml:space="preserve"><value>Branch auswählen…</value></data>
+
+  <data name="TenantPicker_Title" xml:space="preserve"><value>Microsoft Entra-Mandant wechseln</value></data>
+  <data name="TenantPicker_Prompt" xml:space="preserve"><value>Wählen Sie den Microsoft Entra-Mandanten aus, der für Azure DevOps verwendet werden soll.</value></data>
+  <data name="TenantPicker_DefaultSubtitle" xml:space="preserve"><value>Den Heimatmandanten des angemeldeten Kontos verwenden</value></data>
+  <data name="TenantPicker_NoTenants" xml:space="preserve"><value>Für dieses Konto sind keine Microsoft Entra-Mandanten verfügbar.</value></data>
+
+  <data name="BranchPicker_NoBranches" xml:space="preserve"><value>Keine Branches gefunden.</value></data>
+  <data name="BranchPicker_Prompt_Format" xml:space="preserve"><value>Wählen Sie einen Branch für {0}:</value></data>
+  <data name="BranchPicker_Failed_Format" xml:space="preserve"><value>Branch-Auswahl fehlgeschlagen: {0}</value></data>
+  <data name="BranchPicker_UseDefault" xml:space="preserve"><value>(Standardbranch verwenden)</value></data>
+  <data name="BranchPicker_Title" xml:space="preserve"><value>Branch auswählen</value></data>
+  <data name="Reset_Confirm" xml:space="preserve"><value>Dadurch werden die zwischengespeicherte Sitzung, alle verknüpften Arbeitsbereichsordner und Branch-Überschreibungen gelöscht. Fortfahren?</value></data>
+  <data name="Reset_Failed_Format" xml:space="preserve"><value>Zurücksetzen fehlgeschlagen: {0}</value></data>
+
+  <data name="MicrosoftSignIn_Failed_Format" xml:space="preserve"><value>Microsoft-Anmeldung fehlgeschlagen: {0}</value></data>
+  <data name="ShowLogs_Failed_Format" xml:space="preserve"><value>Anzeigen der Protokolle fehlgeschlagen: {0}</value></data>
+  <data name="SelectTenant_Prompt" xml:space="preserve"><value>Wählen Sie einen Microsoft Entra-Mandanten:</value></data>
+  <data name="SelectTenant_Failed_Format" xml:space="preserve"><value>Mandanten-Auswahl fehlgeschlagen: {0}</value></data>
+  <data name="OpenItem_OpenFailed_Format" xml:space="preserve"><value>{0} konnte nicht geöffnet werden: {1}</value></data>
+  <data name="OpenItem_FileNotFoundOnBranch_Format" xml:space="preserve"><value>Datei im verknüpften Arbeitsbereich nicht gefunden: {0}. Pipelines Explorer liest die YAML-Datei vom Branch „{1}“ in Azure DevOps; Ihr lokaler Klon befindet sich möglicherweise auf einem anderen Branch oder ist veraltet. Versuchen Sie, die neuesten Änderungen abzurufen (oder den Branch zu wechseln), und versuchen Sie es erneut.</value></data>
+  <data name="OpenItem_FileNotFoundDefault_Format" xml:space="preserve"><value>Datei im verknüpften Arbeitsbereich nicht gefunden: {0}. Pipelines Explorer liest die YAML-Datei vom Standardbranch des Repositorys in Azure DevOps; Ihr lokaler Klon befindet sich möglicherweise auf einem anderen Branch oder ist veraltet. Versuchen Sie, die neuesten Änderungen abzurufen (oder den Branch zu wechseln), und versuchen Sie es erneut.</value></data>
+  <data name="OpenItem_RelinkWorkspace" xml:space="preserve"><value>Arbeitsbereich neu verknüpfen</value></data>
+  <data name="OpenItem_OpenInBrowser" xml:space="preserve"><value>Im Browser öffnen</value></data>
+  <data name="OpenItem_PickFolder_Title_Format" xml:space="preserve"><value>Einen Arbeitsbereichsordner mit dem Repository „{0}“ verknüpfen</value></data>
+
+  <data name="A11y_Tree_Name" xml:space="preserve"><value>Azure DevOps-Pipelines</value></data>
+  <data name="A11y_PatField_Name" xml:space="preserve"><value>Persönliches Zugriffstoken</value></data>
+  <data name="A11y_TenantPicker_ComboBox_Name" xml:space="preserve"><value>Microsoft Entra-Mandant</value></data>
+  <data name="A11y_BranchPicker_ComboBox_Name" xml:space="preserve"><value>Branch</value></data>
+</root>

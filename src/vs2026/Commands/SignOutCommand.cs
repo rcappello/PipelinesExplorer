@@ -11,7 +11,7 @@ namespace PipelinesExplorer.VisualStudio.Commands;
 [VisualStudioContribution]
 internal sealed class SignOutCommand : Command
 {
-    public override CommandConfiguration CommandConfiguration => new("Pipelines Explorer: Sign out")
+    public override CommandConfiguration CommandConfiguration => new("%PipelinesExplorer.Command.SignOut.DisplayName%")
     {
         Placements = [CommandPlacement.KnownPlacements.ToolsMenu],
     };

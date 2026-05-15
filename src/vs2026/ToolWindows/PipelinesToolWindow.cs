@@ -38,7 +38,7 @@ internal sealed class PipelinesToolWindow : ToolWindow
 #pragma warning restore VSEXTPREVIEW_OUTPUTWINDOW
     {
         ExtensionServices.Initialize(this.Extensibility);
-        Title = "Pipelines Explorer";
+        Title = Branding.ProductName;
 
         // Wire the Output Window channel as a sink on the shared logger so every
         // log line surfaces in View > Output > "Pipelines Explorer". Documented at
@@ -49,7 +49,7 @@ internal sealed class PipelinesToolWindow : ToolWindow
         {
 #pragma warning disable VSEXTPREVIEW_OUTPUTWINDOW
             _outputChannel = await this.Extensibility.Views().Output
-                .CreateOutputChannelAsync("Pipelines Explorer", cancellationToken)
+                .CreateOutputChannelAsync(Branding.ProductName, cancellationToken)
                 .ConfigureAwait(false);
 
             ExtensionServices.Logger.AttachSink(line =>

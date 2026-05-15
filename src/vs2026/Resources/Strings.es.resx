@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e088</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e088</value></resheader>
+
+  <data name="Toolbar_Refresh_Tooltip" xml:space="preserve"><value>Actualizar</value></data>
+  <data name="Toolbar_SwitchTenant_Tooltip" xml:space="preserve"><value>Cambiar inquilino de Microsoft Entra</value></data>
+  <data name="Toolbar_SignOut_Tooltip" xml:space="preserve"><value>Cerrar sesión</value></data>
+
+  <data name="Welcome_SignInPrompt" xml:space="preserve"><value>Inicie sesión en Azure DevOps para explorar las pipelines.</value></data>
+  <data name="Welcome_SignInWithMicrosoft" xml:space="preserve"><value>Iniciar sesión con Microsoft</value></data>
+  <data name="Welcome_PatHelp" xml:space="preserve"><value>O pegue un token de acceso personal de Azure DevOps (Build Read, Code Read):</value></data>
+  <data name="Welcome_SignInWithPat" xml:space="preserve"><value>Iniciar sesión con PAT</value></data>
+  <data name="Welcome_PatField_Tooltip" xml:space="preserve"><value>Token de acceso personal (oculto)</value></data>
+
+  <data name="Connection_MicrosoftEntra_Format" xml:space="preserve"><value>Microsoft Entra · {0}</value></data>
+  <data name="Connection_DefaultTenant" xml:space="preserve"><value>Inquilino predeterminado</value></data>
+  <data name="Connection_Pat_Label" xml:space="preserve"><value>Token de acceso personal</value></data>
+  <data name="Connection_Microsoft_Tooltip_Format" xml:space="preserve"><value>Conectado como {0}
+Inquilino: {1}
+Haga clic en el icono de la organización para cambiar de inquilino.</value></data>
+  <data name="Connection_Pat_Tooltip_Format" xml:space="preserve"><value>Conectado como {0} mediante un token de acceso personal</value></data>
+
+  <data name="Tree_Loading" xml:space="preserve"><value>Cargando…</value></data>
+  <data name="Tree_NoOrganizations" xml:space="preserve"><value>No se han encontrado organizaciones de Azure DevOps para este inquilino.</value></data>
+  <data name="Tree_NoProjects" xml:space="preserve"><value>(sin proyectos)</value></data>
+  <data name="Tree_NoPipelines" xml:space="preserve"><value>(sin pipelines)</value></data>
+  <data name="Tree_NoTemplatesOrScripts" xml:space="preserve"><value>(sin plantillas ni scripts)</value></data>
+  <data name="Tree_UnknownRepository" xml:space="preserve"><value>(repositorio desconocido)</value></data>
+  <data name="Tree_UnknownSource" xml:space="preserve"><value>(origen desconocido)</value></data>
+  <data name="Tree_InlineScript" xml:space="preserve"><value>(script en línea)</value></data>
+  <data name="Tree_Group_Templates" xml:space="preserve"><value>Plantillas</value></data>
+  <data name="Tree_Group_PowerShellScripts" xml:space="preserve"><value>Scripts de PowerShell</value></data>
+
+  <data name="Context_Open" xml:space="preserve"><value>Abrir</value></data>
+  <data name="Context_LinkWorkspace" xml:space="preserve"><value>Vincular carpeta del área de trabajo…</value></data>
+  <data name="Context_UnlinkWorkspace" xml:space="preserve"><value>Desvincular carpeta del área de trabajo</value></data>
+  <data name="Context_SelectBranch" xml:space="preserve"><value>Seleccionar rama…</value></data>
+
+  <data name="TenantPicker_Title" xml:space="preserve"><value>Cambiar inquilino de Microsoft Entra</value></data>
+  <data name="TenantPicker_Prompt" xml:space="preserve"><value>Seleccione el inquilino de Microsoft Entra que desea usar para Azure DevOps.</value></data>
+  <data name="TenantPicker_DefaultSubtitle" xml:space="preserve"><value>Usar el inquilino principal de la cuenta conectada</value></data>
+  <data name="TenantPicker_NoTenants" xml:space="preserve"><value>No hay inquilinos de Microsoft Entra disponibles para esta cuenta.</value></data>
+
+  <data name="BranchPicker_NoBranches" xml:space="preserve"><value>No se han encontrado ramas.</value></data>
+  <data name="BranchPicker_Prompt_Format" xml:space="preserve"><value>Elija una rama para {0}:</value></data>
+  <data name="BranchPicker_Failed_Format" xml:space="preserve"><value>Error al seleccionar la rama: {0}</value></data>
+  <data name="BranchPicker_UseDefault" xml:space="preserve"><value>(usar la rama predeterminada)</value></data>
+  <data name="BranchPicker_Title" xml:space="preserve"><value>Seleccionar rama</value></data>
+  <data name="Reset_Confirm" xml:space="preserve"><value>Esta operación borra la sesión almacenada en caché, todas las carpetas del área de trabajo vinculadas y las anulaciones de rama. ¿Continuar?</value></data>
+  <data name="Reset_Failed_Format" xml:space="preserve"><value>Error al restablecer: {0}</value></data>
+
+  <data name="MicrosoftSignIn_Failed_Format" xml:space="preserve"><value>Error al iniciar sesión con Microsoft: {0}</value></data>
+  <data name="ShowLogs_Failed_Format" xml:space="preserve"><value>Error al mostrar los registros: {0}</value></data>
+  <data name="SelectTenant_Prompt" xml:space="preserve"><value>Elija un inquilino de Microsoft Entra:</value></data>
+  <data name="SelectTenant_Failed_Format" xml:space="preserve"><value>Error al seleccionar el inquilino: {0}</value></data>
+  <data name="OpenItem_OpenFailed_Format" xml:space="preserve"><value>No se pudo abrir {0}: {1}</value></data>
+  <data name="OpenItem_FileNotFoundOnBranch_Format" xml:space="preserve"><value>Archivo no encontrado en el área de trabajo vinculada: {0}. Pipelines Explorer lee el YAML desde la rama "{1}" en Azure DevOps; es posible que su clon local esté en otra rama o desactualizado. Intente extraer los últimos cambios (o cambiar de rama) y vuelva a intentarlo.</value></data>
+  <data name="OpenItem_FileNotFoundDefault_Format" xml:space="preserve"><value>Archivo no encontrado en el área de trabajo vinculada: {0}. Pipelines Explorer lee el YAML desde la rama predeterminada del repositorio en Azure DevOps; es posible que su clon local esté en otra rama o desactualizado. Intente extraer los últimos cambios (o cambiar de rama) y vuelva a intentarlo.</value></data>
+  <data name="OpenItem_RelinkWorkspace" xml:space="preserve"><value>Vincular de nuevo el área de trabajo</value></data>
+  <data name="OpenItem_OpenInBrowser" xml:space="preserve"><value>Abrir en el navegador</value></data>
+  <data name="OpenItem_PickFolder_Title_Format" xml:space="preserve"><value>Vincular una carpeta del área de trabajo al repositorio "{0}"</value></data>
+
+  <data name="A11y_Tree_Name" xml:space="preserve"><value>Pipelines de Azure DevOps</value></data>
+  <data name="A11y_PatField_Name" xml:space="preserve"><value>Token de acceso personal</value></data>
+  <data name="A11y_TenantPicker_ComboBox_Name" xml:space="preserve"><value>Inquilino de Microsoft Entra</value></data>
+  <data name="A11y_BranchPicker_ComboBox_Name" xml:space="preserve"><value>Rama</value></data>
+</root>

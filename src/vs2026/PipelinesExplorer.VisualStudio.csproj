@@ -12,9 +12,8 @@
     <AssemblyName>PipelinesExplorer.VisualStudio</AssemblyName>
     <PackageId>PipelinesExplorer.VisualStudio</PackageId>
 
-    <!-- VSTHRD103 (sync Cancel on CTS) is the documented pattern for replacing in-flight loads;
-         CEE0027 asks for resource-localized command titles which we will tackle when we add l10n. -->
-    <NoWarn>$(NoWarn);VSTHRD103;CEE0027</NoWarn>
+    <!-- VSTHRD103 (sync Cancel on CTS) is the documented pattern for replacing in-flight loads. -->
+    <NoWarn>$(NoWarn);VSTHRD103</NoWarn>
   </PropertyGroup>
 
   <!-- F5 inside Visual Studio: launch devenv.exe in the Experimental hive AND auto-deploy
@@ -59,6 +58,21 @@
     <Page Remove="ToolWindows\PipelinesToolWindowControl.xaml" />
     <EmbeddedResource Include="ToolWindows\TenantPickerDialog.xaml" />
     <Page Remove="ToolWindows\TenantPickerDialog.xaml" />
+    <EmbeddedResource Include="ToolWindows\BranchPickerDialog.xaml" />
+    <Page Remove="ToolWindows\BranchPickerDialog.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Localized UI strings. Default (English) lives in Strings.resx; localized
+      satellite assemblies are produced from Strings.<culture>.resx files
+      (it, fr, de, es, sv). The strongly-typed accessor is hand-written in
+      Resources/Strings.cs (made `public` so the Remote UI XAML can reference
+      it via clr-namespace bindings).
+    -->
+    <EmbeddedResource Update="Resources\Strings.resx">
+      <Generator></Generator>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>
