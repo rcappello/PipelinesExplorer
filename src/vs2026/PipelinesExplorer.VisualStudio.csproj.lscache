@@ -97,6 +97,7 @@ ToolWindows/
  TenantPickerDialog.cs
 ViewModels/
  BranchPickerDialogViewModel.cs
+ LocalizedStrings.cs
  PipelinesViewModel.cs
  TenantPickerDialogViewModel.cs
  TreeNodeViewModel.cs

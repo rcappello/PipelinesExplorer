@@ -54,6 +54,15 @@ public class TreeNodeViewModel : NotifyPropertyChangedObject
     [DataMember]
     public TreeNodeKind Kind { get; }
 
+    /// <summary>
+    /// Localized strings consumed by the per-node ContextMenu in the Remote UI XAML.
+    /// ContextMenu items live outside the visual tree, so they can't reach the root
+    /// view-model's <c>Loc</c> via RelativeSource — exposing the same snapshot per
+    /// node is the simplest workaround. See <see cref="LocalizedStrings"/>.
+    /// </summary>
+    [DataMember]
+    public LocalizedStrings Loc { get; } = new LocalizedStrings();
+
     [DataMember]
     public string Label
     {
@@ -214,6 +223,7 @@ public sealed class RepositoryNode : TreeNodeViewModel
     [DataMember]
     public bool HasBranchOverride => !string.IsNullOrEmpty(BranchOverride);
 
+    [DataMember]
     public override string IconMoniker => "KnownMonikers.GitRepository";
 
     /// <summary>Refresh the link/branch state from the latest service data.</summary>

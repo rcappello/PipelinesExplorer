@@ -1,6 +1,4 @@
 {
-  "PipelinesExplorer.Extension.DisplayName": "Pipelines Explorer",
-  "PipelinesExplorer.Extension.Description": "Esplora le pipeline di Azure DevOps, naviga nei template YAML referenziati e negli script (PowerShell, Bash, Cmd, Python, Azure CLI), e apri i file locali nella tua soluzione.",
   "PipelinesExplorer.ToolWindow.Title": "Pipelines Explorer",
   "PipelinesExplorer.Command.OpenToolWindow.DisplayName": "Pipelines Explorer",
   "PipelinesExplorer.Command.SignInMicrosoft.DisplayName": "Pipelines Explorer: Accedi con Microsoft",

@@ -3,8 +3,7 @@
               xmlns:vs="http://schemas.microsoft.com/visualstudio/extensibility/2022/xaml"
               xmlns:sys="clr-namespace:System;assembly=mscorlib"
               xmlns:platform="clr-namespace:Microsoft.VisualStudio.PlatformUI;assembly=Microsoft.VisualStudio.Shell.15.0"
-              xmlns:shell="clr-namespace:Microsoft.VisualStudio.Shell;assembly=Microsoft.VisualStudio.Shell.15.0"
-              xmlns:loc="clr-namespace:PipelinesExplorer.VisualStudio.Resources;assembly=PipelinesExplorer.VisualStudio">
+              xmlns:shell="clr-namespace:Microsoft.VisualStudio.Shell;assembly=Microsoft.VisualStudio.Shell.15.0">
     <DataTemplate.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
@@ -150,26 +149,26 @@
             </DockPanel.Resources>
             <Button DockPanel.Dock="Right"
                     Style="{StaticResource IconToolbarButton}"
-                    ToolTip="{x:Static loc:Strings.Toolbar_SignOut_Tooltip}"
-                    AutomationProperties.Name="{x:Static loc:Strings.Toolbar_SignOut_Tooltip}"
-                    AutomationProperties.HelpText="{x:Static loc:Strings.Toolbar_SignOut_Tooltip}"
+                    ToolTip="{Binding Loc.Toolbar_SignOut_Tooltip}"
+                    AutomationProperties.Name="{Binding Loc.Toolbar_SignOut_Tooltip}"
+                    AutomationProperties.HelpText="{Binding Loc.Toolbar_SignOut_Tooltip}"
                     Command="{Binding SignOutCommand}">
                 <vs:Image Source="KnownMonikers.Disconnect" Width="16" Height="16" />
             </Button>
             <Button DockPanel.Dock="Right"
                     Style="{StaticResource IconToolbarButton}"
-                    ToolTip="{x:Static loc:Strings.Toolbar_SwitchTenant_Tooltip}"
-                    AutomationProperties.Name="{x:Static loc:Strings.Toolbar_SwitchTenant_Tooltip}"
-                    AutomationProperties.HelpText="{x:Static loc:Strings.Toolbar_SwitchTenant_Tooltip}"
+                    ToolTip="{Binding Loc.Toolbar_SwitchTenant_Tooltip}"
+                    AutomationProperties.Name="{Binding Loc.Toolbar_SwitchTenant_Tooltip}"
+                    AutomationProperties.HelpText="{Binding Loc.Toolbar_SwitchTenant_Tooltip}"
                     Visibility="{Binding IsMicrosoftSignIn, Converter={StaticResource BoolToVis}}"
                     Command="{Binding SelectTenantCommand}">
                 <vs:Image Source="KnownMonikers.AzureActiveDirectory" Width="16" Height="16" />
             </Button>
             <Button DockPanel.Dock="Right"
                     Style="{StaticResource IconToolbarButton}"
-                    ToolTip="{x:Static loc:Strings.Toolbar_Refresh_Tooltip}"
-                    AutomationProperties.Name="{x:Static loc:Strings.Toolbar_Refresh_Tooltip}"
-                    AutomationProperties.HelpText="{x:Static loc:Strings.Toolbar_Refresh_Tooltip}"
+                    ToolTip="{Binding Loc.Toolbar_Refresh_Tooltip}"
+                    AutomationProperties.Name="{Binding Loc.Toolbar_Refresh_Tooltip}"
+                    AutomationProperties.HelpText="{Binding Loc.Toolbar_Refresh_Tooltip}"
                     Command="{Binding RefreshCommand}">
                 <vs:Image Source="KnownMonikers.Refresh" Width="16" Height="16" />
             </Button>
@@ -185,20 +184,20 @@
                     Orientation="Vertical"
                     Margin="0,4,0,8"
                     Visibility="{Binding IsSignedOut, Converter={StaticResource BoolToVis}}">
-            <TextBlock Text="{x:Static loc:Strings.Welcome_SignInPrompt}"
+            <TextBlock Text="{Binding Loc.Welcome_SignInPrompt}"
                        Margin="0,0,0,8"
                        TextWrapping="Wrap" />
             <WrapPanel>
-                <Button Content="{x:Static loc:Strings.Welcome_SignInWithMicrosoft}"
+                <Button Content="{Binding Loc.Welcome_SignInWithMicrosoft}"
                         Margin="0,0,8,0"
                         Command="{Binding SignInWithMicrosoftCommand}" />
             </WrapPanel>
-            <TextBlock Text="{x:Static loc:Strings.Welcome_PatHelp}"
+            <TextBlock Text="{Binding Loc.Welcome_PatHelp}"
                        Margin="0,12,0,4"
                        TextWrapping="Wrap" />
             <DockPanel HorizontalAlignment="Left">
                 <Button DockPanel.Dock="Right"
-                        Content="{x:Static loc:Strings.Welcome_SignInWithPat}"
+                        Content="{Binding Loc.Welcome_SignInWithPat}"
                         Margin="6,0,0,0"
                         Command="{Binding SignInWithPatCommand}" />
                 <!-- The PAT is shown in plain text while typing. Remote UI marshals
@@ -216,9 +215,9 @@
                          Background="{DynamicResource {x:Static platform:CommonControlsColors.TextBoxBackgroundBrushKey}}"
                          Foreground="{DynamicResource {x:Static platform:CommonControlsColors.TextBoxTextBrushKey}}"
                          CaretBrush="{DynamicResource {x:Static platform:CommonControlsColors.TextBoxTextBrushKey}}"
-                         ToolTip="{x:Static loc:Strings.Welcome_PatField_Tooltip}"
-                         AutomationProperties.Name="{x:Static loc:Strings.A11y_PatField_Name}"
-                         AutomationProperties.HelpText="{x:Static loc:Strings.Welcome_PatField_Tooltip}" />
+                         ToolTip="{Binding Loc.Welcome_PatField_Tooltip}"
+                         AutomationProperties.Name="{Binding Loc.A11y_PatField_Name}"
+                         AutomationProperties.HelpText="{Binding Loc.Welcome_PatField_Tooltip}" />
             </DockPanel>
         </StackPanel>
 
@@ -237,7 +236,7 @@
         <!-- Tree -->
         <TreeView Grid.Row="3"
                   ItemsSource="{Binding Roots}"
-                  AutomationProperties.Name="{x:Static loc:Strings.A11y_Tree_Name}"
+                  AutomationProperties.Name="{Binding Loc.A11y_Tree_Name}"
                   Visibility="{Binding IsSignedIn, Converter={StaticResource BoolToVis}}">
             <TreeView.ItemContainerStyle>
                 <Style TargetType="{x:Type TreeViewItem}" BasedOn="{StaticResource {x:Type TreeViewItem}}">
@@ -250,14 +249,14 @@
                     <StackPanel Orientation="Horizontal">
                         <StackPanel.ContextMenu>
                             <ContextMenu>
-                                <MenuItem Header="{x:Static loc:Strings.Context_Open}"
+                                <MenuItem Header="{Binding Loc.Context_Open}"
                                           Command="{Binding OpenCommand}" />
                                 <Separator />
-                                <MenuItem Header="{x:Static loc:Strings.Context_LinkWorkspace}"
+                                <MenuItem Header="{Binding Loc.Context_LinkWorkspace}"
                                           Command="{Binding LinkCommand}" />
-                                <MenuItem Header="{x:Static loc:Strings.Context_UnlinkWorkspace}"
+                                <MenuItem Header="{Binding Loc.Context_UnlinkWorkspace}"
                                           Command="{Binding UnlinkCommand}" />
-                                <MenuItem Header="{x:Static loc:Strings.Context_SelectBranch}"
+                                <MenuItem Header="{Binding Loc.Context_SelectBranch}"
                                           Command="{Binding SelectBranchCommand}" />
                             </ContextMenu>
                         </StackPanel.ContextMenu>

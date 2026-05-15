@@ -60,6 +60,10 @@ public sealed class TenantPickerDialogViewModel : NotifyPropertyChangedObject
     [DataMember]
     public ObservableCollection<TenantChoice> Choices { get; }
 
+    /// <summary>Localized strings for the Remote UI XAML; see <see cref="LocalizedStrings"/>.</summary>
+    [DataMember]
+    public LocalizedStrings Loc { get; } = new LocalizedStrings();
+
     [DataMember]
     public TenantChoice? SelectedChoice
     {

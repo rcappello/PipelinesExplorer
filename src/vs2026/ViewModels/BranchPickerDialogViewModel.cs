@@ -55,6 +55,10 @@ public sealed class BranchPickerDialogViewModel : NotifyPropertyChangedObject
     [DataMember]
     public string Prompt { get; }
 
+    /// <summary>Localized strings for the Remote UI XAML; see <see cref="LocalizedStrings"/>.</summary>
+    [DataMember]
+    public LocalizedStrings Loc { get; } = new LocalizedStrings();
+
     [DataMember]
     public ObservableCollection<BranchChoice> Choices { get; }
 

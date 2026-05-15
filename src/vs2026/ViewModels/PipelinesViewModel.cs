@@ -107,6 +107,14 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     [DataMember]
     public ObservableList<TreeNodeViewModel> Roots { get; }
 
+    /// <summary>
+    /// Localized strings consumed by the Remote UI XAML. See
+    /// <see cref="LocalizedStrings"/> for why XAML can't reference
+    /// <see cref="Resources.Strings"/> directly.
+    /// </summary>
+    [DataMember]
+    public LocalizedStrings Loc { get; } = new LocalizedStrings();
+
     [DataMember]
     public bool IsSignedIn
     {
