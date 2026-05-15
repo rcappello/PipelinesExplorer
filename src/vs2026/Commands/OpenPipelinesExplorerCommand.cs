@@ -14,7 +14,7 @@ internal sealed class OpenPipelinesExplorerCommand : Command
     public override CommandConfiguration CommandConfiguration => new("%PipelinesExplorer.Command.OpenToolWindow.DisplayName%")
     {
         Placements = [CommandPlacement.KnownPlacements.ViewOtherWindowsMenu],
-        Icon = new(ImageMoniker.KnownValues.User, IconSettings.IconAndText),
+        Icon = new(ImageMoniker.KnownValues.Pipeline, IconSettings.IconAndText),
     };
 
     public override Task ExecuteCommandAsync(IClientContext context, CancellationToken cancellationToken) =>

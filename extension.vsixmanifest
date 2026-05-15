@@ -1,0 +1,20 @@
+<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011">
+  <Metadata>
+    <Identity Id="PipelinesExplorer.VisualStudio.f6c47e2e-5b33-4d3a-8d79-2f5e1c1b9a01" Version="1.0.0.0" Language="en-US" Publisher="rcappello" />
+    <DisplayName>%PipelinesExplorer.Extension.DisplayName%</DisplayName>
+    <Description>%PipelinesExplorer.Extension.Description%</Description>
+    <Preview>true</Preview>
+  </Metadata>
+  <Installation ExtensionType="VisualStudio.Extensibility">
+    <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.14,)">
+      <ProductArchitecture>amd64</ProductArchitecture>
+    </InstallationTarget>
+    <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.14,)">
+      <ProductArchitecture>arm64</ProductArchitecture>
+    </InstallationTarget>
+    <DotnetTargetVersions>net10.0</DotnetTargetVersions>
+  </Installation>
+  <Prerequisites>
+    <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[17.14,)" DisplayName="Visual Studio core editor" />
+  </Prerequisites>
+</PackageManifest>

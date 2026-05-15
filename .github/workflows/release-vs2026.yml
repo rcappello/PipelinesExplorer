@@ -24,23 +24,27 @@ jobs:
           # Project targets net10.0-windows; keep in sync with the csproj.
           dotnet-version: '10.0.x'
 
-      - name: Derive version from tag and patch vsixmanifest
+      - name: Derive version from tag
+        id: version
         if: startsWith(github.ref, 'refs/tags/vs2026-v')
         shell: pwsh
         run: |
           # Strip the 'vs2026-v' prefix to get a SemVer (e.g. vs2026-v1.2.3 -> 1.2.3).
+          # The version flows into MSBuild via -p:Version below; the new VS Extensibility
+          # SDK reads `Extension.ExtensionAssemblyVersion` from the produced assembly and
+          # writes it into the auto-generated extension.vsixmanifest. Patching
+          # source.extension.vsixmanifest has no effect — the SDK regenerates it.
           $version = $env:GITHUB_REF_NAME -replace '^vs2026-v', ''
-          Write-Host "Setting source.extension.vsixmanifest Version to $version"
-          $manifestPath = 'source.extension.vsixmanifest'
-          [xml]$xml = Get-Content $manifestPath
-          $xml.PackageManifest.Metadata.Identity.Version = $version
-          $xml.Save((Resolve-Path $manifestPath))
+          Write-Host "Building VSIX with Version=$version"
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Restore
         run: dotnet restore PipelinesExplorer.VisualStudio.csproj
 
       - name: Build (Release)
-        run: dotnet build PipelinesExplorer.VisualStudio.csproj -c Release --no-restore
+        # -p:Version sets AssemblyVersion / FileVersion / InformationalVersion, all of
+        # which the SDK can read. Defaults to 1.0.0 for non-tag (manual) runs.
+        run: dotnet build PipelinesExplorer.VisualStudio.csproj -c Release --no-restore -p:Version=${{ steps.version.outputs.version || '1.0.0' }}
 
       - name: Locate VSIX
         id: locate
