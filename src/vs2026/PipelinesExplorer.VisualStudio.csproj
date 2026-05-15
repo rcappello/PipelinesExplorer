@@ -48,7 +48,7 @@
     <!-- JWT helper for extracting the `tid` claim from Microsoft Entra access tokens -->
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.18.*" />
 
-    <!-- YAML parsing for pipeline analysis (templates / PowerShell tasks) -->
+    <!-- YAML parsing for pipeline analysis (templates / script tasks) -->
     <PackageReference Include="YamlDotNet" Version="17.1.*" />
   </ItemGroup>
 

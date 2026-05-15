@@ -1,7 +1,7 @@
 {
 	"_comment": "Machine-translated preview — please review by a native speaker before publishing.",
 	"displayName": "Pipelines Explorer",
-	"description": "Bläddra bland Azure DevOps-pipelines, utforska refererade YAML-mallar och PowerShell-skript och öppna motsvarande lokala filer.",
+	"description": "Bläddra bland Azure DevOps-pipelines, utforska refererade YAML-mallar och skript (PowerShell, Bash, Cmd, Python, Azure CLI) och öppna motsvarande lokala filer.",
 	"command.signInWithMicrosoft.title": "Pipelines Explorer: Logga in med Microsoft",
 	"command.signInWithPat.title": "Pipelines Explorer: Logga in med Personal Access Token",
 	"command.signOut.title": "Pipelines Explorer: Logga ut",

@@ -32,7 +32,7 @@ Haga clic en el icono de la organización para cambiar de inquilino.</value></da
   <data name="Tree_UnknownSource" xml:space="preserve"><value>(origen desconocido)</value></data>
   <data name="Tree_InlineScript" xml:space="preserve"><value>(script en línea)</value></data>
   <data name="Tree_Group_Templates" xml:space="preserve"><value>Plantillas</value></data>
-  <data name="Tree_Group_PowerShellScripts" xml:space="preserve"><value>Scripts de PowerShell</value></data>
+  <data name="Tree_Group_Scripts" xml:space="preserve"><value>Scripts</value></data>
 
   <data name="Context_Open" xml:space="preserve"><value>Abrir</value></data>
   <data name="Context_LinkWorkspace" xml:space="preserve"><value>Vincular carpeta del área de trabajo…</value></data>

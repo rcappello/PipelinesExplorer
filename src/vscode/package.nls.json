@@ -1,6 +1,6 @@
 {
 	"displayName": "Pipelines Explorer",
-	"description": "Browse Azure DevOps pipelines, drill into referenced YAML templates and PowerShell scripts, and jump to the local files in your workspace.",
+	"description": "Browse Azure DevOps pipelines, drill into referenced YAML templates and scripts (PowerShell, Bash, Cmd, Python, Azure CLI), and jump to the local files in your workspace.",
 	"command.signInWithMicrosoft.title": "Pipelines Explorer: Sign in with Microsoft",
 	"command.signInWithPat.title": "Pipelines Explorer: Sign in with Personal Access Token",
 	"command.signOut.title": "Pipelines Explorer: Sign out",

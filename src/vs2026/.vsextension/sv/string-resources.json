@@ -1,6 +1,6 @@
 {
   "PipelinesExplorer.Extension.DisplayName": "Pipelines Explorer",
-  "PipelinesExplorer.Extension.Description": "Bläddra bland Azure DevOps-pipelines, utforska refererade YAML-mallar och PowerShell-skript och hoppa till de lokala filerna i din lösning.",
+  "PipelinesExplorer.Extension.Description": "Bläddra bland Azure DevOps-pipelines, utforska refererade YAML-mallar och skript (PowerShell, Bash, Cmd, Python, Azure CLI) och hoppa till de lokala filerna i din lösning.",
   "PipelinesExplorer.ToolWindow.Title": "Pipelines Explorer",
   "PipelinesExplorer.Command.OpenToolWindow.DisplayName": "Pipelines Explorer",
   "PipelinesExplorer.Command.SignInMicrosoft.DisplayName": "Pipelines Explorer: Logga in med Microsoft",

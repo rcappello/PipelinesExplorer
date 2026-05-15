@@ -1,6 +1,6 @@
 # Pipelines Explorer for Visual Studio 2026
 
-Browse Azure DevOps pipelines without leaving Visual Studio. Drill into the YAML graph, jump to referenced templates and PowerShell scripts, and open the matching files inside your loaded solution — all from a dedicated tool window.
+Browse Azure DevOps pipelines without leaving Visual Studio. Drill into the YAML graph, jump to referenced templates and scripts (PowerShell, Bash, Cmd, Python, Azure CLI), and open the matching files inside your loaded solution — all from a dedicated tool window.
 
 ## Features
 
@@ -8,7 +8,7 @@ Browse Azure DevOps pipelines without leaving Visual Studio. Drill into the YAML
 - **Multi-tenant sign-in** with Microsoft Entra (interactive + silent token cache); switch tenant from the toolbar.
 - **PAT fallback** for Azure DevOps organizations that don't accept Entra tokens.
 - **Per-repository branch override** (vertical scrollable picker) when you need to inspect a non-default branch.
-- **Workspace ↔ pipeline linking**: bind a project/repo node to a folder under your loaded solution and open referenced YAML / PowerShell files with a single click.
+- **Workspace ↔ pipeline linking**: bind a project/repo node to a folder under your loaded solution and open referenced YAML / script files with a single click.
 - **Localized UI** in English (default), Italian, French, German, Spanish, and Swedish — follows the Visual Studio display language.
 - **Accessible by design**: keyboard-only navigation, screen reader names, theme-aware brushes (light / dark / high-contrast).
 

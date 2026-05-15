@@ -18,8 +18,9 @@ or `vs2026`.
   release workflow to `release-vscode.yml` (now triggered by `vscode-v*` tags).
 - `[vs2026]` Initial scaffold of the Visual Studio 2026 extension using the
   Microsoft.VisualStudio.Extensibility SDK (out-of-process, .NET 8, WPF).
+- `[vscode]` `[vs2026]` **0.2.0** — Broaden script-task detection beyond PowerShell to include Bash, Cmd/Batch, Python, Azure CLI and the shorthand step keys (`script:`, `bash:`, `pwsh:`, `powershell:`); rename the *PowerShell scripts* tree group to **Scripts**; add per-kind icons. See [`src/vscode/CHANGELOG.md`](src/vscode/CHANGELOG.md) for the full VS Code entry.
 
 ## VS Code client
 
 See [`src/vscode/CHANGELOG.md`](src/vscode/CHANGELOG.md) for the full history
-of the VS Code extension (latest: 0.1.1).
+of the VS Code extension (latest: 0.2.0).

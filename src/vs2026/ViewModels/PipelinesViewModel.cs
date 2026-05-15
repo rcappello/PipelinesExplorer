@@ -740,7 +740,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     }
 
     private ScriptNode BuildScriptNode(
-        PowerShellRef reference, AdoOrganization org, AdoProject project,
+        ScriptRef reference, AdoOrganization org, AdoProject project,
         string pipelineRepoKey, string baseDir)
     {
         var node = new ScriptNode(reference);

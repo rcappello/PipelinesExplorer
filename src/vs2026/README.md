@@ -1,6 +1,6 @@
 # Pipelines Explorer — Visual Studio 2026 client
 
-Visual Studio 2026 port of [Pipelines Explorer](../../README.md) — feature parity with the [VS Code client](../vscode/) for browsing Azure DevOps pipelines and jumping into the underlying YAML / PowerShell.
+Visual Studio 2026 port of [Pipelines Explorer](../../README.md) — feature parity with the [VS Code client](../vscode/) for browsing Azure DevOps pipelines and jumping into the underlying YAML / scripts.
 
 ## What it does
 
@@ -9,8 +9,10 @@ Visual Studio 2026 port of [Pipelines Explorer](../../README.md) — feature par
   - **Personal Access Token** fallback (Build Read + Code Read), persisted in Windows Credential Manager.
   - Tenant picker driven by `https://management.azure.com/tenants?api-version=2022-12-01`.
 - Tool window with a hierarchical tree:
-  - `Organization → Project → Repository → Pipeline → Templates / PowerShell scripts`.
+  - `Organization → Project → Repository → Pipeline → Templates / Scripts`.
   - Same-repo template references are recursively analysed and expanded.
+  - Templates from external repository resources show as leaves (with the `@alias`).
+  - Scripts include PowerShell, Bash, Cmd/Batch, Python and Azure CLI tasks (file or inline), plus the shorthand step keys `script:`, `bash:`, `pwsh:`, `powershell:`.
   - Templates from external repository resources show as leaves (with the `@alias`).
 - Right-click context menu:
   - **Open** on Pipeline / Template / Script — opens the file in Visual Studio when the workspace is linked, falls back to "Re-link / Open in browser" otherwise.
@@ -63,7 +65,7 @@ src/vs2026/
 ├── AzureDevOps/                    # AdoClient + REST DTOs
 ├── Commands/                       # 8 menu commands (sign in/out, refresh, reset, …)
 ├── Services/
-│   ├── PipelineYamlAnalyzer.cs     # template + PowerShell task extraction (YamlDotNet)
+│   ├── PipelineYamlAnalyzer.cs     # template + script task extraction (YamlDotNet)
 │   ├── OpenItemService.cs          # resolves repo paths to local files, opens in VS
 │   ├── WorkspaceLinkService.cs     # repo ↔ folder mapping
 │   ├── RepoBranchService.cs        # per-repo branch override

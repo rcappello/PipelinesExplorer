@@ -54,7 +54,7 @@ public static class Strings
     public static string Tree_UnknownSource => Get(nameof(Tree_UnknownSource));
     public static string Tree_InlineScript => Get(nameof(Tree_InlineScript));
     public static string Tree_Group_Templates => Get(nameof(Tree_Group_Templates));
-    public static string Tree_Group_PowerShellScripts => Get(nameof(Tree_Group_PowerShellScripts));
+    public static string Tree_Group_Scripts => Get(nameof(Tree_Group_Scripts));
 
     // Context menu
     public static string Context_Open => Get(nameof(Context_Open));

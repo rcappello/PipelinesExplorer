@@ -32,7 +32,7 @@ Cliquez sur l'icône de l'organisation pour changer de locataire.</value></data>
   <data name="Tree_UnknownSource" xml:space="preserve"><value>(source inconnue)</value></data>
   <data name="Tree_InlineScript" xml:space="preserve"><value>(script en ligne)</value></data>
   <data name="Tree_Group_Templates" xml:space="preserve"><value>Modèles</value></data>
-  <data name="Tree_Group_PowerShellScripts" xml:space="preserve"><value>Scripts PowerShell</value></data>
+  <data name="Tree_Group_Scripts" xml:space="preserve"><value>Scripts</value></data>
 
   <data name="Context_Open" xml:space="preserve"><value>Ouvrir</value></data>
   <data name="Context_LinkWorkspace" xml:space="preserve"><value>Lier le dossier de l'espace de travail…</value></data>

@@ -1,7 +1,7 @@
 {
 	"_comment": "Machine-translated preview — please review by a native speaker before publishing.",
 	"displayName": "Pipelines Explorer",
-	"description": "Durchsuchen Sie Azure DevOps-Pipelines, untersuchen Sie referenzierte YAML-Vorlagen und PowerShell-Skripte und öffnen Sie die zugehörigen lokalen Dateien.",
+	"description": "Durchsuchen Sie Azure DevOps-Pipelines, untersuchen Sie referenzierte YAML-Vorlagen und Skripte (PowerShell, Bash, Cmd, Python, Azure CLI) und öffnen Sie die zugehörigen lokalen Dateien.",
 	"command.signInWithMicrosoft.title": "Pipelines Explorer: Mit Microsoft anmelden",
 	"command.signInWithPat.title": "Pipelines Explorer: Mit Personal Access Token anmelden",
 	"command.signOut.title": "Pipelines Explorer: Abmelden",

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { AdoClient, AdoOrganization, AdoPipeline, AdoPipelineDetail, AdoProject, AdoUnauthorizedError } from './adoClient';
 import { AuthService } from './authService';
 import { LoggingService } from './LoggingService';
-import { PipelineAnalysis, PipelineYamlAnalyzer, PowerShellRef, TemplateRef } from './pipelineYamlAnalyzer';
+import { PipelineAnalysis, PipelineYamlAnalyzer, ScriptKind, ScriptRef, TemplateRef } from './pipelineYamlAnalyzer';
 import { RepoBranchService } from './repoBranchService';
 import { WorkspaceLinkService } from './workspaceLinkService';
 
@@ -165,14 +165,14 @@ export class GroupNode extends vscode.TreeItem {
 		public readonly group: GroupKind,
 		public readonly analysis: PipelineAnalysis,
 	) {
-		super(group === 'templates' ? vscode.l10n.t('Templates') : vscode.l10n.t('PowerShell scripts'),
+		super(group === 'templates' ? vscode.l10n.t('Templates') : vscode.l10n.t('Scripts'),
 			vscode.TreeItemCollapsibleState.Collapsed);
 		this.id = `${parent.id}:group:${group}`;
 		this.contextValue = `pipelinesexplorer.group.${group}`;
-		this.iconPath = new vscode.ThemeIcon(group === 'templates' ? 'files' : 'terminal-powershell');
+		this.iconPath = new vscode.ThemeIcon(group === 'templates' ? 'files' : 'terminal');
 		const count = group === 'templates' ? analysis.templates.length : analysis.scripts.length;
 		this.description = String(count);
-		const groupLabel = group === 'templates' ? vscode.l10n.t('Templates') : vscode.l10n.t('PowerShell scripts');
+		const groupLabel = group === 'templates' ? vscode.l10n.t('Templates') : vscode.l10n.t('Scripts');
 		this.accessibilityInformation = {
 			label: vscode.l10n.t('Group {0}, {1} items', groupLabel, count),
 		};
@@ -223,7 +223,7 @@ export class TemplateItemNode extends vscode.TreeItem {
 
 export class ScriptItemNode extends vscode.TreeItem {
 	readonly kind = 'scriptItem' as const;
-	constructor(public readonly parent: GroupNode, public readonly ref: PowerShellRef) {
+	constructor(public readonly parent: GroupNode, public readonly ref: ScriptRef) {
 		const itemLabel = ref.filePath
 			? basename(ref.filePath)
 			: (ref.inline ? vscode.l10n.t('(inline script)') : vscode.l10n.t('(unknown source)'));
@@ -234,8 +234,8 @@ export class ScriptItemNode extends vscode.TreeItem {
 		// every visual entry routes clicks to a single backing node.
 		const idTail = ref.filePath
 			?? (ref.inline ? `inline@${ref.line ?? '?'}` : 'unknown');
-		this.id = `${parent.id}:ps:${ref.task}:${idTail}`;
-		this.iconPath = new vscode.ThemeIcon(ref.filePath ? 'file' : 'note');
+		this.id = `${parent.id}:script:${ref.task}:${ref.kind}:${idTail}`;
+		this.iconPath = new vscode.ThemeIcon(iconForScriptKind(ref.kind));
 		this.description = ref.task;
 		this.tooltip = ref.filePath
 			? `${ref.task} → ${ref.filePath}`
@@ -258,6 +258,18 @@ function basename(p: string): string {
 	const clean = p.replace(/\\/g, '/').replace(/\/+$/, '');
 	const i = clean.lastIndexOf('/');
 	return i >= 0 ? clean.slice(i + 1) : clean;
+}
+
+/** Pick a VS Code codicon id for a given script kind. */
+function iconForScriptKind(kind: ScriptKind): string {
+	switch (kind) {
+		case 'powershell': return 'terminal-powershell';
+		case 'bash': return 'terminal-bash';
+		case 'cmd': return 'terminal-cmd';
+		case 'python': return 'snake';
+		case 'azurecli': return 'azure';
+		default: return 'terminal';
+	}
 }
 
 /** Resolve a (possibly relative or repo-absolute) ref path against a repo dir. */
@@ -437,7 +449,7 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 					));
 				}
 				if (element.analysis.scripts.length === 0) {
-					return [new InfoNode(element.id!, vscode.l10n.t('No PowerShell scripts referenced'))];
+					return [new InfoNode(element.id!, vscode.l10n.t('No scripts referenced'))];
 				}
 				return element.analysis.scripts.map(s => new ScriptItemNode(element, s));
 			}

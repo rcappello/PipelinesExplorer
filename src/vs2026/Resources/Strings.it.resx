@@ -32,7 +32,7 @@ Fai clic sull'icona dell'organizzazione per cambiare tenant.</value></data>
   <data name="Tree_UnknownSource" xml:space="preserve"><value>(origine sconosciuta)</value></data>
   <data name="Tree_InlineScript" xml:space="preserve"><value>(script inline)</value></data>
   <data name="Tree_Group_Templates" xml:space="preserve"><value>Template</value></data>
-  <data name="Tree_Group_PowerShellScripts" xml:space="preserve"><value>Script PowerShell</value></data>
+  <data name="Tree_Group_Scripts" xml:space="preserve"><value>Script</value></data>
 
   <data name="Context_Open" xml:space="preserve"><value>Apri</value></data>
   <data name="Context_LinkWorkspace" xml:space="preserve"><value>Collega cartella dell'area di lavoro…</value></data>

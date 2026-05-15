@@ -4,6 +4,18 @@ All notable changes to **Pipelines Explorer** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-05-15
+
+### Added
+
+- **Broader script-task detection.** The pipeline tree now surfaces every script-running step, not just PowerShell. Recognised tasks: `PowerShell@2`, `AzurePowerShell@5`, `PowerShellOnTargetMachines@3`, `Bash@3`, `ShellScript@2`, `CmdLine@2`, `BatchScript@1`, `AzureCLI@2`, `PythonScript@0`. Shorthand step keys are also recognised: `script:` (cmd/bash on the agent), `bash:`, `pwsh:`, `powershell:`. The `BatchScript@1` `filename` input is resolved as a file path, and `AzureCLI@2` is refined to PowerShell / Bash / Cmd based on its `scriptType`.
+- **Per-kind icons** under the new **Scripts** group: PowerShell (`terminal-powershell`), Bash (`terminal-bash`), Cmd / Batch (`terminal-cmd`), Python (`snake`), Azure CLI (`azure`), and a generic terminal icon as fallback.
+
+### Changed
+
+- **Tree group renamed.** The previous *PowerShell scripts* group is now simply **Scripts**, since it can contain non-PowerShell entries. Localized in every supported language.
+- The *No PowerShell scripts referenced* placeholder becomes *No scripts referenced*.
+
 ## [0.1.1] - 2026-05-14
 
 ### Fixed

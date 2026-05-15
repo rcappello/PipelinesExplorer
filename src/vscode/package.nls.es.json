@@ -1,7 +1,7 @@
 {
 	"_comment": "Machine-translated preview — please review by a native speaker before publishing.",
 	"displayName": "Pipelines Explorer",
-	"description": "Explora las pipelines de Azure DevOps, navega por las plantillas YAML y los scripts de PowerShell referenciados y abre los archivos locales correspondientes.",
+	"description": "Explora las pipelines de Azure DevOps, navega por las plantillas YAML y los scripts referenciados (PowerShell, Bash, Cmd, Python, Azure CLI) y abre los archivos locales correspondientes.",
 	"command.signInWithMicrosoft.title": "Pipelines Explorer: Iniciar sesión con Microsoft",
 	"command.signInWithPat.title": "Pipelines Explorer: Iniciar sesión con Personal Access Token",
 	"command.signOut.title": "Pipelines Explorer: Cerrar sesión",

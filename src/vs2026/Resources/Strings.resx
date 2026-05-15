@@ -71,7 +71,7 @@ Click the organization icon to switch tenant.</value><comment>{0} = account UPN,
   <data name="Tree_UnknownSource" xml:space="preserve"><value>(unknown source)</value></data>
   <data name="Tree_InlineScript" xml:space="preserve"><value>(inline script)</value></data>
   <data name="Tree_Group_Templates" xml:space="preserve"><value>Templates</value></data>
-  <data name="Tree_Group_PowerShellScripts" xml:space="preserve"><value>PowerShell scripts</value></data>
+  <data name="Tree_Group_Scripts" xml:space="preserve"><value>Scripts</value></data>
 
   <!-- ==== Tree context menu ==== -->
   <data name="Context_Open" xml:space="preserve"><value>Open</value></data>

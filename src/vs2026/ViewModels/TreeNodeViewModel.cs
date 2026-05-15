@@ -302,7 +302,7 @@ public sealed class GroupNode : TreeNodeViewModel
     public GroupNode(GroupKind group, int count) : base(TreeNodeKind.Group)
     {
         Group = group;
-        Label = group == GroupKind.Templates ? Strings.Tree_Group_Templates : Strings.Tree_Group_PowerShellScripts;
+        Label = group == GroupKind.Templates ? Strings.Tree_Group_Templates : Strings.Tree_Group_Scripts;
         Description = count.ToString(CultureInfo.InvariantCulture);
     }
 
@@ -311,7 +311,7 @@ public sealed class GroupNode : TreeNodeViewModel
     [DataMember]
     public override string IconMoniker => Group == GroupKind.Templates
         ? "KnownMonikers.FolderClosed"
-        : "KnownMonikers.PowershellFile";
+        : "KnownMonikers.Console";
 }
 
 [DataContract]
@@ -398,7 +398,7 @@ public sealed class ScriptNode : TreeNodeViewModel
 {
     private AsyncCommand? _openCommand;
 
-    public ScriptNode(PowerShellRef reference) : base(TreeNodeKind.Script)
+    public ScriptNode(ScriptRef reference) : base(TreeNodeKind.Script)
     {
         Reference = reference;
         Label = reference.FilePath is not null
@@ -410,12 +410,20 @@ public sealed class ScriptNode : TreeNodeViewModel
             : $"{reference.Task} ({(reference.Inline ? $"inline{(reference.Line is int l ? $" @ line {l}" : "")}" : "unknown")})";
     }
 
-    public PowerShellRef Reference { get; }
+    public ScriptRef Reference { get; }
 
     [DataMember]
-    public override string IconMoniker => Reference.FilePath is not null
-        ? "KnownMonikers.PowershellFile"
-        : "KnownMonikers.PowershellInteractiveWindow";
+    public override string IconMoniker => IconForKind(Reference.Kind, Reference.Inline);
+
+    private static string IconForKind(ScriptKind kind, bool inline) => kind switch
+    {
+        ScriptKind.PowerShell => inline ? "KnownMonikers.PowershellInteractiveWindow" : "KnownMonikers.PowershellFile",
+        ScriptKind.Bash => "KnownMonikers.BashFile",
+        ScriptKind.Cmd => "KnownMonikers.BATFile",
+        ScriptKind.Python => "KnownMonikers.PYFileNode",
+        ScriptKind.AzureCli => "KnownMonikers.AzureLogo",
+        _ => "KnownMonikers.Console",
+    };
 
     [DataMember]
     public AsyncCommand? OpenCommand

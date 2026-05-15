@@ -1,6 +1,6 @@
 # Pipelines Explorer
 
-> Browse Azure DevOps pipelines, drill into referenced YAML templates and PowerShell scripts, and jump to the local files in your editor — from VS Code **and** Visual Studio 2026.
+> Browse Azure DevOps pipelines, drill into referenced YAML templates and scripts (PowerShell, Bash, Cmd, Python, Azure CLI), and jump to the local files in your editor — from VS Code **and** Visual Studio 2026.
 
 This repository hosts two client implementations of the same Pipelines Explorer experience, sharing a common Azure DevOps backend model and Microsoft Entra ID + PAT authentication design.
 

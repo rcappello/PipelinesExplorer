@@ -1,10 +1,10 @@
 # Pipelines Explorer
 
-> Browse Azure DevOps pipelines, drill into referenced YAML templates and PowerShell scripts, and jump to the local files in your workspace.
+> Browse Azure DevOps pipelines, drill into referenced YAML templates and scripts (PowerShell, Bash, Cmd, Python, Azure CLI), and jump to the local files in your workspace.
 
 **Pipelines Explorer** brings your Azure DevOps pipelines into the VS Code activity bar.
 Navigate organizations → projects → repositories → pipelines, then expand each pipeline
-to inspect every YAML template and PowerShell task it references — recursively. Link
+to inspect every YAML template and script task it references — recursively. Link
 your local repository clone to the matching tree node and a single click opens the
 actual file in your editor.
 
@@ -14,7 +14,7 @@ actual file in your editor.
 
 - 🔐 **Two sign-in modes** — Microsoft Entra ID single sign-on or a classic Azure DevOps Personal Access Token. When signed in with Microsoft, a top-of-tree row shows the active account and tenant, and a button in the view title bar opens a tenant picker populated with the tenants your account can access. Expired or revoked tokens are detected automatically: the extension clears the stored credential and prompts you to sign in again.
 - 🌳 **Org → Project → Repository → Pipeline** tree, with friendly empty states (`No pipelines in this project`, missing-permission warnings, etc.).
-- 🔍 **Recursive YAML analysis** — every `template:` reference and every `PowerShell@2`, `AzurePowerShell@5` and `AzureCLI@2` task is surfaced under each pipeline. Same-repo templates can be expanded to reveal *their* templates and scripts. Empty groups are hidden.
+- 🔍 **Recursive YAML analysis** — every `template:` reference and every script-running task is surfaced under each pipeline. Recognised tasks include `PowerShell@2`, `AzurePowerShell@5`, `PowerShellOnTargetMachines@3`, `Bash@3`, `ShellScript@2`, `CmdLine@2`, `BatchScript@1`, `AzureCLI@2`, `PythonScript@0`, plus the shorthand step keys `script:`, `bash:`, `pwsh:`, `powershell:`. Same-repo templates can be expanded to reveal *their* templates and scripts. Empty groups are hidden.
 - 🔗 **Link a workspace folder to a repository** and click any pipeline / template / script to open the local file. Pipeline variables like `$(System.DefaultWorkingDirectory)` and `$(Build.SourcesDirectory)`, repo-absolute paths and relative `../` segments are all resolved automatically.
 - 📋 **Filename-first labels** with full repo paths in the tooltip, so the tree stays readable on long deployment templates.
 
@@ -31,12 +31,14 @@ Pipelines
             │   │   │   ├── Templates (2)
             │   │   │   │   ├── prepare-parameters.yml
             │   │   │   │   └── deploy-infrastructure.yml
-            │   │   │   └── PowerShell scripts (1)
+            │   │   │   └── Scripts (1)
             │   │   │       └── Get-WorkloadPath.ps1     PowerShell@2
             │   │   ├── build.yml
             │   │   └── lint.yml
-            │   └── PowerShell scripts (2)
+            │   └── Scripts (4)
             │       ├── New-EntraIdWorkload.ps1   AzurePowerShell@5
+            │       ├── deploy.sh                 Bash@3
+            │       ├── (inline script)           bash
             │       └── (inline script)           PowerShell@2
             └── …
 ```
@@ -47,7 +49,7 @@ Pipelines
 
 1. Install the `.vsix`:
    ```powershell
-   code --install-extension vscode-pipelinesexplorer-0.1.1.vsix
+   code --install-extension vscode-pipelinesexplorer-0.2.0.vsix
    ```
    (Or, once published, install from the Marketplace.)
 2. Open the **Pipelines Explorer** view in the activity bar.
@@ -72,7 +74,7 @@ To remove a link: right-click the repository → **Unlink Workspace Folder**.
 
 ### Choosing a branch (per repository)
 
-By default Pipelines Explorer reads pipeline YAML, templates and PowerShell scripts from each repository's **default branch** on Azure DevOps. You can override the branch on a per-repository basis:
+By default Pipelines Explorer reads pipeline YAML, templates and scripts from each repository's **default branch** on Azure DevOps. You can override the branch on a per-repository basis:
 
 1. Right-click a repository node → **Select Branch…**.
 2. Pick a branch from the list, or choose **Use default branch** to clear the override.
@@ -141,7 +143,7 @@ Pipelines Explorer follows the
 
 ## Known limitations
 
-- **YAML is read from a single branch per repository on Azure DevOps** — the default branch, or the branch chosen via **Select Branch…** on the repository node. The tree (templates, PowerShell scripts, line numbers) reflects that branch. If your local clone is on a different branch, opening a script may fail with *"File not found in linked workspace"*; either change the override (right-click the repo → **Select Branch…**) or align the local clone (`git switch` / `git pull`).
+- **YAML is read from a single branch per repository on Azure DevOps** — the default branch, or the branch chosen via **Select Branch…** on the repository node. The tree (templates, scripts, line numbers) reflects that branch. If your local clone is on a different branch, opening a script may fail with *"File not found in linked workspace"*; either change the override (right-click the repo → **Select Branch…**) or align the local clone (`git switch` / `git pull`).
 - Cross-repo template references (`template: file.yml@otherRepo`) are shown as leaves in the tree (no recursion). They can still be opened locally if a workspace folder has been linked to a repo with the same alias.
 - Only `azureReposGit` repositories are inspected for YAML content. GitHub-hosted pipeline definitions are listed but not expanded.
 - Pipeline variables other than `System.DefaultWorkingDirectory`, `Build.SourcesDirectory`, `Pipeline.Workspace` and `Agent.BuildDirectory` are not interpolated when resolving local file paths.

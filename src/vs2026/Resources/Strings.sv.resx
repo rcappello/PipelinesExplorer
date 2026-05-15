@@ -32,7 +32,7 @@ Klicka på organisationsikonen för att byta klientorganisation.</value></data>
   <data name="Tree_UnknownSource" xml:space="preserve"><value>(okänd källa)</value></data>
   <data name="Tree_InlineScript" xml:space="preserve"><value>(infogat skript)</value></data>
   <data name="Tree_Group_Templates" xml:space="preserve"><value>Mallar</value></data>
-  <data name="Tree_Group_PowerShellScripts" xml:space="preserve"><value>PowerShell-skript</value></data>
+  <data name="Tree_Group_Scripts" xml:space="preserve"><value>Skript</value></data>
 
   <data name="Context_Open" xml:space="preserve"><value>Öppna</value></data>
   <data name="Context_LinkWorkspace" xml:space="preserve"><value>Länka arbetsytemapp…</value></data>
