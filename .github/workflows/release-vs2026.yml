@@ -77,7 +77,7 @@ jobs:
     # No reviewer gate (intentional — tag push is the gate).
     environment:
       name: marketplace
-      url: https://marketplace.visualstudio.com/items?itemName=RiccardoCappello.PipelinesExplorer.VisualStudio
+      url: https://marketplace.visualstudio.com/items?itemName=RiccardoCappello.PipelinesExplorer-VisualStudio
     steps:
       - uses: actions/checkout@v6
 
