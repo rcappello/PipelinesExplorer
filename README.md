@@ -9,7 +9,7 @@ This repository hosts two client implementations of the same Pipelines Explorer 
 | Client | Path | Tech | Status |
 | --- | --- | --- | --- |
 | **VS Code extension** | [`src/vscode/`](src/vscode/) | TypeScript, esbuild, `vsce` | Stable — see [`src/vscode/README.md`](src/vscode/README.md) |
-| **Visual Studio 2026 extension** | [`src/vs2026/`](src/vs2026/) | C# / .NET 8 / WPF, Microsoft.VisualStudio.Extensibility SDK | Scaffold — see [`src/vs2026/README.md`](src/vs2026/README.md) |
+| **Visual Studio 2026 extension** | [`src/vs2026/`](src/vs2026/) | C# / .NET 10 / WPF, Microsoft.VisualStudio.Extensibility SDK | Scaffold — see [`src/vs2026/README.md`](src/vs2026/README.md) |
 
 Both clients ship from this repo independently, with their own build pipelines, releases and CHANGELOG entries.
 

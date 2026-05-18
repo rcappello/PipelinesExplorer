@@ -100,5 +100,5 @@ jobs:
         with:
           extension-file: ${{ steps.resolve.outputs.vsix }}
           publish-manifest-file: src/vs2026/publishManifest.json
-          personal-access-token: ${{ secrets.VC_MARKETPLACE_PAT }}
+          personal-access-code: ${{ secrets.VC_MARKETPLACE_PAT }}
 
