@@ -15,7 +15,7 @@ internal sealed class ExtensionEntrypoint : Extension
         Metadata = new(
             id: "PipelinesExplorer.VisualStudio.f6c47e2e-5b33-4d3a-8d79-2f5e1c1b9a01",
             version: this.ExtensionAssemblyVersion,
-            publisherName: "RiccardoCappello",
+            publisherName: "Riccardo Cappello",
             displayName: "Pipelines Explorer",
             description: "Browse Azure DevOps pipelines, drill into referenced YAML templates and scripts (PowerShell, Bash, Cmd, Python, Azure CLI), and jump to the local files in your solution.")
         {

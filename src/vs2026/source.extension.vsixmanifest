@@ -6,7 +6,7 @@
     <Identity Id="PipelinesExplorer.VisualStudio.f6c47e2e-5b33-4d3a-8d79-2f5e1c1b9a01"
               Version="0.2.0"
               Language="en-US"
-              Publisher="RiccardoCappello" />
+              Publisher="Riccardo Cappello" />
     <DisplayName>Pipelines Explorer</DisplayName>
     <Description xml:space="preserve">Browse Azure DevOps pipelines, drill into referenced YAML templates and scripts (PowerShell, Bash, Cmd, Python, Azure CLI), and jump to the local files in your solution — directly from Visual Studio 2026.</Description>
     <MoreInfo>https://github.com/rcappello/PipelinesExplorer</MoreInfo>

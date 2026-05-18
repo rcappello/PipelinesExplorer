@@ -1,6 +1,6 @@
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011">
   <Metadata>
-    <Identity Id="PipelinesExplorer.VisualStudio.f6c47e2e-5b33-4d3a-8d79-2f5e1c1b9a01" Version="1.0.0.0" Language="en-US" Publisher="rcappello" />
+    <Identity Id="PipelinesExplorer.VisualStudio.f6c47e2e-5b33-4d3a-8d79-2f5e1c1b9a01" Version="1.0.0.0" Language="en-US" Publisher="Riccardo Cappello" />
     <DisplayName>%PipelinesExplorer.Extension.DisplayName%</DisplayName>
     <Description>%PipelinesExplorer.Extension.Description%</Description>
     <Preview>true</Preview>
