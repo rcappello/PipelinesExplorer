@@ -49,7 +49,7 @@ Cliquez sur l'icône de l'organisation pour changer de locataire.</value></data>
   <data name="BranchPicker_Failed_Format" xml:space="preserve"><value>La sélection de la branche a échoué : {0}</value></data>
   <data name="BranchPicker_UseDefault" xml:space="preserve"><value>(utiliser la branche par défaut)</value></data>
   <data name="BranchPicker_Title" xml:space="preserve"><value>Sélectionner une branche</value></data>
-  <data name="Reset_Confirm" xml:space="preserve"><value>Cette opération efface la session mise en cache, tous les dossiers d'espace de travail liés et les substitutions de branche. Continuer ?</value></data>
+  <data name="Reset_Confirm" xml:space="preserve"><value>Cette opération supprimera le Personal Access Token stocké et oubliera la méthode de connexion choisie. Les dossiers d'espace de travail liés et les substitutions de branche seront conservés. Continuer ?</value></data>
   <data name="Reset_Failed_Format" xml:space="preserve"><value>La réinitialisation a échoué : {0}</value></data>
 
   <data name="MicrosoftSignIn_Failed_Format" xml:space="preserve"><value>La connexion Microsoft a échoué : {0}</value></data>
@@ -67,4 +67,11 @@ Cliquez sur l'icône de l'organisation pour changer de locataire.</value></data>
   <data name="A11y_PatField_Name" xml:space="preserve"><value>Jeton d'accès personnel</value></data>
   <data name="A11y_TenantPicker_ComboBox_Name" xml:space="preserve"><value>Locataire Microsoft Entra</value></data>
   <data name="A11y_BranchPicker_ComboBox_Name" xml:space="preserve"><value>Branche</value></data>
+
+  <data name="LinkWorkspace_DetectedBranch_Format" xml:space="preserve"><value>Le clone lié de « {0} » est sur la branche « {1} ». Utiliser cette branche lors de la lecture du YAML depuis Azure DevOps ?</value></data>
+  <data name="LinkWorkspace_UseThisBranch" xml:space="preserve"><value>Utiliser cette branche</value></data>
+  <data name="LinkWorkspace_KeepDefaultBranch" xml:space="preserve"><value>Conserver la branche par défaut</value></data>
+  <data name="Unauthorized_Message_Format" xml:space="preserve"><value>Pipelines Explorer : {0}. Vous avez été déconnecté.</value></data>
+  <data name="Unauthorized_SignInMicrosoft" xml:space="preserve"><value>Se connecter avec Microsoft</value></data>
+  <data name="Unauthorized_SignInPat" xml:space="preserve"><value>Se connecter avec un PAT</value></data>
 </root>

@@ -44,7 +44,10 @@ jobs:
       - name: Build (Release)
         # -p:Version sets AssemblyVersion / FileVersion / InformationalVersion, all of
         # which the SDK can read. Defaults to 1.0.0 for non-tag (manual) runs.
-        run: dotnet build PipelinesExplorer.VisualStudio.csproj -c Release --no-restore -p:Version=${{ steps.version.outputs.version || '1.0.0' }}
+        # -p:VsixIncludeVersionInName=true opts in to the versioned .vsix filename
+        # (PipelinesExplorer.VisualStudio-<version>.vsix). Local builds keep the
+        # stable name so F5 / experimental hive deploys stay deterministic.
+        run: dotnet build PipelinesExplorer.VisualStudio.csproj -c Release --no-restore -p:Version=${{ steps.version.outputs.version || '1.0.0' }} -p:VsixIncludeVersionInName=true
 
       - name: Locate VSIX
         id: locate

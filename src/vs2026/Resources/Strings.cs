@@ -96,4 +96,14 @@ public static class Strings
     public static string A11y_PatField_Name => Get(nameof(A11y_PatField_Name));
     public static string A11y_TenantPicker_ComboBox_Name => Get(nameof(A11y_TenantPicker_ComboBox_Name));
     public static string A11y_BranchPicker_ComboBox_Name => Get(nameof(A11y_BranchPicker_ComboBox_Name));
+
+    // Link workspace -> auto-detected branch prompt (post-link offer)
+    public static string LinkWorkspace_DetectedBranch_Format => Get(nameof(LinkWorkspace_DetectedBranch_Format));
+    public static string LinkWorkspace_UseThisBranch => Get(nameof(LinkWorkspace_UseThisBranch));
+    public static string LinkWorkspace_KeepDefaultBranch => Get(nameof(LinkWorkspace_KeepDefaultBranch));
+
+    // Unauthorized (401/403) recovery prompt
+    public static string Unauthorized_Message_Format => Get(nameof(Unauthorized_Message_Format));
+    public static string Unauthorized_SignInMicrosoft => Get(nameof(Unauthorized_SignInMicrosoft));
+    public static string Unauthorized_SignInPat => Get(nameof(Unauthorized_SignInPat));
 }

@@ -246,18 +246,23 @@
             </TreeView.ItemContainerStyle>
             <TreeView.ItemTemplate>
                 <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                    <StackPanel Orientation="Horizontal">
+                    <StackPanel Orientation="Horizontal"
+                                ContextMenuService.IsEnabled="{Binding HasContextMenu}">
                         <StackPanel.ContextMenu>
                             <ContextMenu>
                                 <MenuItem Header="{Binding Loc.Context_Open}"
-                                          Command="{Binding OpenCommand}" />
-                                <Separator />
+                                          Command="{Binding OpenCommand}"
+                                          Visibility="{Binding CanOpen, Converter={StaticResource BoolToVis}}" />
+                                <Separator Visibility="{Binding HasWorkspaceActions, Converter={StaticResource BoolToVis}}" />
                                 <MenuItem Header="{Binding Loc.Context_LinkWorkspace}"
-                                          Command="{Binding LinkCommand}" />
+                                          Command="{Binding LinkCommand}"
+                                          Visibility="{Binding CanLinkWorkspace, Converter={StaticResource BoolToVis}}" />
                                 <MenuItem Header="{Binding Loc.Context_UnlinkWorkspace}"
-                                          Command="{Binding UnlinkCommand}" />
+                                          Command="{Binding UnlinkCommand}"
+                                          Visibility="{Binding CanUnlinkWorkspace, Converter={StaticResource BoolToVis}}" />
                                 <MenuItem Header="{Binding Loc.Context_SelectBranch}"
-                                          Command="{Binding SelectBranchCommand}" />
+                                          Command="{Binding SelectBranchCommand}"
+                                          Visibility="{Binding CanSelectBranch, Converter={StaticResource BoolToVis}}" />
                             </ContextMenu>
                         </StackPanel.ContextMenu>
                         <vs:Image Source="{Binding IconMoniker}"

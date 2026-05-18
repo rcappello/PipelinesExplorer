@@ -93,7 +93,7 @@ Click the organization icon to switch tenant.</value><comment>{0} = account UPN,
   <data name="BranchPicker_Title" xml:space="preserve"><value>Select branch</value></data>
 
   <!-- ==== Reset confirmation ==== -->
-  <data name="Reset_Confirm" xml:space="preserve"><value>This wipes the cached session, all linked workspace folders and branch overrides. Continue?</value></data>
+  <data name="Reset_Confirm" xml:space="preserve"><value>This will delete the stored Personal Access Token and forget the chosen sign-in method. Linked workspace folders and branch overrides will be preserved. Continue?</value></data>
   <data name="Reset_Failed_Format" xml:space="preserve"><value>Reset failed: {0}</value></data>
 
   <!-- ==== Generic error / failure prompts ==== -->
@@ -107,6 +107,14 @@ Click the organization icon to switch tenant.</value><comment>{0} = account UPN,
   <data name="OpenItem_RelinkWorkspace" xml:space="preserve"><value>Re-link workspace</value></data>
   <data name="OpenItem_OpenInBrowser" xml:space="preserve"><value>Open in browser</value></data>
   <data name="OpenItem_PickFolder_Title_Format" xml:space="preserve"><value>Link a workspace folder to repository "{0}"</value></data>
+  <data name="LinkWorkspace_DetectedBranch_Format" xml:space="preserve"><value>The linked clone of "{0}" is on branch "{1}". Use this branch when reading YAML from Azure DevOps?</value></data>
+  <data name="LinkWorkspace_UseThisBranch" xml:space="preserve"><value>Use this branch</value></data>
+  <data name="LinkWorkspace_KeepDefaultBranch" xml:space="preserve"><value>Keep default branch</value></data>
+
+  <!-- ==== Unauthorized recovery ==== -->
+  <data name="Unauthorized_Message_Format" xml:space="preserve"><value>Pipelines Explorer: {0}. You have been signed out.</value></data>
+  <data name="Unauthorized_SignInMicrosoft" xml:space="preserve"><value>Sign in with Microsoft</value></data>
+  <data name="Unauthorized_SignInPat" xml:space="preserve"><value>Sign in with PAT</value></data>
 
   <!-- ==== Accessibility — AutomationProperties.Name for non-textual elements ==== -->
   <data name="A11y_Tree_Name" xml:space="preserve"><value>Azure DevOps pipelines</value></data>

@@ -49,7 +49,7 @@ Fai clic sull'icona dell'organizzazione per cambiare tenant.</value></data>
   <data name="BranchPicker_Failed_Format" xml:space="preserve"><value>Selezione del branch non riuscita: {0}</value></data>
   <data name="BranchPicker_UseDefault" xml:space="preserve"><value>(usa il branch predefinito)</value></data>
   <data name="BranchPicker_Title" xml:space="preserve"><value>Seleziona branch</value></data>
-  <data name="Reset_Confirm" xml:space="preserve"><value>L'operazione cancella la sessione memorizzata, tutte le cartelle dell'area di lavoro collegate e gli override dei branch. Continuare?</value></data>
+  <data name="Reset_Confirm" xml:space="preserve"><value>L'operazione eliminerà il Personal Access Token memorizzato e dimenticherà il metodo di accesso scelto. Le cartelle dell'area di lavoro collegate e gli override dei branch verranno mantenuti. Continuare?</value></data>
   <data name="Reset_Failed_Format" xml:space="preserve"><value>Reimpostazione non riuscita: {0}</value></data>
 
   <data name="MicrosoftSignIn_Failed_Format" xml:space="preserve"><value>Accesso Microsoft non riuscito: {0}</value></data>
@@ -67,4 +67,11 @@ Fai clic sull'icona dell'organizzazione per cambiare tenant.</value></data>
   <data name="A11y_PatField_Name" xml:space="preserve"><value>Token di accesso personale</value></data>
   <data name="A11y_TenantPicker_ComboBox_Name" xml:space="preserve"><value>Tenant Microsoft Entra</value></data>
   <data name="A11y_BranchPicker_ComboBox_Name" xml:space="preserve"><value>Branch</value></data>
+
+  <data name="LinkWorkspace_DetectedBranch_Format" xml:space="preserve"><value>Il clone collegato di "{0}" è sul branch "{1}". Usare questo branch quando si legge YAML da Azure DevOps?</value></data>
+  <data name="LinkWorkspace_UseThisBranch" xml:space="preserve"><value>Usa questo branch</value></data>
+  <data name="LinkWorkspace_KeepDefaultBranch" xml:space="preserve"><value>Mantieni il branch predefinito</value></data>
+  <data name="Unauthorized_Message_Format" xml:space="preserve"><value>Pipelines Explorer: {0}. La sessione è stata terminata.</value></data>
+  <data name="Unauthorized_SignInMicrosoft" xml:space="preserve"><value>Accedi con Microsoft</value></data>
+  <data name="Unauthorized_SignInPat" xml:space="preserve"><value>Accedi con PAT</value></data>
 </root>

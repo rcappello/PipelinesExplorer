@@ -12,6 +12,17 @@
     <AssemblyName>PipelinesExplorer.VisualStudio</AssemblyName>
     <PackageId>PipelinesExplorer.VisualStudio</PackageId>
 
+    <!-- Version is read from source.extension.vsixmanifest (Identity/@Version) so the
+         manifest stays the single source of truth. It is then used as the
+         assembly/package Version. The .vsix filename is kept stable
+         ("PipelinesExplorer.VisualStudio.vsix") for local F5 / experimental hive
+         deploys; the GitHub release workflow opts in to a versioned filename by
+         passing -p:VsixIncludeVersionInName=true. -->
+    <_VsixManifestText>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\source.extension.vsixmanifest'))</_VsixManifestText>
+    <VsixVersion>$([System.Text.RegularExpressions.Regex]::Match($(_VsixManifestText), 'Identity[^&gt;]*Version=&quot;([^&quot;]+)&quot;').Groups.get_Item(1).Value)</VsixVersion>
+    <Version Condition="'$(VsixVersion)' != ''">$(VsixVersion)</Version>
+    <TargetVsixContainerName Condition="'$(VsixVersion)' != '' AND '$(VsixIncludeVersionInName)' == 'true'">$(AssemblyName)-$(VsixVersion).vsix</TargetVsixContainerName>
+
     <!-- VSTHRD103 (sync Cancel on CTS) is the documented pattern for replacing in-flight loads. -->
     <NoWarn>$(NoWarn);VSTHRD103</NoWarn>
   </PropertyGroup>

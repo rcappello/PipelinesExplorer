@@ -49,7 +49,7 @@ Klicken Sie auf das Organisationssymbol, um den Mandanten zu wechseln.</value></
   <data name="BranchPicker_Failed_Format" xml:space="preserve"><value>Branch-Auswahl fehlgeschlagen: {0}</value></data>
   <data name="BranchPicker_UseDefault" xml:space="preserve"><value>(Standardbranch verwenden)</value></data>
   <data name="BranchPicker_Title" xml:space="preserve"><value>Branch auswählen</value></data>
-  <data name="Reset_Confirm" xml:space="preserve"><value>Dadurch werden die zwischengespeicherte Sitzung, alle verknüpften Arbeitsbereichsordner und Branch-Überschreibungen gelöscht. Fortfahren?</value></data>
+  <data name="Reset_Confirm" xml:space="preserve"><value>Dadurch wird das gespeicherte Personal Access Token gelöscht und die gewählte Anmeldemethode vergessen. Verknüpfte Arbeitsbereichsordner und Branch-Überschreibungen bleiben erhalten. Fortfahren?</value></data>
   <data name="Reset_Failed_Format" xml:space="preserve"><value>Zurücksetzen fehlgeschlagen: {0}</value></data>
 
   <data name="MicrosoftSignIn_Failed_Format" xml:space="preserve"><value>Microsoft-Anmeldung fehlgeschlagen: {0}</value></data>
@@ -67,4 +67,11 @@ Klicken Sie auf das Organisationssymbol, um den Mandanten zu wechseln.</value></
   <data name="A11y_PatField_Name" xml:space="preserve"><value>Persönliches Zugriffstoken</value></data>
   <data name="A11y_TenantPicker_ComboBox_Name" xml:space="preserve"><value>Microsoft Entra-Mandant</value></data>
   <data name="A11y_BranchPicker_ComboBox_Name" xml:space="preserve"><value>Branch</value></data>
+
+  <data name="LinkWorkspace_DetectedBranch_Format" xml:space="preserve"><value>Der verknüpfte Klon von "{0}" ist auf Branch "{1}". Diesen Branch beim Lesen von YAML aus Azure DevOps verwenden?</value></data>
+  <data name="LinkWorkspace_UseThisBranch" xml:space="preserve"><value>Diesen Branch verwenden</value></data>
+  <data name="LinkWorkspace_KeepDefaultBranch" xml:space="preserve"><value>Standard-Branch behalten</value></data>
+  <data name="Unauthorized_Message_Format" xml:space="preserve"><value>Pipelines Explorer: {0}. Sie wurden abgemeldet.</value></data>
+  <data name="Unauthorized_SignInMicrosoft" xml:space="preserve"><value>Mit Microsoft anmelden</value></data>
+  <data name="Unauthorized_SignInPat" xml:space="preserve"><value>Mit PAT anmelden</value></data>
 </root>

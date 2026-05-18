@@ -64,7 +64,7 @@ public sealed class OpenItemService
         var resolved = ResolveCandidate(linked, target.RelativePath);
         if (resolved is not null)
         {
-            await OpenFileInVsAsync(resolved, cancellationToken).ConfigureAwait(false);
+            await OpenFileInVsAsync(resolved, target.SelectionLine, cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -72,7 +72,7 @@ public sealed class OpenItemService
         await ShowMissingFileFallbackAsync(target, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task OpenFileInVsAsync(string fsPath, CancellationToken ct)
+    private async Task OpenFileInVsAsync(string fsPath, int? selectionLine, CancellationToken ct)
     {
         var ext = _extensibilityProvider();
         if (ext is null)
@@ -84,7 +84,28 @@ public sealed class OpenItemService
         }
         try
         {
-            await ext.Documents().OpenDocumentAsync(new Uri(fsPath, UriKind.Absolute), ct).ConfigureAwait(false);
+            if (selectionLine is int line && line > 0)
+            {
+                // Range coordinates are 0-based; SelectionLine is 1-based (matches the
+                // VS Code OpenTarget contract). Selecting an empty range at column 0
+                // just places the caret there without highlighting anything.
+                var zero = line - 1;
+                var range = new Microsoft.VisualStudio.RpcContracts.Utilities.Range(zero, 0, zero, 0);
+                var options = new Microsoft.VisualStudio.RpcContracts.OpenDocument.OpenDocumentOptions(
+                    selection: range,
+                    ensureVisible: range,
+                    ensureVisibleOptions: null,
+                    isPreview: false,
+                    activate: true,
+                    logicalView: null,
+                    projectId: null,
+                    editorType: null);
+                await ext.Documents().OpenDocumentAsync(new Uri(fsPath, UriKind.Absolute), options, ct).ConfigureAwait(false);
+            }
+            else
+            {
+                await ext.Documents().OpenDocumentAsync(new Uri(fsPath, UriKind.Absolute), ct).ConfigureAwait(false);
+            }
         }
         catch (Exception ex)
         {
@@ -121,6 +142,26 @@ public sealed class OpenItemService
         var ext = _extensibilityProvider();
         if (ext is null) { return; }
 
+        // When a web URL is known, give the user the choice between linking a
+        // local clone or opening the resource in the browser before the OS
+        // folder picker takes over. Mirrors the VS Code link prompt.
+        if (!string.IsNullOrEmpty(target.WebUrl))
+        {
+            var options = new PromptOptions<int> { DismissedReturns = -1, DefaultChoiceIndex = 0 };
+            options.Choices.Add(string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.OpenItem_PickFolder_Title_Format, target.RepoLinkKey.RepoKey), 0);
+            options.Choices.Add(Strings.OpenItem_OpenInBrowser, 1);
+            var pre = await ext.Shell().ShowPromptAsync(
+                string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.OpenItem_PickFolder_Title_Format, target.RepoLinkKey.RepoKey),
+                options,
+                ct).ConfigureAwait(false);
+            if (pre == -1) { return; }
+            if (pre == 1)
+            {
+                OpenInBrowser(target.WebUrl!);
+                return;
+            }
+        }
+
         // Folder picker has to run on a UI (STA) thread.
         var picked = await PickFolderAsync(string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.OpenItem_PickFolder_Title_Format, target.RepoLinkKey.RepoKey), ct).ConfigureAwait(false);
         if (string.IsNullOrEmpty(picked)) { return; }
@@ -143,19 +184,42 @@ public sealed class OpenItemService
         var tcs = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
         var thread = new System.Threading.Thread(() =>
         {
+            // Out-of-process Visual Studio extensions have no Application.MainWindow,
+            // so OpenFolderDialog with no owner can be created behind every other
+            // window (especially behind the VS shell that triggered the command).
+            // Spin up a hidden, topmost host Window on this STA thread to serve as
+            // the owner — that brings the file dialog to the foreground reliably.
+            System.Windows.Window? owner = null;
             try
             {
+                owner = new System.Windows.Window
+                {
+                    Width = 0,
+                    Height = 0,
+                    WindowStyle = System.Windows.WindowStyle.None,
+                    ShowInTaskbar = false,
+                    AllowsTransparency = true,
+                    Background = System.Windows.Media.Brushes.Transparent,
+                    Topmost = true,
+                    ShowActivated = true,
+                };
+                owner.Show();
+
                 var dlg = new Microsoft.Win32.OpenFolderDialog
                 {
                     Title = title,
                     Multiselect = false,
                 };
-                var ok = dlg.ShowDialog();
+                var ok = dlg.ShowDialog(owner);
                 tcs.TrySetResult(ok == true ? dlg.FolderName : null);
             }
             catch (Exception ex)
             {
                 tcs.TrySetException(ex);
+            }
+            finally
+            {
+                try { owner?.Close(); } catch { /* ignore */ }
             }
         });
         thread.SetApartmentState(System.Threading.ApartmentState.STA);

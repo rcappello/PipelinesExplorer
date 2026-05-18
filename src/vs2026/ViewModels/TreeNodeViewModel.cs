@@ -1,10 +1,9 @@
-using System.Collections.Generic;
-using System.Globalization;
-using System.Runtime.Serialization;
 using Microsoft.VisualStudio.Extensibility.UI;
 using PipelinesExplorer.VisualStudio.AzureDevOps;
 using PipelinesExplorer.VisualStudio.Resources;
 using PipelinesExplorer.VisualStudio.Services;
+using System.Globalization;
+using System.Runtime.Serialization;
 
 namespace PipelinesExplorer.VisualStudio.ViewModels;
 
@@ -117,6 +116,26 @@ public class TreeNodeViewModel : NotifyPropertyChangedObject
 
     /// <summary>Override to lazily load children the first time the node is expanded.</summary>
     protected virtual void OnExpandedFirstTime() { }
+
+    // Per-kind context-menu visibility. Bound from XAML to MenuItem.Visibility via
+    // BooleanToVisibilityConverter so each tree node only shows the actions that
+    // make sense for it (the same ContextMenu template is shared by all nodes).
+    [DataMember] public virtual bool CanOpen => false;
+    [DataMember] public virtual bool CanLinkWorkspace => false;
+    [DataMember] public virtual bool CanUnlinkWorkspace => false;
+    [DataMember] public virtual bool CanSelectBranch => false;
+
+    /// <summary>True when any of the workspace-link actions is available (used to hide the separator).</summary>
+    [DataMember] public bool HasWorkspaceActions => (CanLinkWorkspace || CanUnlinkWorkspace || CanSelectBranch) && CanOpen;
+
+    /// <summary>
+    /// True when at least one context-menu action is available on this node.
+    /// Bound to <c>ContextMenuService.IsEnabled</c> in the Remote UI XAML so
+    /// nodes with no actions (root, organization, project, the
+    /// <c>Templates</c>/<c>Scripts</c> group folders) don't show the small
+    /// empty-context-menu rectangle on right-click.
+    /// </summary>
+    [DataMember] public bool HasContextMenu => CanOpen || CanLinkWorkspace || CanUnlinkWorkspace || CanSelectBranch;
 }
 
 [DataContract]
@@ -226,6 +245,11 @@ public sealed class RepositoryNode : TreeNodeViewModel
     [DataMember]
     public override string IconMoniker => "KnownMonikers.GitRepository";
 
+    // Workspace-link actions live on repositories only.
+    [DataMember] public override bool CanLinkWorkspace => !IsLinked;
+    [DataMember] public override bool CanUnlinkWorkspace => IsLinked;
+    [DataMember] public override bool CanSelectBranch => true;
+
     /// <summary>Refresh the link/branch state from the latest service data.</summary>
     internal void UpdateState(string? linkedFolder, string? branchOverride)
     {
@@ -236,6 +260,9 @@ public sealed class RepositoryNode : TreeNodeViewModel
         RaiseNotifyPropertyChangedEvent(nameof(IsLinked));
         RaiseNotifyPropertyChangedEvent(nameof(HasBranchOverride));
         RaiseNotifyPropertyChangedEvent(nameof(IconMoniker));
+        RaiseNotifyPropertyChangedEvent(nameof(CanLinkWorkspace));
+        RaiseNotifyPropertyChangedEvent(nameof(CanUnlinkWorkspace));
+        RaiseNotifyPropertyChangedEvent(nameof(HasContextMenu));
     }
 
     private string BuildDescription()
@@ -290,6 +317,9 @@ public sealed class PipelineNode : TreeNodeViewModel
 
     [DataMember]
     public override string IconMoniker => "KnownMonikers.Pipeline";
+
+    [DataMember]
+    public override bool CanOpen => true;
 
     [DataMember]
     public AsyncCommand? OpenCommand
@@ -367,6 +397,9 @@ public sealed class TemplateNode : TreeNodeViewModel
     public override string IconMoniker => "KnownMonikers.YamlFile";
 
     [DataMember]
+    public override bool CanOpen => true;
+
+    [DataMember]
     public AsyncCommand? OpenCommand
     {
         get => _openCommand;
@@ -424,6 +457,13 @@ public sealed class ScriptNode : TreeNodeViewModel
 
     [DataMember]
     public override string IconMoniker => IconForKind(Reference.Kind, Reference.Inline);
+
+    // File-backed scripts open the script file; inline scripts open the
+    // containing YAML at the line where the script is defined (matches the
+    // VS Code "Open Inline Script Location" behaviour).
+    [DataMember]
+    public override bool CanOpen => !string.IsNullOrEmpty(Reference.FilePath)
+        || (Reference.Inline && Reference.Line is int l && l > 0);
 
     private static string IconForKind(ScriptKind kind, bool inline) => kind switch
     {

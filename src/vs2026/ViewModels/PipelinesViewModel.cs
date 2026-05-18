@@ -39,6 +39,10 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     private string? _errorMessage;
     private string _patInputText = string.Empty;
     private CancellationTokenSource? _loadCts;
+    // One-shot gate: when an Ado 401/403 triggers the recovery prompt we set
+    // this flag so subsequent failures in the same broken session don't keep
+    // re-showing the same modal. Cleared on session change / sign-in success.
+    private bool _unauthorizedHandled;
 
     /// <summary>
     /// Cache of TfsGit repository ids -> display name. Mirrors the
@@ -247,6 +251,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
             _logger.Warn($"Refresh failed (unauthorized): {ex.Message}");
             SetError(ex.Message);
             ReplaceList(Roots, new TreeNodeViewModel[] { new InfoNode(ex.Message, TreeNodeKind.Error) });
+            await HandleUnauthorizedAsync(ex, ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -429,6 +434,10 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     {
         IsSignedIn = session is not null;
         IsMicrosoftSignIn = session is not null && session.Kind == SignInKind.Microsoft;
+        // A new session — successful or cleared — resets the one-shot
+        // unauthorized prompt gate so a subsequent 401 surfaces the recovery
+        // dialog again.
+        _unauthorizedHandled = false;
 
         if (session is null)
         {
@@ -631,7 +640,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
                 node.Pipeline.Id,
                 node.Detail,
                 branch).ConfigureAwait(false);
-            BuildAnalysisChildren(node, analysis, node.RepoKey, node.RepoId, node.YamlDir);
+            BuildAnalysisChildren(node, analysis, node.RepoKey, node.RepoId, node.YamlDir, node.Detail?.Configuration?.Path);
         }
         catch (Exception ex)
         {
@@ -652,7 +661,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
                 node.ContainingRepoId!,
                 node.ResolvedPath,
                 branch).ConfigureAwait(false);
-            BuildAnalysisChildren(node, analysis, node.PipelineRepoKey, node.ContainingRepoId, node.ResolvedDir);
+            BuildAnalysisChildren(node, analysis, node.PipelineRepoKey, node.ContainingRepoId, node.ResolvedDir, node.ResolvedPath);
         }
         catch (Exception ex)
         {
@@ -666,7 +675,8 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         PipelineAnalysis analysis,
         string pipelineRepoKey,
         string? containingRepoId,
-        string baseDir)
+        string baseDir,
+        string? containingYamlPath)
     {
         var children = new List<TreeNodeViewModel>();
         if (!string.IsNullOrEmpty(analysis.Warning))
@@ -706,7 +716,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
             var group = new GroupNode(GroupKind.Scripts, analysis.Scripts.Count);
             foreach (var s in analysis.Scripts)
             {
-                group.Children.Add(BuildScriptNode(s, org, project, pipelineRepoKey, baseDir));
+                group.Children.Add(BuildScriptNode(s, org, project, pipelineRepoKey, baseDir, containingYamlPath));
             }
             children.Add(group);
         }
@@ -749,20 +759,41 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
 
     private ScriptNode BuildScriptNode(
         ScriptRef reference, AdoOrganization org, AdoProject project,
-        string pipelineRepoKey, string baseDir)
+        string pipelineRepoKey, string baseDir, string? containingYamlPath)
     {
         var node = new ScriptNode(reference);
         if (!string.IsNullOrEmpty(reference.FilePath))
         {
             var linkKey = new RepoLinkKey(org.AccountId, project.Id, pipelineRepoKey);
             var branch = _branches.Get(linkKey);
-            var resolved = ResolveRepoPath(baseDir, reference.FilePath!);
+            // Match the VS Code client: pass the script's filePath verbatim. Script
+            // task `filePath`/`scriptPath` inputs in Azure Pipelines are repo-root
+            // relative (often using $(System.DefaultWorkingDirectory)/...), NOT
+            // relative to the YAML file that declares the task. OpenItemService
+            // strips the pipeline variables and resolves against the linked clone.
             var target = new OpenTarget
             {
                 RepoLinkKey = linkKey,
-                RelativePath = resolved,
+                RelativePath = reference.FilePath!,
                 DisplayName = node.Label,
                 Branch = branch,
+            };
+            node.OpenCommand = new AsyncCommand((_, _, ct) => _openItem.OpenAsync(target, ct));
+        }
+        else if (reference.Inline && reference.Line is int line && line > 0 && !string.IsNullOrEmpty(containingYamlPath))
+        {
+            // Inline scripts have no addressable file of their own — "Open" jumps to
+            // the line in the YAML that defines the inline `script:` / `inlineScript:`
+            // block. Mirrors the VS Code "Open Inline Script Location" command.
+            var linkKey = new RepoLinkKey(org.AccountId, project.Id, pipelineRepoKey);
+            var branch = _branches.Get(linkKey);
+            var target = new OpenTarget
+            {
+                RepoLinkKey = linkKey,
+                RelativePath = containingYamlPath!,
+                DisplayName = node.Label,
+                Branch = branch,
+                SelectionLine = line,
             };
             node.OpenCommand = new AsyncCommand((_, _, ct) => _openItem.OpenAsync(target, ct));
         }
@@ -810,6 +841,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
                 if (changed)
                 {
                     node.UpdateState(_links.Get(node.LinkKey), _branches.Get(node.LinkKey));
+                    await OfferDetectedBranchAsync(node, ct).ConfigureAwait(false);
                 }
             }
             catch (Exception ex) { _logger.Error("Link workspace failed", ex); SetError(ex.Message); }
@@ -868,10 +900,174 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         }
     }
 
+    /// <summary>
+    /// React to an Azure DevOps 401/403. Wipe the cached credentials (so the
+    /// next ADO call doesn't keep retrying with the same broken token) and
+    /// surface a modal prompt that lets the user pick a sign-in method. The
+    /// <see cref="_unauthorizedHandled"/> flag ensures we only show the
+    /// prompt once per broken session — subsequent failures stay silent
+    /// (the error message is still rendered in the tree) until the next
+    /// successful sign-in. Mirrors <c>PipelinesTreeProvider.handleUnauthorized</c>
+    /// in the VS Code client.
+    /// </summary>
+    private async Task HandleUnauthorizedAsync(AdoUnauthorizedException ex, CancellationToken ct)
+    {
+        if (_unauthorizedHandled) { return; }
+        _unauthorizedHandled = true;
+
+        try
+        {
+            await _auth.ResetAsync(ct).ConfigureAwait(false);
+        }
+        catch (Exception resetEx)
+        {
+            _logger.Warn($"Auth reset after 401 failed: {resetEx.Message}");
+        }
+
+        var extensibility = _extensibilityProvider();
+        if (extensibility is null) { return; }
+
+        var msg = string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.Unauthorized_Message_Format, ex.Message);
+        var options = new PromptOptions<int> { DismissedReturns = -1, DefaultChoiceIndex = 0 };
+        options.Choices.Add(Strings.Unauthorized_SignInMicrosoft, 0);
+        options.Choices.Add(Strings.Unauthorized_SignInPat, 1);
+
+        int pick;
+        try
+        {
+            pick = await extensibility.Shell().ShowPromptAsync(msg, options, ct).ConfigureAwait(false);
+        }
+        catch (Exception promptEx)
+        {
+            _logger.Warn($"Unauthorized prompt failed: {promptEx.Message}");
+            return;
+        }
+
+        try
+        {
+            if (pick == 0)
+            {
+                await _auth.SignInWithMicrosoftAsync(ct).ConfigureAwait(false);
+            }
+            else if (pick == 1)
+            {
+                // The PAT sign-in needs the secret value; mirror the welcome
+                // panel by surfacing the PAT input back to the user. Clearing
+                // IsSignedIn (already done by ResetAsync) reveals the welcome
+                // view automatically so the user can paste a new PAT.
+                _logger.Info("User selected Sign in with PAT after unauthorized error.");
+            }
+        }
+        catch (OperationCanceledException) { /* user cancelled */ }
+        catch (Exception signInEx)
+        {
+            _logger.Warn($"Recovery sign-in failed: {signInEx.Message}");
+            SetError(signInEx.Message);
+        }
+    }
+
+    /// <summary>
+    /// After a successful workspace link, peek at the local clone's
+    /// <c>.git/HEAD</c> and offer to use the checked-out branch as the
+    /// branch override for this repo. Mirrors the VS Code client.
+    /// </summary>
+    private async Task OfferDetectedBranchAsync(RepositoryNode node, CancellationToken ct)
+    {
+        var fsPath = _links.Get(node.LinkKey);
+        if (string.IsNullOrEmpty(fsPath)) { return; }
+        var detected = await DetectLocalBranchAsync(fsPath!).ConfigureAwait(false);
+        if (string.IsNullOrEmpty(detected)) { return; }
+
+        var current = _branches.Get(node.LinkKey);
+        if (string.Equals(detected, current, StringComparison.Ordinal)) { return; }
+
+        var ext = _extensibilityProvider();
+        if (ext is null) { return; }
+
+        var msg = string.Format(
+            System.Globalization.CultureInfo.CurrentCulture,
+            Strings.LinkWorkspace_DetectedBranch_Format,
+            node.RepoLabel,
+            detected);
+        var options = new PromptOptions<int> { DismissedReturns = -1, DefaultChoiceIndex = 0 };
+        options.Choices.Add(Strings.LinkWorkspace_UseThisBranch, 0);
+        options.Choices.Add(Strings.LinkWorkspace_KeepDefaultBranch, 1);
+        var pick = await ext.Shell().ShowPromptAsync(msg, options, ct).ConfigureAwait(false);
+        if (pick == 0)
+        {
+            _branches.Set(node.LinkKey, detected!);
+            node.UpdateState(_links.Get(node.LinkKey), _branches.Get(node.LinkKey));
+        }
+    }
+
+    /// <summary>
+    /// Best-effort detection of the current branch of a local Git working
+    /// copy by reading <c>.git/HEAD</c>. Handles the worktree indirection
+    /// where <c>.git</c> is a file containing <c>gitdir: &lt;path&gt;</c>.
+    /// Returns <c>null</c> if the folder is not a Git working copy or the
+    /// HEAD is detached.
+    /// </summary>
+    private static async Task<string?> DetectLocalBranchAsync(string folderPath)
+    {
+        try
+        {
+            var gitEntry = System.IO.Path.Combine(folderPath, ".git");
+            string gitDir = gitEntry;
+            if (System.IO.File.Exists(gitEntry))
+            {
+                var content = await System.IO.File.ReadAllTextAsync(gitEntry).ConfigureAwait(false);
+                var m = System.Text.RegularExpressions.Regex.Match(
+                    content,
+                    @"^gitdir:\s*(.+?)\s*$",
+                    System.Text.RegularExpressions.RegexOptions.Multiline);
+                if (!m.Success) { return null; }
+                var target = m.Groups[1].Value.Trim();
+                gitDir = System.IO.Path.IsPathRooted(target)
+                    ? target
+                    : System.IO.Path.GetFullPath(System.IO.Path.Combine(folderPath, target));
+            }
+            else if (!System.IO.Directory.Exists(gitDir))
+            {
+                return null;
+            }
+
+            var headPath = System.IO.Path.Combine(gitDir, "HEAD");
+            if (!System.IO.File.Exists(headPath)) { return null; }
+            var head = (await System.IO.File.ReadAllTextAsync(headPath).ConfigureAwait(false)).Trim();
+            var refMatch = System.Text.RegularExpressions.Regex.Match(head, @"^ref:\s*refs/heads/(.+)$");
+            return refMatch.Success ? refMatch.Groups[1].Value.Trim() : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Resolve a YAML-style path reference against the directory containing the
+    /// YAML file it appeared in. Recognises Azure Pipelines repo-root variables
+    /// (<c>$(System.DefaultWorkingDirectory)</c>, <c>$(Build.SourcesDirectory)</c>,
+    /// <c>$(Pipeline.Workspace)</c>, <c>$(Agent.BuildDirectory)</c>): when the
+    /// cleaned reference starts with one of those, the path is treated as
+    /// repo-absolute and <paramref name="baseDir"/> is NOT prepended.
+    /// </summary>
     private static string ResolveRepoPath(string baseDir, string reference)
     {
         var cleaned = reference.Replace('\\', '/').Trim();
-        var combined = cleaned.StartsWith('/') ? cleaned : $"{baseDir}/{cleaned}";
+
+        // Strip leading Azure Pipelines variables that always resolve to the repo
+        // root. After stripping, treat the remainder as repo-absolute.
+        var stripped = System.Text.RegularExpressions.Regex.Replace(
+            cleaned,
+            @"^\s*\$\(\s*(System\.DefaultWorkingDirectory|Build\.SourcesDirectory|Pipeline\.Workspace|Agent\.BuildDirectory)\s*\)/?",
+            string.Empty,
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var anchoredAtRoot = stripped.Length != cleaned.Length;
+
+        var combined = (anchoredAtRoot || stripped.StartsWith('/'))
+            ? stripped
+            : $"{baseDir}/{stripped}";
+
         var parts = combined.Split('/', System.StringSplitOptions.RemoveEmptyEntries);
         var stack = new List<string>();
         foreach (var seg in parts)
