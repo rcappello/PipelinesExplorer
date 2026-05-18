@@ -17,9 +17,9 @@ jobs:
       run:
         working-directory: src/vs2026
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@v6
         with:
           # Project targets net10.0-windows; keep in sync with the csproj.
           dotnet-version: '10.0.x'
@@ -56,7 +56,7 @@ jobs:
           "vsix=$($vsix.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Upload VSIX as workflow artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: pipelines-explorer-vs2026-vsix
           path: ${{ steps.locate.outputs.vsix }}
@@ -79,10 +79,10 @@ jobs:
       name: marketplace
       url: https://marketplace.visualstudio.com/items?itemName=RiccardoCappello.PipelinesExplorer.VisualStudio
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Download VSIX artifact
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: pipelines-explorer-vs2026-vsix
           path: artifact
