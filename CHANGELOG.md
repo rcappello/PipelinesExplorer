@@ -10,14 +10,14 @@ client folder:
 Entries below use the format `[client] message`, where `client` is `vscode`
 or `vs2026`.
 
-## Unreleased
+## [0.2.0] - 2026-05-18
 
 - `[repo]` Split the repository into a monorepo layout with `src/vscode` and
   `src/vs2026` client roots; added path-filtered CI workflows
   (`.github/workflows/vscode.yml`, `vs2026.yml`) and renamed the VS Code
   release workflow to `release-vscode.yml` (now triggered by `vscode-v*` tags).
 - `[vs2026]` Initial scaffold of the Visual Studio 2026 extension using the
-  Microsoft.VisualStudio.Extensibility SDK (out-of-process, .NET 8, WPF).
+  Microsoft.VisualStudio.Extensibility SDK (out-of-process, .NET 10, WPF).
 - `[vscode]` `[vs2026]` **0.2.0** — Broaden script-task detection beyond PowerShell to include Bash, Cmd/Batch, Python, Azure CLI and the shorthand step keys (`script:`, `bash:`, `pwsh:`, `powershell:`); rename the *PowerShell scripts* tree group to **Scripts**; add per-kind icons. See [`src/vscode/CHANGELOG.md`](src/vscode/CHANGELOG.md) for the full VS Code entry.
 
 ## VS Code client
