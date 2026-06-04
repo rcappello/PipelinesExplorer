@@ -20,7 +20,8 @@
 			"**/obj": true,
 			"**/dist": true,
 			"**/out": true
-		}
+		},
+		"powershell.cwd": "Pipelines Explorer (root)"
 	},
 	"extensions": {
 		"recommendations": [

@@ -2,6 +2,8 @@
 
 Browse Azure DevOps pipelines without leaving Visual Studio. Drill into the YAML graph, jump to referenced templates and scripts (PowerShell, Bash, Cmd, Python, Azure CLI), and open the matching files inside your loaded solution — all from a dedicated tool window.
 
+![Pipelines Explorer in Visual Studio 2026](https://raw.githubusercontent.com/rcappello/PipelinesExplorer/main/docs/screenshots/vs2026-screenshot.png)
+
 ## Features
 
 - **Pipelines tree** grouped by Microsoft Entra tenant, Azure DevOps organization, project, and repository.

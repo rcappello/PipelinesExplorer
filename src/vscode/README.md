@@ -43,7 +43,9 @@ Pipelines
             └── …
 ```
 
-<!-- TODO: replace with real screenshots before publishing on the public Marketplace -->
+## Screenshot
+
+![Pipelines Explorer in VS Code](https://raw.githubusercontent.com/rcappello/PipelinesExplorer/main/docs/screenshots/vscode-screenshot.png)
 
 ## Getting started
 
