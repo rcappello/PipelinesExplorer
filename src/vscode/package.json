@@ -17,6 +17,7 @@
     "url": "https://github.com/rcappello/PipelinesExplorer/issues"
   },
   "qna": "marketplace",
+  "pricing": "Free",
   "keywords": [
     "azure devops",
     "pipelines",
@@ -233,5 +234,8 @@
   },
   "dependencies": {
     "yaml": "^2.9.0"
+  },
+  "overrides": {
+    "serialize-javascript": "^7.0.5"
   }
 }
