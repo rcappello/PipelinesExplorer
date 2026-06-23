@@ -87,6 +87,78 @@ prefer them over launching duplicates.
   and wire them in `extension.ts`. VS 2026 commands go under `Commands/` and are
   registered via the VisualStudio.Extensibility attributes already used in the repo.
 
+## Release decision policy
+
+After merging a batch of changes (typical case: several Dependabot PRs), use the
+matrices below to decide whether to **propose** a version bump. Per the Must rule
+above, never actually bump versions, publish, push tags, or run release workflows
+without an explicit plan or developer instruction — only propose.
+
+Guiding principle: a change warrants a release **only if it can affect what the
+end user installs from the Marketplace**. Pure build-time, CI, lockfile, or
+developer-tooling changes do not.
+
+### VS Code client (`src/vscode/`)
+
+The published VSIX contains only `dist/extension.js` (compiled from `src/`),
+shipped assets under `media/` and `resources/`, the localized
+`package.nls*.json` and `l10n/bundle.l10n.*.json` bundles, and the runtime
+`dependencies` declared in `src/vscode/package.json`. Anything under
+`devDependencies` — including their transitive packages in the lockfile — does
+**not** reach end users.
+
+| Change | Propose release? | Suggested bump |
+| --- | --- | --- |
+| `src/` TypeScript, shipped `media/` / `resources/` | Yes | Per semver |
+| Runtime `dependencies` in `package.json` (e.g. `yaml`) | Yes | Patch (security/bugfix) or minor (feature) |
+| `engines.vscode` raise, `activationEvents`, `contributes.*` | Yes | Minor (new capability) or patch (engine bump alone) |
+| User-visible strings in `package.nls*.json` or `l10n/bundle.l10n.*.json` | Yes | Patch |
+| Direct `devDependencies` bumps (`esbuild`, `typescript`, `eslint`, `@vscode/vsce`, test tooling) | No | — |
+| Transitive dev-dep bumps in `package-lock.json` only (Dependabot security alerts on `shell-quote`, `form-data`, `undici`, `markdown-it`, `js-yaml`, etc.) | No | — |
+| `README.md`, `CHANGELOG.md` formatting, `docs/`, `.github/`, CI workflows | No | — |
+
+Notes:
+
+- An `esbuild` major bump may produce a byte-different bundle without any
+  behavior change — still not changelog-worthy on its own.
+- Accumulated dev-dep upgrades may be listed under `### Internal` or
+  `### Maintenance` in the CHANGELOG of the next functional release, but must
+  never be the sole reason for a release.
+
+### VS 2026 client (`src/vs2026/`)
+
+The published VSIX contains the compiled assembly plus any embedded
+`Resources/Strings*.resx`. NuGet `PackageReference` items resolved at build
+time ship inside the VSIX **unless** marked `PrivateAssets="all"`, declared as
+analyzers, or otherwise build-only.
+
+| Change | Propose release? | Suggested bump |
+| --- | --- | --- |
+| C# under `Auth/`, `AzureDevOps/`, `Commands/`, `Services/`, `ToolWindows/`, `ViewModels/`, or the root entry files | Yes | Per semver |
+| User-visible strings in any `Resources/Strings*.resx` | Yes | Patch |
+| Runtime NuGet `PackageReference` bumps (i.e. not `PrivateAssets="all"`) | Yes | Patch (security/bugfix) or minor (feature) |
+| `source.extension.vsixmanifest` metadata changes beyond `<Identity Version="…">` (display name, description, targets, prerequisites, install targets) | Yes | Patch |
+| Analyzers, SourceLink, MSBuild SDKs, build-only NuGets (`PrivateAssets="all"`, `IncludeAssets="build…"`) | No | — |
+| `.csproj` / `.editorconfig` / build pipeline / `.github/` workflows | No | — |
+| Local-only artefacts (`*.user`, `bin/`, `obj/`, `*.lscache`) | No | — |
+
+Notes:
+
+- Bump source remains `src/vs2026/source.extension.vsixmanifest`
+  `Identity/@Version` — never `-p:Version` and never a `<Version>` in the
+  csproj.
+
+### Agent workflow on a batch of merges
+
+1. Classify each PR / commit with the matrix for its client.
+2. If **all** entries land in the "No" rows, recommend skipping the release and
+   rolling the changes into the next functional release.
+3. If **any** entry lands in a "Yes" row, recommend a bump using the highest
+   required level (minor > patch). Cite the triggering PR(s) and the exact file
+   under "Versioning source of truth" the developer would edit.
+4. Never edit the version files yourself unless the developer explicitly
+   confirms — and only inside a plan.
+
 ## What to do before writing code
 
 1. Read the plan referenced by the user (under `.specify/plans/`).
