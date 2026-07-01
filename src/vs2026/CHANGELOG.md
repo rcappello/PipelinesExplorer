@@ -10,7 +10,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
-- **Filter by name** — a filter box in the tool window header restricts the tree to pipelines, templates and scripts whose name contains a substring (case-insensitive, debounced ~200 ms). Matching leaves stay visible together with their ancestors; non-matching branches collapse. The scan is bounded to the already-loaded scope (no forced fetches) and capped at 500 pipelines. Localized in all six languages. Parity with the VS Code client (plan 001).
+- **Filter by name** — a filter box in the tool window header restricts the tree to pipelines, templates and scripts whose name contains a substring (case-insensitive, debounced ~200 ms). Matching leaves stay visible together with their ancestors; non-matching branches collapse. The scan follows same-repo `template:` references recursively (up to 10 levels deep, cycle-safe), so a match deep in the nested-template graph still surfaces its owning pipeline. Cross-repo template aliases are skipped. Scan is bounded to the already-loaded scope (no forced fetches) and capped at 500 pipelines. Localized in all six languages. Parity with the VS Code client (plan 001).
 
 ## [0.2.1] - 2026-05-18
 

@@ -46,6 +46,10 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
 
     // Filter state (Plan 001). Kept together for clarity.
     private const int FilterPipelineCap = 500;
+    // Maximum recursion depth followed by the filter scan when descending
+    // into same-repo nested templates. Guards against pathological template
+    // graphs on top of the per-file cycle check.
+    private const int FilterMaxTemplateDepth = 10;
     private string _filterText = string.Empty;
     private string? _activeFilterTerm; // already trimmed + lowercased
     private string _filterStatusText = string.Empty;
@@ -1225,6 +1229,23 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
                     }
                 }
 
+                // Recurse into same-repo nested templates. Cross-repo aliases
+                // are skipped (the analyzer can't resolve a repository alias).
+                // Depth capped by FilterMaxTemplateDepth and cycles guarded by
+                // the visited-set. Any match found deep in the tree surfaces
+                // by marking the top-level Templates group + the pipeline as
+                // ancestor-visible; the leaves themselves become visible on
+                // demand because materialised child nodes default to visible.
+                var repoId = pipe.Detail?.Configuration?.Repository?.Id;
+                if (!string.IsNullOrEmpty(repoId))
+                {
+                    var branch = _branches.Get(new RepoLinkKey(pipe.Organization.AccountId, pipe.Project.Id, pipe.RepoKey));
+                    if (await ScanTemplatesRecursivelyAsync(pipe, analysis, repoId!, branch, term, ct).ConfigureAwait(false))
+                    {
+                        pipelineMatched = true;
+                    }
+                }
+
                 if (pipelineMatched && !_matchedNodes.Contains(pipe))
                 {
                     _ancestorNodes.Add(pipe);
@@ -1274,6 +1295,95 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         {
             _ancestorNodes.Add(groupNode);
         }
+    }
+
+    /// <summary>
+    /// Walks the reachable template graph of <paramref name="rootAnalysis"/>
+    /// following same-repo <c>template:</c> references, and reports whether
+    /// any nested template basename or script filename matched the term.
+    /// Depth is capped by <see cref="FilterMaxTemplateDepth"/> and cycles are
+    /// guarded by an in-memory visited set. Cross-repo aliases are skipped.
+    /// </summary>
+    private async Task<bool> ScanTemplatesRecursivelyAsync(
+        PipelineNode pipe,
+        PipelineAnalysis rootAnalysis,
+        string repoId,
+        string? branch,
+        string term,
+        CancellationToken ct)
+    {
+        var rootDir = pipe.YamlDir;
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var queue = new Queue<(IReadOnlyList<TemplateRef> Templates, string ContainingDir, int Depth)>();
+        queue.Enqueue((rootAnalysis.Templates, rootDir, 0));
+        bool anyNestedMatch = false;
+
+        while (queue.Count > 0)
+        {
+            if (ct.IsCancellationRequested) { return anyNestedMatch; }
+            var (tpls, containingDir, depth) = queue.Dequeue();
+            foreach (var t in tpls)
+            {
+                if (ct.IsCancellationRequested) { return anyNestedMatch; }
+                // Skip cross-repo references — the analyzer can't resolve
+                // a repository alias to an id.
+                if (!string.IsNullOrEmpty(t.Repository)) { continue; }
+                if (depth >= FilterMaxTemplateDepth) { continue; }
+
+                var resolved = ResolveRepoPath(containingDir, t.Path);
+                var key = $"{resolved}@{branch}";
+                if (!visited.Add(key)) { continue; }
+
+                PipelineAnalysis sub;
+                try
+                {
+                    sub = await _analyzer.AnalyzeFileAsync(
+                        pipe.Organization.AccountName,
+                        pipe.Project.Name,
+                        repoId,
+                        resolved,
+                        branch,
+                        ct).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Warn($"Filter scan analyze-file failed for {resolved}: {ex.Message}");
+                    continue;
+                }
+
+                foreach (var st in sub.Templates)
+                {
+                    if (ContainsCI(BaseNameOf(st.Path), term))
+                    {
+                        MarkTemplateOrScriptMatch(pipe, GroupKind.Templates);
+                        anyNestedMatch = true;
+                    }
+                }
+                foreach (var s in sub.Scripts)
+                {
+                    if (s.FilePath is not null && ContainsCI(BaseNameOf(s.FilePath), term))
+                    {
+                        MarkTemplateOrScriptMatch(pipe, GroupKind.Templates);
+                        anyNestedMatch = true;
+                    }
+                }
+
+                if (sub.Templates.Count > 0)
+                {
+                    queue.Enqueue((sub.Templates, DirOfRepoPath(resolved), depth + 1));
+                }
+            }
+        }
+
+        return anyNestedMatch;
+    }
+
+    private static string DirOfRepoPath(string p)
+    {
+        if (string.IsNullOrEmpty(p)) { return string.Empty; }
+        var norm = p.Replace('\\', '/');
+        var idx = norm.LastIndexOf('/');
+        return idx <= 0 ? string.Empty : norm[..idx];
     }
 
     /// <summary>
