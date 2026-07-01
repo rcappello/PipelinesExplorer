@@ -377,6 +377,12 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 	static readonly FILTER_PIPELINE_CAP = 500;
 	/** Maximum number of matched PipelineNodes revealed after a scan (plan 001 §8). */
 	static readonly FILTER_REVEAL_CAP = 50;
+	/**
+	 * Maximum recursion depth followed by the filter scan when descending
+	 * into same-repo nested templates. Guards against pathological template
+	 * graphs on top of the per-file cycle check.
+	 */
+	static readonly FILTER_MAX_TEMPLATE_DEPTH = 10;
 	private static readonly ROOT_CACHE_KEY = '__root__';
 
 	private currentFilter: string | undefined;
@@ -753,40 +759,15 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 		}
 
 		// Pass 2: fetch analysis for each pipeline (cached across scans) and
-		// match template / script leaves. Concurrency mirrors the rest of the
-		// codebase (see mapWithConcurrency, cap 8).
+		// match template / script leaves, recursing into same-repo nested
+		// templates. Concurrency mirrors the rest of the codebase (see
+		// mapWithConcurrency, cap 8).
 		await mapWithConcurrency(scanTargets, 8, async pipe => {
 			if (token.isCancellationRequested) { return; }
 			try {
-				const analysis = await this.getAnalysis(pipe);
-				if (token.isCancellationRequested) { return; }
-				const tplGroupId = `${pipe.id!}:group:templates`;
-				const scriptGroupId = `${pipe.id!}:group:scripts`;
-				let groupTouched = false;
-				for (const t of analysis.templates) {
-					if (matchesFilterTerm(basename(t.path), term)) {
-						const tplId = `${tplGroupId}:tpl:${t.raw}`;
-						this.matchedIds.add(tplId);
-						this.visibleIds.add(tplGroupId);
-						groupTouched = true;
-					}
-				}
-				for (const s of analysis.scripts) {
-					if (!s.filePath) { continue; }
-					if (matchesFilterTerm(basename(s.filePath), term)) {
-						const idTail = s.filePath;
-						const sId = `${scriptGroupId}:script:${s.task}:${s.kind}:${idTail}`;
-						this.matchedIds.add(sId);
-						this.visibleIds.add(scriptGroupId);
-						groupTouched = true;
-					}
-				}
-				if (groupTouched && !this.matchedIds.has(pipe.id!)) {
-					this.visibleIds.add(pipe.id!);
-					this.markAncestors(pipe.id!);
-					if (!matchedPipelines.includes(pipe)) {
-						matchedPipelines.push(pipe);
-					}
+				const found = await this.scanPipelineTree(pipe, term, token);
+				if (found && !matchedPipelines.includes(pipe)) {
+					matchedPipelines.push(pipe);
 				}
 			} catch (err) {
 				this.logger.logError(`Filter scan: analyzing "${pipe.pipeline.name}" failed`, err);
@@ -805,6 +786,133 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 		}
 		this._onDidChangeTreeData.fire();
 		this._onDidCompleteFilterScan.fire(matchedPipelines.slice(0, PipelinesTreeProvider.FILTER_REVEAL_CAP));
+	}
+
+	/**
+	 * Scans a pipeline's root YAML plus all reachable same-repo templates
+	 * (depth-limited, cycle-safe) and records matches. Returns `true` if any
+	 * template or script under this pipeline matched the term.
+	 * Cross-repo templates are skipped (the analyzer cannot resolve the target
+	 * repository from an alias alone).
+	 */
+	private async scanPipelineTree(pipe: PipelineNode, term: string, token: vscode.CancellationToken): Promise<boolean> {
+		const analysis = await this.getAnalysis(pipe);
+		if (token.isCancellationRequested) { return false; }
+
+		const pipeId = pipe.id!;
+		const rootTplGroupId = `${pipeId}:group:templates`;
+		const rootScriptGroupId = `${pipeId}:group:scripts`;
+		const rootPath = pipe.detail?.configuration?.path;
+		const rootDir = rootPath ? dirOfRepoPath(rootPath) : '';
+		const repoId = pipe.detail?.configuration?.repository?.id;
+		const branch = this.branches.get({
+			orgAccountId: pipe.organization.accountId,
+			projectId: pipe.project.id,
+			repoKey: pipe.repoKey,
+		});
+
+		let anyMatch = false;
+
+		// Scripts referenced directly by the pipeline root YAML.
+		for (const s of analysis.scripts) {
+			if (!s.filePath) { continue; }
+			if (matchesFilterTerm(basename(s.filePath), term)) {
+				const sId = `${rootScriptGroupId}:script:${s.task}:${s.kind}:${s.filePath}`;
+				this.matchedIds.add(sId);
+				this.visibleIds.add(rootScriptGroupId);
+				anyMatch = true;
+			}
+		}
+
+		interface Frame {
+			tpls: TemplateRef[];
+			parentId: string;         // id of the Templates group at this level
+			ancestorIds: string[];    // ids to mark visible when any match is found in this frame or below
+			containingDir: string;    // dir of the YAML whose `templates:` we are scanning
+			depth: number;
+		}
+
+		const visitedFiles = new Set<string>();
+		const queue: Frame[] = [{
+			tpls: analysis.templates,
+			parentId: rootTplGroupId,
+			ancestorIds: [rootTplGroupId],
+			containingDir: rootDir,
+			depth: 0,
+		}];
+
+		while (queue.length > 0) {
+			if (token.isCancellationRequested) { return anyMatch; }
+			const frame = queue.shift()!;
+
+			for (const t of frame.tpls) {
+				const tplId = `${frame.parentId}:tpl:${t.raw}`;
+
+				if (matchesFilterTerm(basename(t.path), term)) {
+					this.matchedIds.add(tplId);
+					for (const a of frame.ancestorIds) { this.visibleIds.add(a); }
+					anyMatch = true;
+				}
+
+				// Recurse only into same-repo templates (cross-repo aliases
+				// would need repository resolution that the analyzer doesn't
+				// currently do). Enforce depth cap and cycle guard.
+				if (t.repository || !repoId || frame.depth >= PipelinesTreeProvider.FILTER_MAX_TEMPLATE_DEPTH) {
+					continue;
+				}
+				const resolvedPath = resolveRepoPath(frame.containingDir, t.path);
+				const cycleKey = `${repoId}::${resolvedPath}::${branch ?? ''}`;
+				if (visitedFiles.has(cycleKey)) { continue; }
+				visitedFiles.add(cycleKey);
+
+				let subAnalysis: PipelineAnalysis;
+				try {
+					subAnalysis = await this.analyzer.analyzeFile(
+						pipe.organization.accountName,
+						pipe.project.name,
+						repoId,
+						resolvedPath,
+						branch,
+					);
+				} catch (err) {
+					this.logger.logError(`Filter scan: analyzing template "${resolvedPath}" failed`, err);
+					continue;
+				}
+				if (token.isCancellationRequested) { return anyMatch; }
+
+				const subTplGroupId = `${tplId}:group:templates`;
+				const subScriptGroupId = `${tplId}:group:scripts`;
+				const nextAncestors = [...frame.ancestorIds, tplId, subTplGroupId];
+
+				for (const s of subAnalysis.scripts) {
+					if (!s.filePath) { continue; }
+					if (matchesFilterTerm(basename(s.filePath), term)) {
+						const sId = `${subScriptGroupId}:script:${s.task}:${s.kind}:${s.filePath}`;
+						this.matchedIds.add(sId);
+						this.visibleIds.add(subScriptGroupId);
+						for (const a of frame.ancestorIds) { this.visibleIds.add(a); }
+						this.visibleIds.add(tplId);
+						anyMatch = true;
+					}
+				}
+
+				if (subAnalysis.templates.length > 0) {
+					queue.push({
+						tpls: subAnalysis.templates,
+						parentId: subTplGroupId,
+						ancestorIds: nextAncestors,
+						containingDir: dirOfRepoPath(resolvedPath),
+						depth: frame.depth + 1,
+					});
+				}
+			}
+		}
+
+		if (anyMatch && !this.matchedIds.has(pipeId)) {
+			this.visibleIds.add(pipeId);
+			this.markAncestors(pipeId);
+		}
+		return anyMatch;
 	}
 
 	/** Walks the cached child index and returns every loaded pipeline node. */
