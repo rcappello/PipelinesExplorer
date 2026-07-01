@@ -15,7 +15,11 @@ type Node =
 	| GroupNode
 	| TemplateItemNode
 	| ScriptItemNode
-	| InfoNode;
+	| InfoNode
+	| FilterStatusNode;
+
+/** Runtime state of the tree filter feature (see plan 001). */
+export type FilterState = 'idle' | 'scanning' | 'ready' | 'no-results' | 'capped';
 
 /**
  * Header row shown at the top of the tree summarising the active sign-in
@@ -260,6 +264,23 @@ function basename(p: string): string {
 	return i >= 0 ? clean.slice(i + 1) : clean;
 }
 
+/**
+ * Normalise a raw filter term entered by the user: trim + lowercase. Returns
+ * `undefined` if the term is empty (so callers can treat "no filter" and
+ * "empty filter" identically).
+ */
+export function normalizeFilterTerm(term: string | undefined): string | undefined {
+	if (!term) { return undefined; }
+	const t = term.trim();
+	return t.length === 0 ? undefined : t.toLowerCase();
+}
+
+/** True if `haystack` contains `needle` (case-insensitive). */
+export function matchesFilterTerm(haystack: string | undefined, needle: string | undefined): boolean {
+	if (!needle || !haystack) { return false; }
+	return haystack.toLowerCase().includes(needle);
+}
+
 /** Pick a VS Code codicon id for a given script kind. */
 function iconForScriptKind(kind: ScriptKind): string {
 	switch (kind) {
@@ -306,6 +327,41 @@ export class InfoNode extends vscode.TreeItem {
 	}
 }
 
+/**
+ * Virtual node shown at the top of the tree while a filter is active. Not
+ * matched itself; only carries status text.
+ */
+export class FilterStatusNode extends vscode.TreeItem {
+	readonly kind = 'filterStatus' as const;
+	constructor(term: string, state: FilterState, matchCount: number, cappedAt: number | undefined) {
+		let label: string;
+		switch (state) {
+			case 'scanning':
+				label = vscode.l10n.t('Filter active: {0} — scanning…', term);
+				break;
+			case 'no-results':
+				label = vscode.l10n.t('Filter active: {0} — no results in loaded scope', term);
+				break;
+			case 'capped':
+				label = vscode.l10n.t('Filter active: {0} — {1} result(s) (scope capped at {2} pipelines)', term, matchCount, cappedAt ?? 0);
+				break;
+			default:
+				label = vscode.l10n.t('Filter active: {0} — {1} result(s)', term, matchCount);
+				break;
+		}
+		super(label, vscode.TreeItemCollapsibleState.None);
+		this.id = `__filter-status__:${state}:${term}`;
+		this.iconPath = new vscode.ThemeIcon(state === 'scanning' ? 'sync~spin' : 'filter');
+		this.tooltip = vscode.l10n.t('Filter limited to already-loaded scope — expand more orgs/projects to widen');
+		this.contextValue = 'pipelinesexplorer.filterStatus';
+		this.command = {
+			command: 'pipelinesexplorer.filter',
+			title: vscode.l10n.t('Edit filter'),
+		};
+		this.accessibilityInformation = { label };
+	}
+}
+
 export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 	private readonly _onDidChangeTreeData = new vscode.EventEmitter<Node | undefined | void>();
 	readonly onDidChangeTreeData: vscode.Event<Node | undefined | void> = this._onDidChangeTreeData.event;
@@ -315,6 +371,34 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 	private readonly analysisCache = new Map<string, Promise<PipelineAnalysis>>();
 	/** Cache of resolved Git repository names by repository id. */
 	private readonly repoNameCache = new Map<string, string>();
+
+	// ==== Filter state (see plan 001) ==========================================
+	/** Maximum number of pipelines analyzed per filter scan (plan 001 §2). */
+	static readonly FILTER_PIPELINE_CAP = 500;
+	/** Maximum number of matched PipelineNodes revealed after a scan (plan 001 §8). */
+	static readonly FILTER_REVEAL_CAP = 50;
+	private static readonly ROOT_CACHE_KEY = '__root__';
+
+	private currentFilter: string | undefined;
+	private filterState: FilterState = 'idle';
+	/** Ids of nodes that match the current filter (leaf hits). */
+	private readonly matchedIds = new Set<string>();
+	/** Ids of nodes that must remain visible because they contain a match (ancestors + group nodes). */
+	private readonly visibleIds = new Set<string>();
+	private filterMatchCount = 0;
+	private filterCappedAt: number | undefined;
+	private filterScanCts: vscode.CancellationTokenSource | undefined;
+
+	/** Cache of children keyed by parent id (or `ROOT_CACHE_KEY` for the root). */
+	private readonly nodeChildrenCache = new Map<string, Node[]>();
+	/** Reverse index child-id → parent-id, used to mark ancestors during scan. */
+	private readonly parentByChildId = new Map<string, string>();
+
+	private readonly _onDidCompleteFilterScan = new vscode.EventEmitter<PipelineNode[]>();
+	/** Fires after a filter scan finishes, carrying up to `FILTER_REVEAL_CAP` matched pipelines. */
+	readonly onDidCompleteFilterScan: vscode.Event<PipelineNode[]> = this._onDidCompleteFilterScan.event;
+
+	private treeView: vscode.TreeView<Node> | undefined;
 
 	constructor(
 		private readonly client: AdoClient,
@@ -329,10 +413,72 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 		this.branches.onDidChange(() => this.refresh());
 	}
 
+	/** Attach the TreeView so the provider can drive `reveal` after a filter scan. */
+	setTreeView(view: vscode.TreeView<Node>): void {
+		this.treeView = view;
+	}
+
 	refresh(): void {
 		this.analysisCache.clear();
 		this.repoNameCache.clear();
+		this.nodeChildrenCache.clear();
+		this.parentByChildId.clear();
+		this.clearFilterState(/* fireChange */ false);
 		this._onDidChangeTreeData.fire();
+	}
+
+	/** Current filter term (already lowercased) or `undefined`. */
+	getCurrentFilter(): string | undefined {
+		return this.currentFilter;
+	}
+
+	/**
+	 * Apply or clear the tree filter. Any in-flight scan is cancelled.
+	 * Passing an empty / whitespace-only string clears the filter.
+	 */
+	setFilter(term: string | undefined): void {
+		const normalized = normalizeFilterTerm(term);
+		this.filterScanCts?.cancel();
+		this.filterScanCts = undefined;
+
+		if (!normalized) {
+			const wasActive = !!this.currentFilter;
+			this.clearFilterState(/* fireChange */ false);
+			if (wasActive) {
+				this._onDidChangeTreeData.fire();
+			}
+			return;
+		}
+
+		this.currentFilter = normalized;
+		this.matchedIds.clear();
+		this.visibleIds.clear();
+		this.filterMatchCount = 0;
+		this.filterCappedAt = undefined;
+		this.filterState = 'scanning';
+		void vscode.commands.executeCommand('setContext', 'pipelinesexplorer.filterActive', true);
+		this._onDidChangeTreeData.fire();
+
+		const cts = new vscode.CancellationTokenSource();
+		this.filterScanCts = cts;
+		void this.runFilterScan(normalized, cts.token).catch(err => {
+			if (!cts.token.isCancellationRequested) {
+				this.logger.logError('Filter scan failed', err);
+			}
+		});
+	}
+
+	private clearFilterState(fireChange: boolean): void {
+		this.currentFilter = undefined;
+		this.filterState = 'idle';
+		this.matchedIds.clear();
+		this.visibleIds.clear();
+		this.filterMatchCount = 0;
+		this.filterCappedAt = undefined;
+		void vscode.commands.executeCommand('setContext', 'pipelinesexplorer.filterActive', false);
+		if (fireChange) {
+			this._onDidChangeTreeData.fire();
+		}
 	}
 
 	getTreeItem(element: Node): vscode.TreeItem {
@@ -361,7 +507,55 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 		if (!this.auth.session) {
 			return [];
 		}
+		const children = await this.fetchChildren(element);
+		const cacheKey = element?.id ?? PipelinesTreeProvider.ROOT_CACHE_KEY;
+		this.nodeChildrenCache.set(cacheKey, children);
+		for (const c of children) {
+			if (c.id) {
+				this.parentByChildId.set(c.id, cacheKey);
+			}
+		}
 
+		if (!this.currentFilter) {
+			return children;
+		}
+
+		if (!element) {
+			return [this.buildFilterStatusNode(), ...children.filter(c => this.isVisibleUnderFilter(c))];
+		}
+		return children.filter(c => this.isVisibleUnderFilter(c));
+	}
+
+	/**
+	 * True if `node` is either matched by the current filter or is an ancestor
+	 * of a matched node. The connection header row is always kept.
+	 */
+	private isVisibleUnderFilter(node: Node): boolean {
+		if (node.kind === 'connection-info' || node.kind === 'filterStatus') {
+			return true;
+		}
+		if (!node.id) {
+			return false;
+		}
+		return this.matchedIds.has(node.id) || this.visibleIds.has(node.id);
+	}
+
+	private buildFilterStatusNode(): FilterStatusNode {
+		return new FilterStatusNode(
+			this.currentFilter ?? '',
+			this.filterState,
+			this.filterMatchCount,
+			this.filterCappedAt,
+		);
+	}
+
+	/**
+	 * Fetches children the same way the tree used to do before the filter
+	 * feature landed. Called by `getChildren` and cached into
+	 * `nodeChildrenCache`. Extracted so the filter branch can decorate the
+	 * result without duplicating the fetch logic.
+	 */
+	private async fetchChildren(element?: Node): Promise<Node[]> {
 		try {
 			if (!element) {
 				const profile = await this.client.getProfile();
@@ -514,6 +708,137 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 		}
 	}
 
+	/**
+	 * Enables `TreeView.reveal` for arbitrary nodes: VS Code needs the parent
+	 * chain to reveal an element and does not track it on its own. We walk the
+	 * cached child index built during `getChildren`.
+	 */
+	getParent(element: Node): Node | undefined {
+		if (!element.id) { return undefined; }
+		const parentId = this.parentByChildId.get(element.id);
+		if (!parentId || parentId === PipelinesTreeProvider.ROOT_CACHE_KEY) {
+			return undefined;
+		}
+		const siblings = this.nodeChildrenCache.get(this.parentByChildId.get(parentId) ?? PipelinesTreeProvider.ROOT_CACHE_KEY);
+		return siblings?.find(n => n.id === parentId);
+	}
+
+	/**
+	 * Walks the already-loaded portion of the tree, matches pipelines /
+	 * templates / scripts against `term` and populates `matchedIds` +
+	 * `visibleIds`. Fires `_onDidCompleteFilterScan` with up to
+	 * `FILTER_REVEAL_CAP` matched pipeline nodes for the caller (extension.ts)
+	 * to reveal.
+	 */
+	private async runFilterScan(term: string, token: vscode.CancellationToken): Promise<void> {
+		const pipelines = this.collectLoadedPipelines();
+		const cap = PipelinesTreeProvider.FILTER_PIPELINE_CAP;
+		const capped = pipelines.length > cap;
+		const scanTargets = capped ? pipelines.slice(0, cap) : pipelines;
+
+		if (capped) {
+			this.filterCappedAt = cap;
+		}
+
+		const matchedPipelines: PipelineNode[] = [];
+
+		// Pass 1: match pipeline names + root YAML basename. This is synchronous
+		// and gives the user immediate feedback for the cheapest case.
+		for (const pipe of scanTargets) {
+			if (token.isCancellationRequested) { return; }
+			if (pipelineMatchesFilter(pipe, term)) {
+				this.markMatch(pipe.id!, pipe);
+				matchedPipelines.push(pipe);
+			}
+		}
+
+		// Pass 2: fetch analysis for each pipeline (cached across scans) and
+		// match template / script leaves. Concurrency mirrors the rest of the
+		// codebase (see mapWithConcurrency, cap 8).
+		await mapWithConcurrency(scanTargets, 8, async pipe => {
+			if (token.isCancellationRequested) { return; }
+			try {
+				const analysis = await this.getAnalysis(pipe);
+				if (token.isCancellationRequested) { return; }
+				const tplGroupId = `${pipe.id!}:group:templates`;
+				const scriptGroupId = `${pipe.id!}:group:scripts`;
+				let groupTouched = false;
+				for (const t of analysis.templates) {
+					if (matchesFilterTerm(basename(t.path), term)) {
+						const tplId = `${tplGroupId}:tpl:${t.raw}`;
+						this.matchedIds.add(tplId);
+						this.visibleIds.add(tplGroupId);
+						groupTouched = true;
+					}
+				}
+				for (const s of analysis.scripts) {
+					if (!s.filePath) { continue; }
+					if (matchesFilterTerm(basename(s.filePath), term)) {
+						const idTail = s.filePath;
+						const sId = `${scriptGroupId}:script:${s.task}:${s.kind}:${idTail}`;
+						this.matchedIds.add(sId);
+						this.visibleIds.add(scriptGroupId);
+						groupTouched = true;
+					}
+				}
+				if (groupTouched && !this.matchedIds.has(pipe.id!)) {
+					this.visibleIds.add(pipe.id!);
+					this.markAncestors(pipe.id!);
+					if (!matchedPipelines.includes(pipe)) {
+						matchedPipelines.push(pipe);
+					}
+				}
+			} catch (err) {
+				this.logger.logError(`Filter scan: analyzing "${pipe.pipeline.name}" failed`, err);
+			}
+		});
+
+		if (token.isCancellationRequested) { return; }
+
+		this.filterMatchCount = this.matchedIds.size;
+		if (this.filterMatchCount === 0) {
+			this.filterState = 'no-results';
+		} else if (capped) {
+			this.filterState = 'capped';
+		} else {
+			this.filterState = 'ready';
+		}
+		this._onDidChangeTreeData.fire();
+		this._onDidCompleteFilterScan.fire(matchedPipelines.slice(0, PipelinesTreeProvider.FILTER_REVEAL_CAP));
+	}
+
+	/** Walks the cached child index and returns every loaded pipeline node. */
+	private collectLoadedPipelines(): PipelineNode[] {
+		const out: PipelineNode[] = [];
+		const walk = (parentKey: string): void => {
+			const children = this.nodeChildrenCache.get(parentKey);
+			if (!children) { return; }
+			for (const c of children) {
+				if (c.kind === 'pipeline') {
+					out.push(c);
+				} else if (c.id && this.nodeChildrenCache.has(c.id)) {
+					walk(c.id);
+				}
+			}
+		};
+		walk(PipelinesTreeProvider.ROOT_CACHE_KEY);
+		return out;
+	}
+
+	/** Records a leaf match and marks all its ancestors as visible. */
+	private markMatch(nodeId: string, _node: Node): void {
+		this.matchedIds.add(nodeId);
+		this.markAncestors(nodeId);
+	}
+
+	private markAncestors(nodeId: string): void {
+		let cur = this.parentByChildId.get(nodeId);
+		while (cur && cur !== PipelinesTreeProvider.ROOT_CACHE_KEY) {
+			this.visibleIds.add(cur);
+			cur = this.parentByChildId.get(cur);
+		}
+	}
+
 	private getAnalysis(node: PipelineNode): Promise<PipelineAnalysis> {
 		const branch = this.branches.get({
 			orgAccountId: node.organization.accountId,
@@ -662,4 +987,20 @@ async function mapWithConcurrency<T, R>(
 	});
 	await Promise.all(runners);
 	return results;
+}
+
+/**
+ * True if a `PipelineNode` matches the given (already lowercased) filter term
+ * on either the logical pipeline name or the basename of its root YAML file.
+ * Exported for unit testing.
+ */
+export function pipelineMatchesFilter(node: PipelineNode, term: string): boolean {
+	if (matchesFilterTerm(node.pipeline.name, term)) {
+		return true;
+	}
+	const rootPath = node.detail?.configuration?.path;
+	if (rootPath && matchesFilterTerm(basename(rootPath), term)) {
+		return true;
+	}
+	return false;
 }

@@ -91,5 +91,14 @@
 	"Group {0}, {1} items": "Gruppe {0}, {1} Elemente",
 	"Template {0}": "Vorlage {0}",
 	"Script {0}": "Skript {0}",
-	"Information: {0}": "Information: {0}"
+	"Information: {0}": "Information: {0}",
+	"Filter Pipelines Explorer": "Pipelines Explorer filtern",
+	"Filter pipelines, templates and scripts by name": "Pipelines, Vorlagen und Skripte nach Namen filtern",
+	"Type part of a name (empty to clear)": "Namensteil eingeben (leer zum Löschen)",
+	"Edit filter": "Filter bearbeiten",
+	"Filter active: {0} — scanning…": "Filter aktiv: {0} — wird durchsucht…",
+	"Filter active: {0} — no results in loaded scope": "Filter aktiv: {0} — keine Ergebnisse im geladenen Bereich",
+	"Filter active: {0} — {1} result(s)": "Filter aktiv: {0} — {1} Ergebnis(se)",
+	"Filter active: {0} — {1} result(s) (scope capped at {2} pipelines)": "Filter aktiv: {0} — {1} Ergebnis(se) (Bereich auf {2} Pipelines begrenzt)",
+	"Filter limited to already-loaded scope — expand more orgs/projects to widen": "Filter auf bereits geladenen Bereich beschränkt — weitere Organisationen/Projekte erweitern"
 }

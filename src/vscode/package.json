@@ -90,19 +90,39 @@
       {
         "command": "pipelinesexplorer.openItem",
         "title": "%command.openItem.title%"
+      },
+      {
+        "command": "pipelinesexplorer.filter",
+        "title": "%command.filter.title%",
+        "icon": "$(search)"
+      },
+      {
+        "command": "pipelinesexplorer.clearFilter",
+        "title": "%command.clearFilter.title%",
+        "icon": "$(close)"
       }
     ],
     "menus": {
       "view/title": [
         {
+          "command": "pipelinesexplorer.filter",
+          "when": "view == pipelinesTree && pipelinesexplorer.signedIn",
+          "group": "navigation@0"
+        },
+        {
+          "command": "pipelinesexplorer.clearFilter",
+          "when": "view == pipelinesTree && pipelinesexplorer.signedIn && pipelinesexplorer.filterActive",
+          "group": "navigation@1"
+        },
+        {
           "command": "pipelinesexplorer.refresh",
           "when": "view == pipelinesTree && pipelinesexplorer.signedIn",
-          "group": "navigation"
+          "group": "navigation@2"
         },
         {
           "command": "pipelinesexplorer.selectTenant",
           "when": "view == pipelinesTree && pipelinesexplorer.signedIn && pipelinesexplorer.signInKind == microsoft",
-          "group": "navigation"
+          "group": "navigation@3"
         },
         {
           "command": "pipelinesexplorer.signOut",
@@ -127,6 +147,14 @@
         },
         {
           "command": "pipelinesexplorer.showLogs"
+        },
+        {
+          "command": "pipelinesexplorer.filter",
+          "when": "pipelinesexplorer.signedIn"
+        },
+        {
+          "command": "pipelinesexplorer.clearFilter",
+          "when": "pipelinesexplorer.signedIn && pipelinesexplorer.filterActive"
         },
         {
           "command": "pipelinesexplorer.linkWorkspace",

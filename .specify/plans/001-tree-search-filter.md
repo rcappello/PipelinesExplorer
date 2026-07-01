@@ -281,3 +281,10 @@ Per the matrix in
 ## 10. Change log (filled during implementation)
 
 - 2026-06-30 — Plan approved, no implementation started yet.
+- 2026-07-01 — Branch `feat/001-tree-search-filter` created. VS Code
+  implementation in progress. Implementation refinement: `TreeView.reveal`
+  will be invoked only on matched **PipelineNode**s (up to
+  `FILTER_REVEAL_CAP = 50`). Group / template / script leaves that match are
+  still counted and rendered on expand, but the tree does not auto-expand
+  down to the leaf — this keeps behavior stable and avoids fanning out
+  hundreds of `reveal` calls on wide result sets.

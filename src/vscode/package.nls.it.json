@@ -12,6 +12,8 @@
 	"command.unlinkWorkspace.title": "Scollega cartella dell'area di lavoro",
 	"command.selectBranch.title": "Seleziona branch…",
 	"command.openItem.title": "Apri",
+	"command.filter.title": "Pipelines Explorer: Filtra per nome…",
+	"command.clearFilter.title": "Pipelines Explorer: Cancella filtro",
 	"view.pipelinesTree.name": "Pipeline",
 	"view.pipelinesTree.contextualTitle": "Pipelines Explorer",
 	"viewsContainer.pipelinesExplorer.title": "Pipelines Explorer",

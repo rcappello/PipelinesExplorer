@@ -12,6 +12,8 @@
 	"command.unlinkWorkspace.title": "Unlink Workspace Folder",
 	"command.selectBranch.title": "Select Branch…",
 	"command.openItem.title": "Open",
+	"command.filter.title": "Pipelines Explorer: Filter by name…",
+	"command.clearFilter.title": "Pipelines Explorer: Clear filter",
 	"view.pipelinesTree.name": "Pipelines",
 	"view.pipelinesTree.contextualTitle": "Pipelines Explorer",
 	"viewsContainer.pipelinesExplorer.title": "Pipelines Explorer",

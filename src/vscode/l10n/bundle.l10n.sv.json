@@ -91,5 +91,14 @@
 	"Group {0}, {1} items": "Grupp {0}, {1} objekt",
 	"Template {0}": "Mall {0}",
 	"Script {0}": "Skript {0}",
-	"Information: {0}": "Information: {0}"
+	"Information: {0}": "Information: {0}",
+	"Filter Pipelines Explorer": "Filtrera Pipelines Explorer",
+	"Filter pipelines, templates and scripts by name": "Filtrera pipelines, mallar och skript efter namn",
+	"Type part of a name (empty to clear)": "Skriv en del av ett namn (tomt för att rensa)",
+	"Edit filter": "Redigera filter",
+	"Filter active: {0} — scanning…": "Filter aktivt: {0} — söker…",
+	"Filter active: {0} — no results in loaded scope": "Filter aktivt: {0} — inga träffar i inläst omfång",
+	"Filter active: {0} — {1} result(s)": "Filter aktivt: {0} — {1} träff(ar)",
+	"Filter active: {0} — {1} result(s) (scope capped at {2} pipelines)": "Filter aktivt: {0} — {1} träff(ar) (omfång begränsat till {2} pipelines)",
+	"Filter limited to already-loaded scope — expand more orgs/projects to widen": "Filter begränsat till redan inläst omfång — expandera fler organisationer/projekt för att bredda"
 }
