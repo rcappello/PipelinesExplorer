@@ -340,7 +340,7 @@ export class FilterStatusNode extends vscode.TreeItem {
 				label = vscode.l10n.t('Filter active: {0} — scanning…', term);
 				break;
 			case 'no-results':
-				label = vscode.l10n.t('Filter active: {0} — no results in loaded scope', term);
+				label = vscode.l10n.t('Filter active: {0} — no results', term);
 				break;
 			case 'capped':
 				label = vscode.l10n.t('Filter active: {0} — {1} result(s) (scope capped at {2} pipelines)', term, matchCount, cappedAt ?? 0);
@@ -352,7 +352,7 @@ export class FilterStatusNode extends vscode.TreeItem {
 		super(label, vscode.TreeItemCollapsibleState.None);
 		this.id = `__filter-status__:${state}:${term}`;
 		this.iconPath = new vscode.ThemeIcon(state === 'scanning' ? 'sync~spin' : 'filter');
-		this.tooltip = vscode.l10n.t('Filter limited to already-loaded scope — expand more orgs/projects to widen');
+		this.tooltip = vscode.l10n.t('Filter searches every organization, project and repository the signed-in identity can see. YAML analysis is capped at {0} pipelines.', PipelinesTreeProvider.FILTER_PIPELINE_CAP);
 		this.contextValue = 'pipelinesexplorer.filterStatus';
 		this.command = {
 			command: 'pipelinesexplorer.filter',
@@ -514,13 +514,7 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 			return [];
 		}
 		const children = await this.fetchChildren(element);
-		const cacheKey = element?.id ?? PipelinesTreeProvider.ROOT_CACHE_KEY;
-		this.nodeChildrenCache.set(cacheKey, children);
-		for (const c of children) {
-			if (c.id) {
-				this.parentByChildId.set(c.id, cacheKey);
-			}
-		}
+		this.populateChildCache(element, children);
 
 		if (!this.currentFilter) {
 			return children;
@@ -530,6 +524,33 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 			return [this.buildFilterStatusNode(), ...children.filter(c => this.isVisibleUnderFilter(c))];
 		}
 		return children.filter(c => this.isVisibleUnderFilter(c));
+	}
+
+	private populateChildCache(element: Node | undefined, children: Node[]): void {
+		const cacheKey = element?.id ?? PipelinesTreeProvider.ROOT_CACHE_KEY;
+		this.nodeChildrenCache.set(cacheKey, children);
+		for (const c of children) {
+			if (c.id) {
+				this.parentByChildId.set(c.id, cacheKey);
+			}
+		}
+	}
+
+	/**
+	 * Returns the children of `element`, hitting `fetchChildren` (and
+	 * populating `nodeChildrenCache` + `parentByChildId`) only on cache miss.
+	 * Never applies the filter — used by the filter preload to force lazy
+	 * subtrees to materialise without polluting the tree UI.
+	 */
+	private async ensureLoaded(element: Node | undefined): Promise<Node[]> {
+		const cacheKey = element?.id ?? PipelinesTreeProvider.ROOT_CACHE_KEY;
+		const cached = this.nodeChildrenCache.get(cacheKey);
+		if (cached) {
+			return cached;
+		}
+		const children = await this.fetchChildren(element);
+		this.populateChildCache(element, children);
+		return children;
 	}
 
 	/**
@@ -730,13 +751,61 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 	}
 
 	/**
-	 * Walks the already-loaded portion of the tree, matches pipelines /
+	 * Forces every organization → project → repository → pipeline subtree
+	 * reachable from the signed-in identity to materialise into the child
+	 * cache, so that `collectLoadedPipelines` can see every pipeline the
+	 * filter is expected to search. Silently swallows per-node failures (they
+	 * are logged) so a single broken project does not abort the whole scan.
+	 */
+	private async preloadAllForFilter(token: vscode.CancellationToken): Promise<void> {
+		const roots = await this.ensureLoaded(undefined).catch(err => {
+			this.logger.logError('Filter preload: listing organizations failed', err);
+			return [] as Node[];
+		});
+		if (token.isCancellationRequested) { return; }
+
+		const orgs = roots.filter((n): n is OrganizationNode => n.kind === 'organization');
+
+		await mapWithConcurrency(orgs, 4, async org => {
+			if (token.isCancellationRequested) { return; }
+			const projects = await this.ensureLoaded(org).catch(err => {
+				this.logger.logError(`Filter preload: listing projects for ${org.organization.accountName} failed`, err);
+				return [] as Node[];
+			});
+			if (token.isCancellationRequested) { return; }
+			const projs = projects.filter((n): n is ProjectNode => n.kind === 'project');
+
+			await mapWithConcurrency(projs, 4, async proj => {
+				if (token.isCancellationRequested) { return; }
+				const projectChildren = await this.ensureLoaded(proj).catch(err => {
+					this.logger.logError(`Filter preload: listing pipelines for ${org.organization.accountName}/${proj.project.name} failed`, err);
+					return [] as Node[];
+				});
+				if (token.isCancellationRequested) { return; }
+				const repos = projectChildren.filter((n): n is RepositoryNode => n.kind === 'repository');
+				for (const repo of repos) {
+					if (token.isCancellationRequested) { return; }
+					await this.ensureLoaded(repo).catch(err => {
+						this.logger.logError(`Filter preload: listing pipelines for repo ${repo.repoLabel} failed`, err);
+						return [] as Node[];
+					});
+				}
+			});
+		});
+	}
+
+	/**
+	 * Walks every organization / project / repository the signed-in identity
+	 * can see (auto-loading lazy subtrees on the fly), matches pipelines /
 	 * templates / scripts against `term` and populates `matchedIds` +
 	 * `visibleIds`. Fires `_onDidCompleteFilterScan` with up to
 	 * `FILTER_REVEAL_CAP` matched pipeline nodes for the caller (extension.ts)
 	 * to reveal.
 	 */
 	private async runFilterScan(term: string, token: vscode.CancellationToken): Promise<void> {
+		await this.preloadAllForFilter(token);
+		if (token.isCancellationRequested) { return; }
+
 		const pipelines = this.collectLoadedPipelines();
 		const cap = PipelinesTreeProvider.FILTER_PIPELINE_CAP;
 		const capped = pipelines.length > cap;

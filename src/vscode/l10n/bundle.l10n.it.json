@@ -96,8 +96,8 @@
 	"Type part of a name (empty to clear)": "Digita parte di un nome (vuoto per cancellare)",
 	"Edit filter": "Modifica filtro",
 	"Filter active: {0} — scanning…": "Filtro attivo: {0} — analisi in corso…",
-	"Filter active: {0} — no results in loaded scope": "Filtro attivo: {0} — nessun risultato nell'ambito caricato",
+	"Filter active: {0} — no results": "Filtro attivo: {0} — nessun risultato",
 	"Filter active: {0} — {1} result(s)": "Filtro attivo: {0} — {1} risultato/i",
 	"Filter active: {0} — {1} result(s) (scope capped at {2} pipelines)": "Filtro attivo: {0} — {1} risultato/i (ambito limitato a {2} pipeline)",
-	"Filter limited to already-loaded scope — expand more orgs/projects to widen": "Filtro limitato all'ambito già caricato — espandi altre organizzazioni/progetti per ampliarlo"
+	"Filter searches every organization, project and repository the signed-in identity can see. YAML analysis is capped at {0} pipelines.": "Il filtro cerca in tutte le organizzazioni, progetti e repository visibili all'identità connessa. L'analisi YAML è limitata a {0} pipeline."
 }
