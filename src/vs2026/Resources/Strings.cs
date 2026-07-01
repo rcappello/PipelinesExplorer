@@ -96,6 +96,16 @@ public static class Strings
     public static string A11y_PatField_Name => Get(nameof(A11y_PatField_Name));
     public static string A11y_TenantPicker_ComboBox_Name => Get(nameof(A11y_TenantPicker_ComboBox_Name));
     public static string A11y_BranchPicker_ComboBox_Name => Get(nameof(A11y_BranchPicker_ComboBox_Name));
+    public static string A11y_Filter_Name => Get(nameof(A11y_Filter_Name));
+
+    // Filter (Plan 001)
+    public static string Filter_Placeholder => Get(nameof(Filter_Placeholder));
+    public static string Filter_Clear_Tooltip => Get(nameof(Filter_Clear_Tooltip));
+    public static string Filter_LoadedScope_Tooltip => Get(nameof(Filter_LoadedScope_Tooltip));
+    public static string Filter_Status_Scanning_Format => Get(nameof(Filter_Status_Scanning_Format));
+    public static string Filter_Status_NoResults_Format => Get(nameof(Filter_Status_NoResults_Format));
+    public static string Filter_Status_Ready_Format => Get(nameof(Filter_Status_Ready_Format));
+    public static string Filter_Status_Capped_Format => Get(nameof(Filter_Status_Capped_Format));
 
     // Link workspace -> auto-detected branch prompt (post-link offer)
     public static string LinkWorkspace_DetectedBranch_Format => Get(nameof(LinkWorkspace_DetectedBranch_Format));

@@ -43,12 +43,31 @@ public class TreeNodeViewModel : NotifyPropertyChangedObject
     private string _label = string.Empty;
     private string? _description;
     private string? _tooltip;
+    private bool _isVisibleUnderFilter = true;
 
     public TreeNodeViewModel(TreeNodeKind kind)
     {
         Kind = kind;
         Children = new ObservableList<TreeNodeViewModel>();
     }
+
+    /// <summary>
+    /// True unless a filter is active and this node is neither a direct match
+    /// nor an ancestor of a matched node. Bound to the WPF
+    /// <c>TreeViewItem.Visibility</c> via <c>BooleanToVisibilityConverter</c>
+    /// so hidden subtrees collapse away entirely.
+    /// </summary>
+    [DataMember]
+    public bool IsVisibleUnderFilter
+    {
+        get => _isVisibleUnderFilter;
+        internal set => SetProperty(ref _isVisibleUnderFilter, value);
+    }
+
+    /// <summary>Remembers the expansion state before the last auto-expand triggered by a filter, so that <c>ClearFilter</c> can restore it.</summary>
+    internal bool ExpansionSnapshot { get; set; }
+    /// <summary>True when the current filter has forced this node open; cleared on filter reset.</summary>
+    internal bool IsAutoExpandedByFilter { get; set; }
 
     [DataMember]
     public TreeNodeKind Kind { get; }

@@ -51,4 +51,10 @@ public sealed class LocalizedStrings : NotifyPropertyChangedObject
     [DataMember] public string A11y_Tree_Name { get; } = Strings.A11y_Tree_Name;
     [DataMember] public string A11y_BranchPicker_ComboBox_Name { get; } = Strings.A11y_BranchPicker_ComboBox_Name;
     [DataMember] public string A11y_TenantPicker_ComboBox_Name { get; } = Strings.A11y_TenantPicker_ComboBox_Name;
+    [DataMember] public string A11y_Filter_Name { get; } = Strings.A11y_Filter_Name;
+
+    // Filter
+    [DataMember] public string Filter_Placeholder { get; } = Strings.Filter_Placeholder;
+    [DataMember] public string Filter_Clear_Tooltip { get; } = Strings.Filter_Clear_Tooltip;
+    [DataMember] public string Filter_LoadedScope_Tooltip { get; } = Strings.Filter_LoadedScope_Tooltip;
 }
