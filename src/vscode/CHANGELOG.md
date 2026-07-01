@@ -4,6 +4,12 @@ All notable changes to **Pipelines Explorer** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Filter by name** — a new **Filter Pipelines Explorer** command (title-bar icon and Command Palette) restricts the tree to pipelines, templates and scripts whose name contains a substring (case-insensitive, debounced ~200 ms). A status node reports scanning / result count / capped / no-results states; matching pipelines are auto-revealed. Scan is bounded to the already-loaded scope (no forced fetches) and capped at 500 pipelines. Localized in all six languages. See plan 001.
+
 ## [0.2.0] - 2026-05-15
 
 ### Added
