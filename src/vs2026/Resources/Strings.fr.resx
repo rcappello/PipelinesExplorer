@@ -79,9 +79,9 @@ Cliquez sur l'icône de l'organisation pour changer de locataire.</value></data>
   <data name="Filter_Placeholder" xml:space="preserve"><value>Filtrer les pipelines, modèles et scripts par nom…</value></data>
   <data name="Filter_Clear_Tooltip" xml:space="preserve"><value>Effacer le filtre</value></data>
   <data name="Filter_Status_Scanning_Format" xml:space="preserve"><value>Filtre actif : {0} — analyse en cours…</value></data>
-  <data name="Filter_Status_NoResults_Format" xml:space="preserve"><value>Filtre actif : {0} — aucun résultat dans la portée chargée</value></data>
+  <data name="Filter_Status_NoResults_Format" xml:space="preserve"><value>Filtre actif : {0} — aucun résultat</value></data>
   <data name="Filter_Status_Ready_Format" xml:space="preserve"><value>Filtre actif : {0} — {1} résultat(s)</value></data>
   <data name="Filter_Status_Capped_Format" xml:space="preserve"><value>Filtre actif : {0} — {1} résultat(s) (portée limitée à {2} pipelines)</value></data>
-  <data name="Filter_LoadedScope_Tooltip" xml:space="preserve"><value>Filtre limité à la portée déjà chargée — développez d'autres organisations/projets pour l'étendre.</value></data>
+  <data name="Filter_LoadedScope_Tooltip" xml:space="preserve"><value>Le filtre parcourt toutes les organisations, projets et dépôts visibles par l'identité connectée. L'analyse YAML est limitée à 500 pipelines.</value></data>
   <data name="A11y_Filter_Name" xml:space="preserve"><value>Filtre</value></data>
 </root>

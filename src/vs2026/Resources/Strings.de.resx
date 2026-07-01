@@ -79,9 +79,9 @@ Klicken Sie auf das Organisationssymbol, um den Mandanten zu wechseln.</value></
   <data name="Filter_Placeholder" xml:space="preserve"><value>Pipelines, Vorlagen und Skripte nach Namen filtern…</value></data>
   <data name="Filter_Clear_Tooltip" xml:space="preserve"><value>Filter löschen</value></data>
   <data name="Filter_Status_Scanning_Format" xml:space="preserve"><value>Filter aktiv: {0} — wird durchsucht…</value></data>
-  <data name="Filter_Status_NoResults_Format" xml:space="preserve"><value>Filter aktiv: {0} — keine Ergebnisse im geladenen Bereich</value></data>
+  <data name="Filter_Status_NoResults_Format" xml:space="preserve"><value>Filter aktiv: {0} — keine Ergebnisse</value></data>
   <data name="Filter_Status_Ready_Format" xml:space="preserve"><value>Filter aktiv: {0} — {1} Ergebnis(se)</value></data>
   <data name="Filter_Status_Capped_Format" xml:space="preserve"><value>Filter aktiv: {0} — {1} Ergebnis(se) (Bereich auf {2} Pipelines begrenzt)</value></data>
-  <data name="Filter_LoadedScope_Tooltip" xml:space="preserve"><value>Filter auf bereits geladenen Bereich beschränkt — weitere Organisationen/Projekte erweitern.</value></data>
+  <data name="Filter_LoadedScope_Tooltip" xml:space="preserve"><value>Der Filter durchsucht alle Organisationen, Projekte und Repositorys, die der angemeldeten Identität sichtbar sind. Die YAML-Analyse ist auf 500 Pipelines begrenzt.</value></data>
   <data name="A11y_Filter_Name" xml:space="preserve"><value>Filter</value></data>
 </root>

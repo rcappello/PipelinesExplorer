@@ -79,9 +79,9 @@ Klicka på organisationsikonen för att byta klientorganisation.</value></data>
   <data name="Filter_Placeholder" xml:space="preserve"><value>Filtrera pipelines, mallar och skript efter namn…</value></data>
   <data name="Filter_Clear_Tooltip" xml:space="preserve"><value>Rensa filter</value></data>
   <data name="Filter_Status_Scanning_Format" xml:space="preserve"><value>Filter aktivt: {0} — söker…</value></data>
-  <data name="Filter_Status_NoResults_Format" xml:space="preserve"><value>Filter aktivt: {0} — inga träffar i inläst omfång</value></data>
+  <data name="Filter_Status_NoResults_Format" xml:space="preserve"><value>Filter aktivt: {0} — inga träffar</value></data>
   <data name="Filter_Status_Ready_Format" xml:space="preserve"><value>Filter aktivt: {0} — {1} träff(ar)</value></data>
   <data name="Filter_Status_Capped_Format" xml:space="preserve"><value>Filter aktivt: {0} — {1} träff(ar) (omfång begränsat till {2} pipelines)</value></data>
-  <data name="Filter_LoadedScope_Tooltip" xml:space="preserve"><value>Filter begränsat till redan inläst omfång — expandera fler organisationer/projekt för att bredda.</value></data>
+  <data name="Filter_LoadedScope_Tooltip" xml:space="preserve"><value>Filtret söker i alla organisationer, projekt och lagringsplatser som den inloggade identiteten ser. YAML-analysen är begränsad till 500 pipelines.</value></data>
   <data name="A11y_Filter_Name" xml:space="preserve"><value>Filter</value></data>
 </root>

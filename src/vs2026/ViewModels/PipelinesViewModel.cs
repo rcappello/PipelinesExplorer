@@ -1150,8 +1150,57 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     }
 
     /// <summary>
-    /// Walks the already-loaded scope (never triggers new fetches) and marks
-    /// every pipeline / template / script whose name contains
+    /// Forces every organization → project subtree reachable from
+    /// <see cref="Roots"/> to materialise (bypassing the lazy-load-on-expand
+    /// gate), so <see cref="CollectLoadedPipelines"/> sees every pipeline the
+    /// filter is expected to search. Per-node failures are logged but do not
+    /// abort the whole preload.
+    /// </summary>
+    private async Task PreloadAllForFilterAsync(CancellationToken ct)
+    {
+        var orgs = Roots.OfType<OrganizationNode>().ToList();
+        foreach (var batch in Chunk(orgs, 4))
+        {
+            if (ct.IsCancellationRequested) { return; }
+            await Task.WhenAll(batch.Select(o => EnsureLoadedForFilterAsync(o))).ConfigureAwait(false);
+        }
+        if (ct.IsCancellationRequested) { return; }
+
+        var projects = orgs.SelectMany(o => o.Children.OfType<ProjectNode>()).ToList();
+        foreach (var batch in Chunk(projects, 4))
+        {
+            if (ct.IsCancellationRequested) { return; }
+            await Task.WhenAll(batch.Select(p => EnsureLoadedForFilterAsync(p))).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// If <paramref name="node"/> is still a lazy stub (single
+    /// <see cref="TreeNodeKind.Loading"/> child), invoke the matching loader
+    /// synchronously. Mirrors <see cref="SubscribeLazyLoad"/>, but callable
+    /// from the filter preload without waiting for user expansion.
+    /// </summary>
+    private async Task EnsureLoadedForFilterAsync(TreeNodeViewModel node)
+    {
+        if (node.Children.Count != 1 || node.Children[0].Kind != TreeNodeKind.Loading) { return; }
+        try
+        {
+            switch (node)
+            {
+                case OrganizationNode org: await LoadProjectsAsync(org).ConfigureAwait(false); break;
+                case ProjectNode proj: await LoadPipelinesAsync(proj).ConfigureAwait(false); break;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error($"Filter preload: loading '{node.Label}' failed", ex);
+        }
+    }
+
+    /// <summary>
+    /// Walks every organization / project / repository the signed-in identity
+    /// can see (auto-loading lazy subtrees on the fly) and marks every
+    /// pipeline / template / script whose name contains
     /// <paramref name="term"/>. Ancestors of matches are marked visible so
     /// they still render as breadcrumbs.
     /// </summary>
@@ -1161,13 +1210,16 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         _matchedNodes.Clear();
         _ancestorNodes.Clear();
 
+        IsFilterActive = true;
+        FilterStatusText = string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.Filter_Status_Scanning_Format, term);
+
+        await PreloadAllForFilterAsync(ct).ConfigureAwait(false);
+        if (ct.IsCancellationRequested) { return; }
+
         var pipelines = CollectLoadedPipelines();
         var cap = FilterPipelineCap;
         var capped = pipelines.Count > cap;
         var targets = capped ? pipelines.Take(cap).ToList() : pipelines;
-
-        IsFilterActive = true;
-        FilterStatusText = string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.Filter_Status_Scanning_Format, term);
 
         // Pass 1: cheap, synchronous — pipeline names and root YAML basename.
         foreach (var pipe in targets)

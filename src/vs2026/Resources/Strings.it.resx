@@ -79,9 +79,9 @@ Fai clic sull'icona dell'organizzazione per cambiare tenant.</value></data>
   <data name="Filter_Placeholder" xml:space="preserve"><value>Filtra pipeline, template e script per nome…</value></data>
   <data name="Filter_Clear_Tooltip" xml:space="preserve"><value>Cancella filtro</value></data>
   <data name="Filter_Status_Scanning_Format" xml:space="preserve"><value>Filtro attivo: {0} — analisi in corso…</value></data>
-  <data name="Filter_Status_NoResults_Format" xml:space="preserve"><value>Filtro attivo: {0} — nessun risultato nell'ambito caricato</value></data>
+  <data name="Filter_Status_NoResults_Format" xml:space="preserve"><value>Filtro attivo: {0} — nessun risultato</value></data>
   <data name="Filter_Status_Ready_Format" xml:space="preserve"><value>Filtro attivo: {0} — {1} risultato/i</value></data>
   <data name="Filter_Status_Capped_Format" xml:space="preserve"><value>Filtro attivo: {0} — {1} risultato/i (ambito limitato a {2} pipeline)</value></data>
-  <data name="Filter_LoadedScope_Tooltip" xml:space="preserve"><value>Filtro limitato all'ambito già caricato — espandi altre organizzazioni/progetti per ampliarlo.</value></data>
+  <data name="Filter_LoadedScope_Tooltip" xml:space="preserve"><value>Il filtro cerca in tutte le organizzazioni, progetti e repository visibili all'identità connessa. L'analisi YAML è limitata a 500 pipeline.</value></data>
   <data name="A11y_Filter_Name" xml:space="preserve"><value>Filtro</value></data>
 </root>

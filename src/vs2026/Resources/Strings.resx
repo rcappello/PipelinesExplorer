@@ -126,9 +126,9 @@ Click the organization icon to switch tenant.</value><comment>{0} = account UPN,
   <data name="Filter_Placeholder" xml:space="preserve"><value>Filter pipelines, templates and scripts by name…</value></data>
   <data name="Filter_Clear_Tooltip" xml:space="preserve"><value>Clear filter</value></data>
   <data name="Filter_Status_Scanning_Format" xml:space="preserve"><value>Filter active: {0} — scanning…</value></data>
-  <data name="Filter_Status_NoResults_Format" xml:space="preserve"><value>Filter active: {0} — no results in loaded scope</value></data>
+  <data name="Filter_Status_NoResults_Format" xml:space="preserve"><value>Filter active: {0} — no results</value></data>
   <data name="Filter_Status_Ready_Format" xml:space="preserve"><value>Filter active: {0} — {1} result(s)</value></data>
   <data name="Filter_Status_Capped_Format" xml:space="preserve"><value>Filter active: {0} — {1} result(s) (scope capped at {2} pipelines)</value></data>
-  <data name="Filter_LoadedScope_Tooltip" xml:space="preserve"><value>Filter limited to already-loaded scope — expand more orgs/projects to widen.</value></data>
+  <data name="Filter_LoadedScope_Tooltip" xml:space="preserve"><value>Filter searches every organization, project and repository the signed-in identity can see. YAML analysis is capped at 500 pipelines.</value></data>
   <data name="A11y_Filter_Name" xml:space="preserve"><value>Filter</value></data>
 </root>
