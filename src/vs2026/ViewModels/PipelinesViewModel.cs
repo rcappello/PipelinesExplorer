@@ -1563,10 +1563,16 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
             selfMatched = true;
         }
         bool anyChildVisible = false;
+        int visibleChildCount = 0;
         foreach (var child in node.Children)
         {
-            if (ApplyVisibilityRecursive(child, term)) { anyChildVisible = true; }
+            if (ApplyVisibilityRecursive(child, term))
+            {
+                anyChildVisible = true;
+                if (child is not InfoNode) { visibleChildCount++; }
+            }
         }
+        if (node is GroupNode group) { group.UpdateFilteredCount(visibleChildCount); }
         bool visible = selfMatched || anyChildVisible || _ancestorNodes.Contains(node);
         node.IsVisibleUnderFilter = visible;
         if (selfMatched) { _matchedNodes.Add(node); }
@@ -1654,6 +1660,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     private static void SetAllVisibleRecursive(TreeNodeViewModel node)
     {
         node.IsVisibleUnderFilter = true;
+        if (node is GroupNode g) { g.UpdateFilteredCount(null); }
         foreach (var c in node.Children) { SetAllVisibleRecursive(c); }
     }
 

@@ -8,6 +8,10 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+
+- Group headers under the tree filter now show the visible / total count (e.g. `Templates 4/7`) when the filter hides some items, and revert to the plain total (`Templates 7`) when the filter is cleared or when every item in the group still matches.
+
 ### Security
 
 - Override the transitive `MessagePack` dependency (pulled in at `2.5.198` by `Microsoft.VisualStudio.Extensibility.Sdk 17.14`) with an explicit `PackageReference` on `MessagePack` / `MessagePack.Annotations` `2.5.302`. Clears the two GitHub Advisory database findings ([GHSA-vh6j-jc39-fggf](https://github.com/advisories/GHSA-vh6j-jc39-fggf) — `MessagePackReader.Skip` unbounded recursion, and [GHSA-hv8m-jj95-wg3x](https://github.com/advisories/GHSA-hv8m-jj95-wg3x) — LZ4 decompression out-of-bounds read) along with the eight moderate `NU1902` advisories that `dotnet restore` reported on the same package. Kept on the `2.5.x` patch line to preserve binary compatibility with the Extensibility SDK's own use of MessagePack.
