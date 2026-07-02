@@ -4,7 +4,7 @@
                  xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
     <Identity Id="PipelinesExplorer.VisualStudio.f6c47e2e-5b33-4d3a-8d79-2f5e1c1b9a01"
-              Version="0.2.1"
+              Version="0.3.0"
               Language="en-US"
               Publisher="Riccardo Cappello" />
     <DisplayName>Pipelines Explorer</DisplayName>
