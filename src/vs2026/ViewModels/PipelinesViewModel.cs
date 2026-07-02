@@ -803,21 +803,17 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
             children.Add(group);
         }
 
-        ReplaceList(parent.Children, children);
-
-        // Newly materialised children default to IsVisibleUnderFilter=true. If a
-        // filter is active (user lazy-expanded a pipeline / template after the
-        // scan), re-apply visibility so non-matching siblings collapse away —
-        // matching VS Code parity (plan 001 §2).
+        // Apply filter visibility BEFORE ReplaceList so the initial snapshot
+        // sent to the Remote UI client already has IsVisibleUnderFilter set
+        // correctly. Firing PropertyChanged AFTER ReplaceList races with the
+        // add-to-list message: the new item is serialised with the default
+        // value (true), and the subsequent property change on a freshly-added
+        // node is dropped by the WPF-side binding.
         if (_activeFilterTerm is not null)
         {
-            // Apply any deferred group marks recorded by MarkTemplateOrScriptMatch
-            // during the scan: the scan may have completed (or been in flight)
-            // before the group nodes existed, so we couldn't add them to
-            // _ancestorNodes then. Do it now that the group is real.
             if (parent is PipelineNode pipe)
             {
-                foreach (var g in parent.Children.OfType<GroupNode>())
+                foreach (var g in children.OfType<GroupNode>())
                 {
                     if (_deferredGroupMarks.Contains((pipe, g.Group)))
                     {
@@ -826,8 +822,13 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
                 }
             }
 
-            ApplyVisibilityRecursive(parent, _activeFilterTerm);
+            foreach (var child in children)
+            {
+                ApplyVisibilityRecursive(child, _activeFilterTerm);
+            }
         }
+
+        ReplaceList(parent.Children, children);
     }
 
     private TemplateNode BuildTemplateNode(
