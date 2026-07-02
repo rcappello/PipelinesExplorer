@@ -9,6 +9,7 @@ Features in pipeline. Each entry is a one-liner; promote to a full plan file
 | --- | ------------------------------------------- | ----------- | ------------------------------------------ |
 | 001 | Tree search / filter by name                | Done        | [001-tree-search-filter.md](001-tree-search-filter.md) |
 | 002 | PAT sign-in: per-organization fallback      | Draft       | [002-pat-per-org-fallback.md](002-pat-per-org-fallback.md) |
+| 003 | Filter: show pipeline in context + highlight| Draft       | [003-filter-pipeline-in-context.md](003-filter-pipeline-in-context.md) |
 
 ## Parking lot
 
