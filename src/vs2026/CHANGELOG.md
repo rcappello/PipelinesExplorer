@@ -11,6 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Fixed
 
 - Filter pruning was incomplete when the user manually expanded a pipeline or a template after the scan: newly materialised children (nested `Templates` group, non-matching sibling templates, entire `Scripts` group) defaulted to visible and stayed visible. Reapplying visibility after lazy-load now hides non-matching siblings anywhere in the subtree, matching the VS Code client. `InfoNode` warnings/status messages ride along with the parent's decision.
+- Filter pruning had two remaining gaps that could leave a matched pipeline showing an empty `Templates` group or a stale `Scripts` group depending on whether the user expanded a pipeline before, during or after the scan. The scan now (1) records deferred group-visibility marks so `BuildAnalysisChildren` can honour them even when the group nodes did not exist at scan time, and (2) tracks every intermediate template on a path to a nested match so the intermediate template surfaces without the user having to guess which one to drill into.
 
 ### Documentation
 

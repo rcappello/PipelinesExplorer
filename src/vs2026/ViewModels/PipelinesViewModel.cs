@@ -58,6 +58,17 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     private CancellationTokenSource? _filterScanCts;
     private readonly HashSet<TreeNodeViewModel> _matchedNodes = new();
     private readonly HashSet<TreeNodeViewModel> _ancestorNodes = new();
+    // Deferred group-visibility marks: recorded during Pass 2 whenever a
+    // template / script match is found for a pipeline whose Templates or
+    // Scripts group has not been materialised yet (user hasn't expanded it).
+    // BuildAnalysisChildren consults this set after ReplaceList so newly
+    // materialised group nodes get added to _ancestorNodes.
+    private readonly HashSet<(PipelineNode Pipe, GroupKind Group)> _deferredGroupMarks = new();
+    // Repo-absolute resolved paths of intermediate templates that transitively
+    // contain a match. Populated during ScanTemplatesRecursivelyAsync; consumed
+    // by ApplyVisibilityRecursive so an intermediate TemplateNode surfaces even
+    // when its own basename does not match the term.
+    private readonly HashSet<string> _templatesWithDescendantMatch = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Cache of TfsGit repository ids -> display name. Mirrors the
@@ -800,6 +811,21 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         // matching VS Code parity (plan 001 §2).
         if (_activeFilterTerm is not null)
         {
+            // Apply any deferred group marks recorded by MarkTemplateOrScriptMatch
+            // during the scan: the scan may have completed (or been in flight)
+            // before the group nodes existed, so we couldn't add them to
+            // _ancestorNodes then. Do it now that the group is real.
+            if (parent is PipelineNode pipe)
+            {
+                foreach (var g in parent.Children.OfType<GroupNode>())
+                {
+                    if (_deferredGroupMarks.Contains((pipe, g.Group)))
+                    {
+                        _ancestorNodes.Add(g);
+                    }
+                }
+            }
+
             ApplyVisibilityRecursive(parent, _activeFilterTerm);
         }
     }
@@ -1130,6 +1156,8 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         _activeFilterTerm = null;
         _matchedNodes.Clear();
         _ancestorNodes.Clear();
+        _deferredGroupMarks.Clear();
+        _templatesWithDescendantMatch.Clear();
         RestoreFilterExpansionState();
         SetAllVisible();
         IsFilterActive = false;
@@ -1218,6 +1246,8 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         _activeFilterTerm = term;
         _matchedNodes.Clear();
         _ancestorNodes.Clear();
+        _deferredGroupMarks.Clear();
+        _templatesWithDescendantMatch.Clear();
 
         IsFilterActive = true;
         FilterStatusText = string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.Filter_Status_Scanning_Format, term);
@@ -1352,10 +1382,10 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     {
         // We match at leaf granularity in Pass 2, but the leaf nodes might not
         // even be materialised yet (the pipeline may never have been expanded).
-        // We record the pipeline as an ancestor-visible node and mark the
-        // group container so that if/when the user expands the pipeline they
-        // see the right group. Leaves under the group will be surfaced on
-        // expansion via the same term applied by ApplyVisibilityFromMarks.
+        // Record the intent in _deferredGroupMarks so that BuildAnalysisChildren
+        // can add the group to _ancestorNodes when it finally materialises. If
+        // the group already exists (user expanded during the scan), mark it now.
+        _deferredGroupMarks.Add((pipe, group));
         var groupNode = pipe.Children.OfType<GroupNode>().FirstOrDefault(g => g.Group == group);
         if (groupNode is not null)
         {
@@ -1367,8 +1397,12 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     /// Walks the reachable template graph of <paramref name="rootAnalysis"/>
     /// following same-repo <c>template:</c> references, and reports whether
     /// any nested template basename or script filename matched the term.
-    /// Depth is capped by <see cref="FilterMaxTemplateDepth"/> and cycles are
-    /// guarded by an in-memory visited set. Cross-repo aliases are skipped.
+    /// Every intermediate template on a path from the pipeline root to a
+    /// match is recorded in <see cref="_templatesWithDescendantMatch"/> so
+    /// <see cref="ApplyVisibilityRecursive"/> can surface it even when its
+    /// own basename does not match. Depth is capped by
+    /// <see cref="FilterMaxTemplateDepth"/> and cycles are guarded by an
+    /// in-memory visited set. Cross-repo aliases are skipped.
     /// </summary>
     private async Task<bool> ScanTemplatesRecursivelyAsync(
         PipelineNode pipe,
@@ -1378,70 +1412,110 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         string term,
         CancellationToken ct)
     {
-        var rootDir = pipe.YamlDir;
         var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var queue = new Queue<(IReadOnlyList<TemplateRef> Templates, string ContainingDir, int Depth)>();
-        queue.Enqueue((rootAnalysis.Templates, rootDir, 0));
-        bool anyNestedMatch = false;
+        return await ScanTemplateLevelAsync(
+            pipe, rootAnalysis.Templates, repoId, branch, pipe.YamlDir,
+            depth: 0, visited, term, ct).ConfigureAwait(false);
+    }
 
-        while (queue.Count > 0)
+    /// <summary>
+    /// DFS helper for <see cref="ScanTemplatesRecursivelyAsync"/>. Returns
+    /// <c>true</c> when the sub-graph rooted at <paramref name="templates"/>
+    /// contains at least one match (template basename or script filename).
+    /// </summary>
+    private async Task<bool> ScanTemplateLevelAsync(
+        PipelineNode pipe,
+        IReadOnlyList<TemplateRef> templates,
+        string repoId,
+        string? branch,
+        string containingDir,
+        int depth,
+        HashSet<string> visited,
+        string term,
+        CancellationToken ct)
+    {
+        bool levelHasMatch = false;
+        if (depth >= FilterMaxTemplateDepth) { return false; }
+
+        foreach (var t in templates)
         {
-            if (ct.IsCancellationRequested) { return anyNestedMatch; }
-            var (tpls, containingDir, depth) = queue.Dequeue();
-            foreach (var t in tpls)
+            if (ct.IsCancellationRequested) { return levelHasMatch; }
+            // Skip cross-repo references — the analyzer can't resolve
+            // a repository alias to an id.
+            if (!string.IsNullOrEmpty(t.Repository)) { continue; }
+
+            var resolved = ResolveRepoPath(containingDir, t.Path);
+            var key = $"{resolved}@{branch}";
+            if (!visited.Add(key)) { continue; }
+
+            bool thisTemplateNameMatches = ContainsCI(BaseNameOf(t.Path), term);
+            bool subtreeHasMatch = thisTemplateNameMatches;
+
+            PipelineAnalysis? sub = null;
+            try
             {
-                if (ct.IsCancellationRequested) { return anyNestedMatch; }
-                // Skip cross-repo references — the analyzer can't resolve
-                // a repository alias to an id.
-                if (!string.IsNullOrEmpty(t.Repository)) { continue; }
-                if (depth >= FilterMaxTemplateDepth) { continue; }
+                sub = await _analyzer.AnalyzeFileAsync(
+                    pipe.Organization.AccountName,
+                    pipe.Project.Name,
+                    repoId,
+                    resolved,
+                    branch,
+                    ct).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"Filter scan analyze-file failed for {resolved}: {ex.Message}");
+            }
 
-                var resolved = ResolveRepoPath(containingDir, t.Path);
-                var key = $"{resolved}@{branch}";
-                if (!visited.Add(key)) { continue; }
-
-                PipelineAnalysis sub;
-                try
-                {
-                    sub = await _analyzer.AnalyzeFileAsync(
-                        pipe.Organization.AccountName,
-                        pipe.Project.Name,
-                        repoId,
-                        resolved,
-                        branch,
-                        ct).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    _logger.Warn($"Filter scan analyze-file failed for {resolved}: {ex.Message}");
-                    continue;
-                }
-
+            if (sub is not null)
+            {
                 foreach (var st in sub.Templates)
                 {
                     if (ContainsCI(BaseNameOf(st.Path), term))
                     {
-                        MarkTemplateOrScriptMatch(pipe, GroupKind.Templates);
-                        anyNestedMatch = true;
+                        subtreeHasMatch = true;
+                        break;
                     }
                 }
-                foreach (var s in sub.Scripts)
+                if (!subtreeHasMatch)
                 {
-                    if (s.FilePath is not null && ContainsCI(BaseNameOf(s.FilePath), term))
+                    foreach (var s in sub.Scripts)
                     {
-                        MarkTemplateOrScriptMatch(pipe, GroupKind.Templates);
-                        anyNestedMatch = true;
+                        if (s.FilePath is not null && ContainsCI(BaseNameOf(s.FilePath), term))
+                        {
+                            subtreeHasMatch = true;
+                            break;
+                        }
                     }
                 }
 
                 if (sub.Templates.Count > 0)
                 {
-                    queue.Enqueue((sub.Templates, DirOfRepoPath(resolved), depth + 1));
+                    // Recurse regardless of whether we already matched — we
+                    // still need to mark every intermediate template that
+                    // sits on a path to a deeper match.
+                    var deeper = await ScanTemplateLevelAsync(
+                        pipe, sub.Templates, repoId, branch,
+                        DirOfRepoPath(resolved), depth + 1, visited, term, ct).ConfigureAwait(false);
+                    if (deeper) { subtreeHasMatch = true; }
                 }
+            }
+
+            if (subtreeHasMatch)
+            {
+                // This intermediate template contains a match somewhere below
+                // (or its own basename matched). Record its resolved path so
+                // ApplyVisibilityRecursive treats it as a match without needing
+                // the user to expand it first.
+                _templatesWithDescendantMatch.Add(resolved);
+                // Also arm the pipeline's Templates group so the match surfaces
+                // when the pipeline is expanded (or is already expanded).
+                MarkTemplateOrScriptMatch(pipe, GroupKind.Templates);
+                levelHasMatch = true;
             }
         }
 
-        return anyNestedMatch;
+        return levelHasMatch;
     }
 
     private static string DirOfRepoPath(string p)
@@ -1480,6 +1554,13 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         }
 
         bool selfMatched = _matchedNodes.Contains(node) || NodeLeafMatches(node, term);
+        // An intermediate template whose own basename does not match may still
+        // have a matching descendant (learned during the scan). Treat it as a
+        // self-match so it surfaces even before the user drills into it.
+        if (!selfMatched && node is TemplateNode tn && _templatesWithDescendantMatch.Contains(tn.ResolvedPath))
+        {
+            selfMatched = true;
+        }
         bool anyChildVisible = false;
         foreach (var child in node.Children)
         {
