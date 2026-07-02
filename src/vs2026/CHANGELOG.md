@@ -8,6 +8,10 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- Filter pruning was incomplete when the user manually expanded a pipeline or a template after the scan: newly materialised children (nested `Templates` group, non-matching sibling templates, entire `Scripts` group) defaulted to visible and stayed visible. Reapplying visibility after lazy-load now hides non-matching siblings anywhere in the subtree, matching the VS Code client. `InfoNode` warnings/status messages ride along with the parent's decision.
+
 ### Documentation
 
 - Note in the README that PAT sign-in currently requires the *All accessible organizations* scope, and that Azure DevOps global PATs are retired on 1 December 2026 ([aka.ms/GlobalPATDeprecation](https://aka.ms/GlobalPATDeprecation)). Microsoft sign-in is recommended as the durable path; multi-org PAT support after the retirement is tracked as plan 002.

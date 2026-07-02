@@ -793,6 +793,15 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         }
 
         ReplaceList(parent.Children, children);
+
+        // Newly materialised children default to IsVisibleUnderFilter=true. If a
+        // filter is active (user lazy-expanded a pipeline / template after the
+        // scan), re-apply visibility so non-matching siblings collapse away —
+        // matching VS Code parity (plan 001 §2).
+        if (_activeFilterTerm is not null)
+        {
+            ApplyVisibilityRecursive(parent, _activeFilterTerm);
+        }
     }
 
     private TemplateNode BuildTemplateNode(
@@ -1460,6 +1469,16 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
 
     private bool ApplyVisibilityRecursive(TreeNodeViewModel node, string term)
     {
+        // InfoNodes (warnings, "no templates or scripts", loading placeholders)
+        // ride along with their parent's decision: stay visible so status
+        // messages still surface under a matched pipeline, but don't count as
+        // a reason to keep an otherwise-non-matching parent visible.
+        if (node is InfoNode)
+        {
+            node.IsVisibleUnderFilter = true;
+            return false;
+        }
+
         bool selfMatched = _matchedNodes.Contains(node) || NodeLeafMatches(node, term);
         bool anyChildVisible = false;
         foreach (var child in node.Children)
