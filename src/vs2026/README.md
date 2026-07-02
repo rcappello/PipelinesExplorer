@@ -18,7 +18,8 @@ This is the Visual Studio 2026 port of [Pipelines Explorer](../../README.md), wi
 - 🌳 **Org → Project → Repository → Pipeline** tree, with friendly empty states (`No pipelines in this project`, missing-permission warnings, etc.).
 - 🔍 **Recursive YAML analysis** — every `template:` reference and every script-running task is surfaced under each pipeline. Recognised tasks include `PowerShell@2`, `AzurePowerShell@5`, `PowerShellOnTargetMachines@3`, `Bash@3`, `ShellScript@2`, `CmdLine@2`, `BatchScript@1`, `AzureCLI@2`, `PythonScript@0`, plus the shorthand step keys `script:`, `bash:`, `pwsh:`, `powershell:`. Same-repo templates can be expanded to reveal *their* templates and scripts. Empty groups are hidden.
 - 🔗 **Link a workspace folder to a repository** and click any pipeline / template / script to open the local file inside Visual Studio. Pipeline variables like `$(System.DefaultWorkingDirectory)` and `$(Build.SourcesDirectory)`, repo-absolute paths and relative `../` segments are all resolved automatically.
-- 📋 **Filename-first labels** with full repo paths in the tooltip, so the tree stays readable on long deployment templates.
+- � **Filter by name** — type in the filter box at the top of the tool window to shrink the tree to pipelines, templates and scripts whose name contains a substring. The scan is debounced (~200 ms), covers every organization / project / repository the signed-in identity can see, and recurses into same-repo templates so matches deep in the nested graph still surface their owning pipeline.
+- �📋 **Filename-first labels** with full repo paths in the tooltip, so the tree stays readable on long deployment templates.
 
 ## Tree at a glance
 
@@ -48,6 +49,10 @@ Pipelines
 ## Screenshot
 
 ![Pipelines Explorer in Visual Studio 2026](https://raw.githubusercontent.com/rcappello/PipelinesExplorer/main/docs/screenshots/vs2026-screenshot.png)
+
+### Filter
+
+![Filter Pipelines Explorer in Visual Studio 2026](https://raw.githubusercontent.com/rcappello/PipelinesExplorer/main/docs/screenshots/vs2026-search.png)
 
 ## Getting started
 
