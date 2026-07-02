@@ -4,6 +4,12 @@ All notable changes to **Pipelines Explorer** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Documentation
+
+- Note in the README that PAT sign-in currently requires the *All accessible organizations* scope, and that Azure DevOps global PATs are retired on 1 December 2026 ([aka.ms/GlobalPATDeprecation](https://aka.ms/GlobalPATDeprecation)). Microsoft sign-in is recommended as the durable path; multi-org PAT support after the retirement is tracked as plan 002.
+
 ## [0.3.0] - 2026-07-02
 
 ### Added

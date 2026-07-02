@@ -10,6 +10,12 @@ client folder:
 Entries below use the format `[client] message`, where `client` is `vscode`
 or `vs2026`.
 
+## [Unreleased]
+
+### Documentation
+
+- `[vscode]` `[vs2026]` Note the Azure DevOps global PAT retirement scheduled for 1 December 2026 ([aka.ms/GlobalPATDeprecation](https://aka.ms/GlobalPATDeprecation)): both READMEs now spell out that PAT sign-in currently requires the *All accessible organizations* scope and recommend Microsoft sign-in as the durable path. Multi-org PAT support after the retirement is tracked as plan 002.
+
 ## [0.3.0] - 2026-07-02
 
 - `[vscode]` `[vs2026]` **0.3.0** — **Filter by name.** New filter (title-bar icon and Command Palette in VS Code; filter box in the tool window in VS 2026) restricts the tree to pipelines, templates and scripts whose name contains a substring (debounced, case-insensitive). Before scanning, every organization / project / repository the signed-in identity can see is preloaded, and same-repo `template:` references are followed recursively (up to 10 levels deep, cycle-safe). Cross-repo aliases are skipped. YAML analysis is capped at 500 pipelines. Localized in all six languages. See plan 001 and the per-client CHANGELOGs.

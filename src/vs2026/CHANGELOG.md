@@ -6,6 +6,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 > The VS Code client has its own changelog under [`src/vscode/CHANGELOG.md`](../vscode/CHANGELOG.md).
 
+## [Unreleased]
+
+### Documentation
+
+- Note in the README that PAT sign-in currently requires the *All accessible organizations* scope, and that Azure DevOps global PATs are retired on 1 December 2026 ([aka.ms/GlobalPATDeprecation](https://aka.ms/GlobalPATDeprecation)). Microsoft sign-in is recommended as the durable path; multi-org PAT support after the retirement is tracked as plan 002.
+
 ## [0.3.0] - 2026-07-02
 
 ### Added
