@@ -13,6 +13,8 @@
 	"command.unlinkWorkspace.title": "Desvincular carpeta del área de trabajo",
 	"command.selectBranch.title": "Seleccionar rama…",
 	"command.openItem.title": "Abrir",
+	"command.filter.title": "Pipelines Explorer: Filtrar por nombre…",
+	"command.clearFilter.title": "Pipelines Explorer: Borrar filtro",
 	"view.pipelinesTree.name": "Pipelines",
 	"view.pipelinesTree.contextualTitle": "Pipelines Explorer",
 	"viewsContainer.pipelinesExplorer.title": "Pipelines Explorer",

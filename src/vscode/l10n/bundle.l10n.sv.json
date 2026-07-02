@@ -91,5 +91,14 @@
 	"Group {0}, {1} items": "Grupp {0}, {1} objekt",
 	"Template {0}": "Mall {0}",
 	"Script {0}": "Skript {0}",
-	"Information: {0}": "Information: {0}"
+	"Information: {0}": "Information: {0}",
+	"Filter Pipelines Explorer": "Filtrera Pipelines Explorer",
+	"Filter pipelines, templates and scripts by name": "Filtrera pipelines, mallar och skript efter namn",
+	"Type part of a name (empty to clear)": "Skriv en del av ett namn (tomt för att rensa)",
+	"Edit filter": "Redigera filter",
+	"Filter active: {0} — scanning…": "Filter aktivt: {0} — söker…",
+	"Filter active: {0} — no results": "Filter aktivt: {0} — inga träffar",
+	"Filter active: {0} — {1} result(s)": "Filter aktivt: {0} — {1} träff(ar)",
+	"Filter active: {0} — {1} result(s) (scope capped at {2} pipelines)": "Filter aktivt: {0} — {1} träff(ar) (omfång begränsat till {2} pipelines)",
+	"Filter searches every organization, project and repository the signed-in identity can see. YAML analysis is capped at {0} pipelines.": "Filtret söker i alla organisationer, projekt och lagringsplatser som den inloggade identiteten ser. YAML-analysen är begränsad till {0} pipelines."
 }

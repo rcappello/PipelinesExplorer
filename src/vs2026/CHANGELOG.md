@@ -6,6 +6,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 > The VS Code client has its own changelog under [`src/vscode/CHANGELOG.md`](../vscode/CHANGELOG.md).
 
+## [0.3.0] - 2026-07-02
+
+### Added
+
+- **Filter by name** — a filter box in the tool window header restricts the tree to pipelines, templates and scripts whose name contains a substring (case-insensitive, debounced ~200 ms). Matching leaves stay visible together with their ancestors; non-matching branches collapse. The scan follows same-repo `template:` references recursively (up to 10 levels deep, cycle-safe), so a match deep in the nested-template graph still surfaces its owning pipeline. Cross-repo template aliases are skipped. Before scanning, the filter automatically loads every organization, project and repository the signed-in identity can see, so a match is found even if the user has not manually expanded that subtree. YAML analysis is still capped at 500 pipelines. Localized in all six languages. Parity with the VS Code client (plan 001).
+
 ## [0.2.1] - 2026-05-18
 
 ### Added

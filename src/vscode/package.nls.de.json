@@ -13,6 +13,8 @@
 	"command.unlinkWorkspace.title": "Arbeitsbereichsordner-Verknüpfung aufheben",
 	"command.selectBranch.title": "Branch auswählen…",
 	"command.openItem.title": "Öffnen",
+	"command.filter.title": "Pipelines Explorer: Nach Name filtern…",
+	"command.clearFilter.title": "Pipelines Explorer: Filter löschen",
 	"view.pipelinesTree.name": "Pipelines",
 	"view.pipelinesTree.contextualTitle": "Pipelines Explorer",
 	"viewsContainer.pipelinesExplorer.title": "Pipelines Explorer",

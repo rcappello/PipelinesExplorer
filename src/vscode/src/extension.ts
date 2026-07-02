@@ -50,9 +50,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 	const opener = new OpenItemService(links, logger);
 
 	const tree = new PipelinesTreeProvider(client, auth, logger, links, branches);
-	context.subscriptions.push(
-		vscode.window.registerTreeDataProvider('pipelinesTree', tree),
-	);
+	const treeView = vscode.window.createTreeView('pipelinesTree', {
+		treeDataProvider: tree,
+		showCollapseAll: true,
+	});
+	tree.setTreeView(treeView);
+	context.subscriptions.push(treeView);
+
+	// Reveal matched pipelines (up to FILTER_REVEAL_CAP) after a filter scan
+	// completes, so the user immediately sees the results without hand-expanding.
+	context.subscriptions.push(tree.onDidCompleteFilterScan(async nodes => {
+		for (const n of nodes) {
+			try {
+				await treeView.reveal(n, { expand: true, select: false, focus: false });
+			} catch (err) {
+				logger.logWarning(`Failed to reveal filtered node: ${err instanceof Error ? err.message : String(err)}`);
+			}
+		}
+	}));
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('pipelinesexplorer.signInWithMicrosoft', async () => {
@@ -153,6 +168,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 		}),
 		vscode.commands.registerCommand('pipelinesexplorer.refresh', () => tree.refresh()),
 		vscode.commands.registerCommand('pipelinesexplorer.showLogs', () => logger.show()),
+
+		vscode.commands.registerCommand('pipelinesexplorer.filter', async () => {
+			const current = tree.getCurrentFilter();
+			const value = await vscode.window.showInputBox({
+				title: vscode.l10n.t('Filter Pipelines Explorer'),
+				prompt: vscode.l10n.t('Filter pipelines, templates and scripts by name'),
+				placeHolder: vscode.l10n.t('Type part of a name (empty to clear)'),
+				value: current ?? '',
+				ignoreFocusOut: true,
+			});
+			if (value === undefined) {
+				return; // user cancelled — leave current filter untouched
+			}
+			tree.setFilter(value.trim() || undefined);
+		}),
+		vscode.commands.registerCommand('pipelinesexplorer.clearFilter', () => tree.setFilter(undefined)),
 
 		vscode.commands.registerCommand('pipelinesexplorer.linkWorkspace', async (node: RepositoryNode) => {
 			if (!node || node.kind !== 'repository') {

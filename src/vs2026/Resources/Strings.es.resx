@@ -74,4 +74,14 @@ Haga clic en el icono de la organización para cambiar de inquilino.</value></da
   <data name="Unauthorized_Message_Format" xml:space="preserve"><value>Pipelines Explorer: {0}. Se ha cerrado la sesión.</value></data>
   <data name="Unauthorized_SignInMicrosoft" xml:space="preserve"><value>Iniciar sesión con Microsoft</value></data>
   <data name="Unauthorized_SignInPat" xml:space="preserve"><value>Iniciar sesión con PAT</value></data>
+
+  <!-- ==== Tree filter (search box above the tree) ==== -->
+  <data name="Filter_Placeholder" xml:space="preserve"><value>Filtrar pipelines, plantillas y scripts por nombre…</value></data>
+  <data name="Filter_Clear_Tooltip" xml:space="preserve"><value>Borrar filtro</value></data>
+  <data name="Filter_Status_Scanning_Format" xml:space="preserve"><value>Filtro activo: {0} — analizando…</value></data>
+  <data name="Filter_Status_NoResults_Format" xml:space="preserve"><value>Filtro activo: {0} — sin resultados</value></data>
+  <data name="Filter_Status_Ready_Format" xml:space="preserve"><value>Filtro activo: {0} — {1} resultado(s)</value></data>
+  <data name="Filter_Status_Capped_Format" xml:space="preserve"><value>Filtro activo: {0} — {1} resultado(s) (ámbito limitado a {2} pipelines)</value></data>
+  <data name="Filter_LoadedScope_Tooltip" xml:space="preserve"><value>El filtro busca en todas las organizaciones, proyectos y repositorios visibles para la identidad conectada. El análisis YAML está limitado a 500 pipelines.</value></data>
+  <data name="A11y_Filter_Name" xml:space="preserve"><value>Filtro</value></data>
 </root>

@@ -4,6 +4,12 @@ All notable changes to **Pipelines Explorer** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-07-02
+
+### Added
+
+- **Filter by name** — a new **Filter Pipelines Explorer** command (title-bar icon and Command Palette) restricts the tree to pipelines, templates and scripts whose name contains a substring (case-insensitive, debounced ~200 ms). A status node reports scanning / result count / capped / no-results states; matching pipelines are auto-revealed. The scan follows same-repo `template:` references recursively (up to 10 levels deep, cycle-safe), so a match deep in the nested-template graph still surfaces its owning pipeline. Cross-repo template aliases are skipped. Before scanning, the filter automatically loads every organization, project and repository the signed-in identity can see, so a match is found even if the user has not manually expanded that subtree. YAML analysis is still capped at 500 pipelines. Localized in all six languages. See plan 001.
+
 ## [0.2.0] - 2026-05-15
 
 ### Added

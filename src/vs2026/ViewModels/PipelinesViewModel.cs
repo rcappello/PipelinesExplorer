@@ -44,6 +44,21 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     // re-showing the same modal. Cleared on session change / sign-in success.
     private bool _unauthorizedHandled;
 
+    // Filter state (Plan 001). Kept together for clarity.
+    private const int FilterPipelineCap = 500;
+    // Maximum recursion depth followed by the filter scan when descending
+    // into same-repo nested templates. Guards against pathological template
+    // graphs on top of the per-file cycle check.
+    private const int FilterMaxTemplateDepth = 10;
+    private string _filterText = string.Empty;
+    private string? _activeFilterTerm; // already trimmed + lowercased
+    private string _filterStatusText = string.Empty;
+    private bool _isFilterActive;
+    private CancellationTokenSource? _filterDebounceCts;
+    private CancellationTokenSource? _filterScanCts;
+    private readonly HashSet<TreeNodeViewModel> _matchedNodes = new();
+    private readonly HashSet<TreeNodeViewModel> _ancestorNodes = new();
+
     /// <summary>
     /// Cache of TfsGit repository ids -> display name. Mirrors the
     /// <c>repoNameCache</c> in the VS Code provider: the pipelines list API
@@ -99,6 +114,11 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
                 PatInputText = string.Empty;
             }
             catch (Exception ex) { _logger.Error("PAT sign in failed", ex); SetError(ex.Message); }
+        });
+        ClearFilterCommand = new AsyncCommand((_, _, _) =>
+        {
+            FilterText = string.Empty;
+            return Task.CompletedTask;
         });
 
         _auth.SessionChanged += (_, s) => OnSessionChanged(s);
@@ -206,6 +226,45 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     [DataMember]
     public AsyncCommand SignInWithPatCommand { get; }
 
+    /// <summary>
+    /// Two-way bound text of the filter box. Changes are debounced (~200ms)
+    /// before triggering a scan; typing quickly does not spawn one scan per
+    /// keystroke.
+    /// </summary>
+    [DataMember]
+    public string FilterText
+    {
+        get => _filterText;
+        set
+        {
+            var v = value ?? string.Empty;
+            if (SetProperty(ref _filterText, v))
+            {
+                ScheduleFilterScan(v);
+            }
+        }
+    }
+
+    /// <summary>Status text rendered next to the filter box (scanning / result count / capped notice).</summary>
+    [DataMember]
+    public string FilterStatusText
+    {
+        get => _filterStatusText;
+        private set => SetProperty(ref _filterStatusText, value);
+    }
+
+    /// <summary>True when a non-empty filter is currently applied; drives visibility of the status text and the clear button.</summary>
+    [DataMember]
+    public bool IsFilterActive
+    {
+        get => _isFilterActive;
+        private set => SetProperty(ref _isFilterActive, value);
+    }
+
+    /// <summary>Clears the current filter without touching the loaded tree.</summary>
+    [DataMember]
+    public AsyncCommand ClearFilterCommand { get; }
+
     /// <summary>Reload the top-level tree from Azure DevOps.</summary>
     public async Task RefreshAsync(CancellationToken cancellationToken = default)
     {
@@ -262,6 +321,14 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         finally
         {
             IsBusy = false;
+        }
+
+        // A refresh rebuilds every node in Roots, so the object references
+        // stored in _matchedNodes / _ancestorNodes are stale. Re-run the scan
+        // on the newly-materialised tree when a filter is active.
+        if (IsFilterActive && !string.IsNullOrEmpty(_filterText))
+        {
+            ScheduleFilterScan(_filterText);
         }
     }
 
@@ -438,6 +505,10 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         // unauthorized prompt gate so a subsequent 401 surfaces the recovery
         // dialog again.
         _unauthorizedHandled = false;
+
+        // Session boundary invalidates any active filter — clear it before
+        // Roots are rebuilt so we don't leak stale visibility state.
+        FilterText = string.Empty;
 
         if (session is null)
         {
@@ -998,6 +1069,531 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
             _branches.Set(node.LinkKey, detected!);
             node.UpdateState(_links.Get(node.LinkKey), _branches.Get(node.LinkKey));
         }
+    }
+
+    // -------- Filter (Plan 001) --------
+
+    /// <summary>
+    /// Restart the debounce timer after a <see cref="FilterText"/> change.
+    /// Cancels any in-flight scan and, if the term becomes empty, clears the
+    /// filter immediately (no need to wait 200ms for that case).
+    /// </summary>
+    private void ScheduleFilterScan(string rawTerm)
+    {
+        _filterDebounceCts?.Cancel();
+        _filterScanCts?.Cancel();
+
+        var normalized = NormalizeFilterTerm(rawTerm);
+        if (normalized is null)
+        {
+            ClearFilterInternal();
+            return;
+        }
+
+        var cts = new CancellationTokenSource();
+        _filterDebounceCts = cts;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(200), cts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { return; }
+            if (cts.IsCancellationRequested) { return; }
+            _filterDebounceCts = null;
+
+            var scanCts = new CancellationTokenSource();
+            _filterScanCts = scanCts;
+            try
+            {
+                await RunFilterScanAsync(normalized, scanCts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                _logger.Error("Filter scan failed", ex);
+            }
+        });
+    }
+
+    private void ClearFilterInternal()
+    {
+        _activeFilterTerm = null;
+        _matchedNodes.Clear();
+        _ancestorNodes.Clear();
+        RestoreFilterExpansionState();
+        SetAllVisible();
+        IsFilterActive = false;
+        FilterStatusText = string.Empty;
+    }
+
+    /// <summary>
+    /// Case-insensitive substring match. Empty / whitespace-only inputs
+    /// collapse to <c>null</c> so callers can treat "no filter" uniformly.
+    /// </summary>
+    private static string? NormalizeFilterTerm(string? term)
+    {
+        if (string.IsNullOrWhiteSpace(term)) { return null; }
+        return term.Trim().ToLowerInvariant();
+    }
+
+    private static bool ContainsCI(string? haystack, string needle) =>
+        !string.IsNullOrEmpty(haystack)
+        && haystack!.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0;
+
+    private static string BaseNameOf(string path)
+    {
+        if (string.IsNullOrEmpty(path)) { return string.Empty; }
+        var clean = path.Replace('\\', '/').TrimEnd('/');
+        var i = clean.LastIndexOf('/');
+        return i >= 0 ? clean.Substring(i + 1) : clean;
+    }
+
+    /// <summary>
+    /// Forces every organization → project subtree reachable from
+    /// <see cref="Roots"/> to materialise (bypassing the lazy-load-on-expand
+    /// gate), so <see cref="CollectLoadedPipelines"/> sees every pipeline the
+    /// filter is expected to search. Per-node failures are logged but do not
+    /// abort the whole preload.
+    /// </summary>
+    private async Task PreloadAllForFilterAsync(CancellationToken ct)
+    {
+        var orgs = Roots.OfType<OrganizationNode>().ToList();
+        foreach (var batch in Chunk(orgs, 4))
+        {
+            if (ct.IsCancellationRequested) { return; }
+            await Task.WhenAll(batch.Select(o => EnsureLoadedForFilterAsync(o))).ConfigureAwait(false);
+        }
+        if (ct.IsCancellationRequested) { return; }
+
+        var projects = orgs.SelectMany(o => o.Children.OfType<ProjectNode>()).ToList();
+        foreach (var batch in Chunk(projects, 4))
+        {
+            if (ct.IsCancellationRequested) { return; }
+            await Task.WhenAll(batch.Select(p => EnsureLoadedForFilterAsync(p))).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// If <paramref name="node"/> is still a lazy stub (single
+    /// <see cref="TreeNodeKind.Loading"/> child), invoke the matching loader
+    /// synchronously. Mirrors <see cref="SubscribeLazyLoad"/>, but callable
+    /// from the filter preload without waiting for user expansion.
+    /// </summary>
+    private async Task EnsureLoadedForFilterAsync(TreeNodeViewModel node)
+    {
+        if (node.Children.Count != 1 || node.Children[0].Kind != TreeNodeKind.Loading) { return; }
+        try
+        {
+            switch (node)
+            {
+                case OrganizationNode org: await LoadProjectsAsync(org).ConfigureAwait(false); break;
+                case ProjectNode proj: await LoadPipelinesAsync(proj).ConfigureAwait(false); break;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error($"Filter preload: loading '{node.Label}' failed", ex);
+        }
+    }
+
+    /// <summary>
+    /// Walks every organization / project / repository the signed-in identity
+    /// can see (auto-loading lazy subtrees on the fly) and marks every
+    /// pipeline / template / script whose name contains
+    /// <paramref name="term"/>. Ancestors of matches are marked visible so
+    /// they still render as breadcrumbs.
+    /// </summary>
+    private async Task RunFilterScanAsync(string term, CancellationToken ct)
+    {
+        _activeFilterTerm = term;
+        _matchedNodes.Clear();
+        _ancestorNodes.Clear();
+
+        IsFilterActive = true;
+        FilterStatusText = string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.Filter_Status_Scanning_Format, term);
+
+        await PreloadAllForFilterAsync(ct).ConfigureAwait(false);
+        if (ct.IsCancellationRequested) { return; }
+
+        var pipelines = CollectLoadedPipelines();
+        var cap = FilterPipelineCap;
+        var capped = pipelines.Count > cap;
+        var targets = capped ? pipelines.Take(cap).ToList() : pipelines;
+
+        // Pass 1: cheap, synchronous — pipeline names and root YAML basename.
+        foreach (var pipe in targets)
+        {
+            if (ct.IsCancellationRequested) { return; }
+            if (PipelineMatchesFilter(pipe, term))
+            {
+                _matchedNodes.Add(pipe);
+                MarkAncestorsVisible(pipe);
+            }
+        }
+
+        // Pass 2: analyse YAML for templates + scripts. Cap concurrency at 8
+        // (same as the pipeline list loader).
+        foreach (var batch in Chunk(targets, 8))
+        {
+            if (ct.IsCancellationRequested) { return; }
+            var tasks = batch.Select(async pipe =>
+            {
+                try
+                {
+                    var branch = _branches.Get(new RepoLinkKey(pipe.Organization.AccountId, pipe.Project.Id, pipe.RepoKey));
+                    var analysis = await _analyzer.AnalyzeAsync(
+                        pipe.Organization.AccountName,
+                        pipe.Project.Name,
+                        pipe.Pipeline.Id,
+                        pipe.Detail,
+                        branch).ConfigureAwait(false);
+                    return (pipe, analysis);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Warn($"Filter scan analyze failed for {pipe.Pipeline.Name}: {ex.Message}");
+                    return (pipe, (PipelineAnalysis?)null);
+                }
+            });
+            var results = await Task.WhenAll(tasks).ConfigureAwait(false);
+            if (ct.IsCancellationRequested) { return; }
+
+            foreach (var (pipe, analysis) in results)
+            {
+                if (analysis is null) { continue; }
+                var pipelineMatched = false;
+
+                foreach (var t in analysis.Templates)
+                {
+                    if (ContainsCI(BaseNameOf(t.Path), term))
+                    {
+                        MarkTemplateOrScriptMatch(pipe, GroupKind.Templates);
+                        pipelineMatched = true;
+                    }
+                }
+                foreach (var s in analysis.Scripts)
+                {
+                    if (s.FilePath is not null && ContainsCI(BaseNameOf(s.FilePath), term))
+                    {
+                        MarkTemplateOrScriptMatch(pipe, GroupKind.Scripts);
+                        pipelineMatched = true;
+                    }
+                }
+
+                // Recurse into same-repo nested templates. Cross-repo aliases
+                // are skipped (the analyzer can't resolve a repository alias).
+                // Depth capped by FilterMaxTemplateDepth and cycles guarded by
+                // the visited-set. Any match found deep in the tree surfaces
+                // by marking the top-level Templates group + the pipeline as
+                // ancestor-visible; the leaves themselves become visible on
+                // demand because materialised child nodes default to visible.
+                var repoId = pipe.Detail?.Configuration?.Repository?.Id;
+                if (!string.IsNullOrEmpty(repoId))
+                {
+                    var branch = _branches.Get(new RepoLinkKey(pipe.Organization.AccountId, pipe.Project.Id, pipe.RepoKey));
+                    if (await ScanTemplatesRecursivelyAsync(pipe, analysis, repoId!, branch, term, ct).ConfigureAwait(false))
+                    {
+                        pipelineMatched = true;
+                    }
+                }
+
+                if (pipelineMatched && !_matchedNodes.Contains(pipe))
+                {
+                    // A template/script inside this pipeline matched. Count the
+                    // pipeline itself as a match so the status line agrees with
+                    // what the tree is showing (Pass 1 only matches pipeline
+                    // names, so without this the status stays at "no results"
+                    // for pure YAML-content matches).
+                    _matchedNodes.Add(pipe);
+                    MarkAncestorsVisible(pipe);
+                }
+            }
+        }
+
+        if (ct.IsCancellationRequested) { return; }
+
+        ApplyVisibilityFromMarks();
+        AutoExpandVisibleAncestors();
+
+        var matchCount = _matchedNodes.Count;
+        if (matchCount == 0)
+        {
+            FilterStatusText = string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.Filter_Status_NoResults_Format, term);
+        }
+        else if (capped)
+        {
+            FilterStatusText = string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.Filter_Status_Capped_Format, term, matchCount, cap);
+        }
+        else
+        {
+            FilterStatusText = string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.Filter_Status_Ready_Format, term, matchCount);
+        }
+    }
+
+    private static bool PipelineMatchesFilter(PipelineNode node, string term)
+    {
+        if (ContainsCI(node.Pipeline.Name, term)) { return true; }
+        var rootPath = node.Detail?.Configuration?.Path;
+        if (!string.IsNullOrEmpty(rootPath) && ContainsCI(BaseNameOf(rootPath!), term)) { return true; }
+        return false;
+    }
+
+    private void MarkTemplateOrScriptMatch(PipelineNode pipe, GroupKind group)
+    {
+        // We match at leaf granularity in Pass 2, but the leaf nodes might not
+        // even be materialised yet (the pipeline may never have been expanded).
+        // We record the pipeline as an ancestor-visible node and mark the
+        // group container so that if/when the user expands the pipeline they
+        // see the right group. Leaves under the group will be surfaced on
+        // expansion via the same term applied by ApplyVisibilityFromMarks.
+        var groupNode = pipe.Children.OfType<GroupNode>().FirstOrDefault(g => g.Group == group);
+        if (groupNode is not null)
+        {
+            _ancestorNodes.Add(groupNode);
+        }
+    }
+
+    /// <summary>
+    /// Walks the reachable template graph of <paramref name="rootAnalysis"/>
+    /// following same-repo <c>template:</c> references, and reports whether
+    /// any nested template basename or script filename matched the term.
+    /// Depth is capped by <see cref="FilterMaxTemplateDepth"/> and cycles are
+    /// guarded by an in-memory visited set. Cross-repo aliases are skipped.
+    /// </summary>
+    private async Task<bool> ScanTemplatesRecursivelyAsync(
+        PipelineNode pipe,
+        PipelineAnalysis rootAnalysis,
+        string repoId,
+        string? branch,
+        string term,
+        CancellationToken ct)
+    {
+        var rootDir = pipe.YamlDir;
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var queue = new Queue<(IReadOnlyList<TemplateRef> Templates, string ContainingDir, int Depth)>();
+        queue.Enqueue((rootAnalysis.Templates, rootDir, 0));
+        bool anyNestedMatch = false;
+
+        while (queue.Count > 0)
+        {
+            if (ct.IsCancellationRequested) { return anyNestedMatch; }
+            var (tpls, containingDir, depth) = queue.Dequeue();
+            foreach (var t in tpls)
+            {
+                if (ct.IsCancellationRequested) { return anyNestedMatch; }
+                // Skip cross-repo references — the analyzer can't resolve
+                // a repository alias to an id.
+                if (!string.IsNullOrEmpty(t.Repository)) { continue; }
+                if (depth >= FilterMaxTemplateDepth) { continue; }
+
+                var resolved = ResolveRepoPath(containingDir, t.Path);
+                var key = $"{resolved}@{branch}";
+                if (!visited.Add(key)) { continue; }
+
+                PipelineAnalysis sub;
+                try
+                {
+                    sub = await _analyzer.AnalyzeFileAsync(
+                        pipe.Organization.AccountName,
+                        pipe.Project.Name,
+                        repoId,
+                        resolved,
+                        branch,
+                        ct).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Warn($"Filter scan analyze-file failed for {resolved}: {ex.Message}");
+                    continue;
+                }
+
+                foreach (var st in sub.Templates)
+                {
+                    if (ContainsCI(BaseNameOf(st.Path), term))
+                    {
+                        MarkTemplateOrScriptMatch(pipe, GroupKind.Templates);
+                        anyNestedMatch = true;
+                    }
+                }
+                foreach (var s in sub.Scripts)
+                {
+                    if (s.FilePath is not null && ContainsCI(BaseNameOf(s.FilePath), term))
+                    {
+                        MarkTemplateOrScriptMatch(pipe, GroupKind.Templates);
+                        anyNestedMatch = true;
+                    }
+                }
+
+                if (sub.Templates.Count > 0)
+                {
+                    queue.Enqueue((sub.Templates, DirOfRepoPath(resolved), depth + 1));
+                }
+            }
+        }
+
+        return anyNestedMatch;
+    }
+
+    private static string DirOfRepoPath(string p)
+    {
+        if (string.IsNullOrEmpty(p)) { return string.Empty; }
+        var norm = p.Replace('\\', '/');
+        var idx = norm.LastIndexOf('/');
+        return idx <= 0 ? string.Empty : norm[..idx];
+    }
+
+    /// <summary>
+    /// Walk the loaded tree once and set <c>IsVisibleUnderFilter</c> on every
+    /// node based on the marked sets. Non-matching leaves collapse away.
+    /// </summary>
+    private void ApplyVisibilityFromMarks()
+    {
+        var term = _activeFilterTerm;
+        if (term is null) { SetAllVisible(); return; }
+
+        foreach (var root in Roots)
+        {
+            ApplyVisibilityRecursive(root, term);
+        }
+    }
+
+    private bool ApplyVisibilityRecursive(TreeNodeViewModel node, string term)
+    {
+        bool selfMatched = _matchedNodes.Contains(node) || NodeLeafMatches(node, term);
+        bool anyChildVisible = false;
+        foreach (var child in node.Children)
+        {
+            if (ApplyVisibilityRecursive(child, term)) { anyChildVisible = true; }
+        }
+        bool visible = selfMatched || anyChildVisible || _ancestorNodes.Contains(node);
+        node.IsVisibleUnderFilter = visible;
+        if (selfMatched) { _matchedNodes.Add(node); }
+        return visible;
+    }
+
+    /// <summary>
+    /// True when a template / script leaf's basename contains the filter
+    /// term. Pipelines/orgs/etc. are matched separately in Pass 1.
+    /// </summary>
+    private static bool NodeLeafMatches(TreeNodeViewModel node, string term) => node switch
+    {
+        TemplateNode t => ContainsCI(BaseNameOf(t.Reference.Path), term),
+        ScriptNode s => s.Reference.FilePath is not null && ContainsCI(BaseNameOf(s.Reference.FilePath), term),
+        _ => false,
+    };
+
+    private void MarkAncestorsVisible(TreeNodeViewModel node)
+    {
+        var parent = FindParent(node);
+        while (parent is not null)
+        {
+            _ancestorNodes.Add(parent);
+            parent = FindParent(parent);
+        }
+    }
+
+    /// <summary>
+    /// Reverse lookup of a node's parent. Not tracked at add time — we simply
+    /// walk <see cref="Roots"/> once per lookup. Cost is O(loaded-tree) but
+    /// the whole scan already walks the tree, so this stays cheap in practice.
+    /// </summary>
+    private TreeNodeViewModel? FindParent(TreeNodeViewModel target)
+    {
+        foreach (var root in Roots)
+        {
+            var p = FindParentRecursive(root, target);
+            if (p is not null) { return p; }
+        }
+        return null;
+    }
+
+    private static TreeNodeViewModel? FindParentRecursive(TreeNodeViewModel node, TreeNodeViewModel target)
+    {
+        foreach (var c in node.Children)
+        {
+            if (ReferenceEquals(c, target)) { return node; }
+            var deeper = FindParentRecursive(c, target);
+            if (deeper is not null) { return deeper; }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Collect every loaded <see cref="PipelineNode"/> reachable from
+    /// <see cref="Roots"/>. Skips branches that are still just a
+    /// <see cref="TreeNodeKind.Loading"/> placeholder so the filter never
+    /// forces a network fetch on the user's behalf.
+    /// </summary>
+    private List<PipelineNode> CollectLoadedPipelines()
+    {
+        var out_ = new List<PipelineNode>();
+        foreach (var root in Roots)
+        {
+            CollectLoadedPipelinesRecursive(root, out_);
+        }
+        return out_;
+    }
+
+    private static void CollectLoadedPipelinesRecursive(TreeNodeViewModel node, List<PipelineNode> acc)
+    {
+        if (node is PipelineNode pn) { acc.Add(pn); return; }
+        if (node.Children.Count == 1 && node.Children[0].Kind == TreeNodeKind.Loading) { return; }
+        foreach (var c in node.Children)
+        {
+            CollectLoadedPipelinesRecursive(c, acc);
+        }
+    }
+
+    private void SetAllVisible()
+    {
+        foreach (var root in Roots) { SetAllVisibleRecursive(root); }
+    }
+
+    private static void SetAllVisibleRecursive(TreeNodeViewModel node)
+    {
+        node.IsVisibleUnderFilter = true;
+        foreach (var c in node.Children) { SetAllVisibleRecursive(c); }
+    }
+
+    /// <summary>
+    /// For every node that is currently visible-as-ancestor (i.e. an org /
+    /// project / repository above a match) remember its expansion state and
+    /// force it open so the match is reachable without hand-expanding.
+    /// </summary>
+    private void AutoExpandVisibleAncestors()
+    {
+        foreach (var root in Roots) { AutoExpandRecursive(root); }
+    }
+
+    private void AutoExpandRecursive(TreeNodeViewModel node)
+    {
+        // Only auto-expand containers of matches — never the matched leaves.
+        if (_ancestorNodes.Contains(node) && node.Kind != TreeNodeKind.Pipeline && node.Kind != TreeNodeKind.Template && node.Kind != TreeNodeKind.Script)
+        {
+            if (!node.IsAutoExpandedByFilter)
+            {
+                node.ExpansionSnapshot = node.IsExpanded;
+                node.IsAutoExpandedByFilter = true;
+            }
+            node.IsExpanded = true;
+        }
+        foreach (var c in node.Children) { AutoExpandRecursive(c); }
+    }
+
+    private void RestoreFilterExpansionState()
+    {
+        foreach (var root in Roots) { RestoreExpansionRecursive(root); }
+    }
+
+    private static void RestoreExpansionRecursive(TreeNodeViewModel node)
+    {
+        if (node.IsAutoExpandedByFilter)
+        {
+            node.IsExpanded = node.ExpansionSnapshot;
+            node.IsAutoExpandedByFilter = false;
+        }
+        foreach (var c in node.Children) { RestoreExpansionRecursive(c); }
     }
 
     /// <summary>

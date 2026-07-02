@@ -16,7 +16,8 @@ actual file in your editor.
 - 🌳 **Org → Project → Repository → Pipeline** tree, with friendly empty states (`No pipelines in this project`, missing-permission warnings, etc.).
 - 🔍 **Recursive YAML analysis** — every `template:` reference and every script-running task is surfaced under each pipeline. Recognised tasks include `PowerShell@2`, `AzurePowerShell@5`, `PowerShellOnTargetMachines@3`, `Bash@3`, `ShellScript@2`, `CmdLine@2`, `BatchScript@1`, `AzureCLI@2`, `PythonScript@0`, plus the shorthand step keys `script:`, `bash:`, `pwsh:`, `powershell:`. Same-repo templates can be expanded to reveal *their* templates and scripts. Empty groups are hidden.
 - 🔗 **Link a workspace folder to a repository** and click any pipeline / template / script to open the local file. Pipeline variables like `$(System.DefaultWorkingDirectory)` and `$(Build.SourcesDirectory)`, repo-absolute paths and relative `../` segments are all resolved automatically.
-- 📋 **Filename-first labels** with full repo paths in the tooltip, so the tree stays readable on long deployment templates.
+- � **Filter by name** — press the funnel icon (or run *Pipelines Explorer: Filter*) to shrink the tree to pipelines, templates and scripts whose name contains a substring. The scan is debounced (~200 ms), covers every organization / project / repository the signed-in identity can see, recurses into same-repo templates, and reveals matching pipelines automatically.
+- �📋 **Filename-first labels** with full repo paths in the tooltip, so the tree stays readable on long deployment templates.
 
 ## Tree at a glance
 
@@ -47,11 +48,15 @@ Pipelines
 
 ![Pipelines Explorer in VS Code](https://raw.githubusercontent.com/rcappello/PipelinesExplorer/main/docs/screenshots/vscode-screenshot.png)
 
+### Filter
+
+![Filter Pipelines Explorer in VS Code](https://raw.githubusercontent.com/rcappello/PipelinesExplorer/main/docs/screenshots/vscode-search.png)
+
 ## Getting started
 
 1. Install the `.vsix`:
    ```powershell
-   code --install-extension vscode-pipelinesexplorer-0.2.0.vsix
+   code --install-extension vscode-pipelinesexplorer-0.3.0.vsix
    ```
    (Or, once published, install from the Marketplace.)
 2. Open the **Pipelines Explorer** view in the activity bar.

@@ -7,6 +7,51 @@
     <DataTemplate.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
+        <!-- Icon-only toolbar button. Shared between the header toolbar and
+             the filter bar (Plan 001), hence declared at DataTemplate scope. -->
+        <Style x:Key="IconToolbarButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="3" />
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background"
+                                        Value="{DynamicResource {x:Static platform:EnvironmentColors.CommandBarHoverBrushKey}}" />
+                                <Setter TargetName="Bd" Property="BorderBrush"
+                                        Value="{DynamicResource {x:Static platform:EnvironmentColors.CommandBarHoverOverSelectedIconBorderBrushKey}}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background"
+                                        Value="{DynamicResource {x:Static platform:EnvironmentColors.CommandBarMouseDownBackgroundBeginBrushKey}}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Pull the right brushes/fonts for the current Visual Studio theme so the
              tool window adapts to Light/Dark/Blue/HC automatically. The Shell.15.0
              assembly is loaded by the VS process that hosts the Remote UI XAML;
@@ -93,6 +138,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -101,52 +147,8 @@
                    Margin="0,0,0,6"
                    Visibility="{Binding IsSignedIn, Converter={StaticResource BoolToVis}}">
             <!-- Right-aligned image buttons mirror the VS Code view/title icons.
-                 Borderless / transparent so they look like the icon-only buttons
-                 in the built-in SQL Server Object Explorer toolbar. -->
-            <DockPanel.Resources>
-                <Style x:Key="IconToolbarButton" TargetType="Button">
-                    <Setter Property="Background" Value="Transparent" />
-                    <Setter Property="BorderBrush" Value="Transparent" />
-                    <Setter Property="BorderThickness" Value="1" />
-                    <Setter Property="Padding" Value="3" />
-                    <Setter Property="Width" Value="22" />
-                    <Setter Property="Height" Value="22" />
-                    <Setter Property="MinWidth" Value="0" />
-                    <Setter Property="MinHeight" Value="0" />
-                    <Setter Property="Cursor" Value="Hand" />
-                    <Setter Property="Focusable" Value="True" />
-                    <Setter Property="Template">
-                        <Setter.Value>
-                            <ControlTemplate TargetType="Button">
-                                <Border x:Name="Bd"
-                                        Background="{TemplateBinding Background}"
-                                        BorderBrush="{TemplateBinding BorderBrush}"
-                                        BorderThickness="{TemplateBinding BorderThickness}"
-                                        SnapsToDevicePixels="True">
-                                    <ContentPresenter HorizontalAlignment="Center"
-                                                      VerticalAlignment="Center"
-                                                      Margin="{TemplateBinding Padding}" />
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="Bd" Property="Background"
-                                                Value="{DynamicResource {x:Static platform:EnvironmentColors.CommandBarHoverBrushKey}}" />
-                                        <Setter TargetName="Bd" Property="BorderBrush"
-                                                Value="{DynamicResource {x:Static platform:EnvironmentColors.CommandBarHoverOverSelectedIconBorderBrushKey}}" />
-                                    </Trigger>
-                                    <Trigger Property="IsPressed" Value="True">
-                                        <Setter TargetName="Bd" Property="Background"
-                                                Value="{DynamicResource {x:Static platform:EnvironmentColors.CommandBarMouseDownBackgroundBeginBrushKey}}" />
-                                    </Trigger>
-                                    <Trigger Property="IsEnabled" Value="False">
-                                        <Setter Property="Opacity" Value="0.5" />
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Setter.Value>
-                    </Setter>
-                </Style>
-            </DockPanel.Resources>
+                 The IconToolbarButton style is declared at DataTemplate scope so
+                 it is also visible to the filter bar in row 1. -->
             <Button DockPanel.Dock="Right"
                     Style="{StaticResource IconToolbarButton}"
                     ToolTip="{Binding Loc.Toolbar_SignOut_Tooltip}"
@@ -179,8 +181,69 @@
                        FontWeight="SemiBold" />
         </DockPanel>
 
+        <!-- Filter bar (visible when signed in) — Plan 001 -->
+        <Grid Grid.Row="1"
+              Margin="0,0,0,6"
+              Visibility="{Binding IsSignedIn, Converter={StaticResource BoolToVis}}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <TextBox Grid.Row="0" Grid.Column="0"
+                     x:Name="FilterTextBox"
+                     Text="{Binding FilterText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="{Binding Loc.Filter_Placeholder}"
+                     AutomationProperties.Name="{Binding Loc.A11y_Filter_Name}"
+                     AutomationProperties.HelpText="{Binding Loc.Filter_Placeholder}" />
+            <!-- Placeholder overlay: WPF TextBox has no native watermark. Sits in the
+                 same Grid cell as FilterTextBox, is transparent to hit-testing so
+                 clicks reach the TextBox, and toggles visibility via a DataTrigger on
+                 the VM's FilterText being empty (no ElementName binding needed, which
+                 is safer under Remote UI). -->
+            <TextBlock Grid.Row="0" Grid.Column="0"
+                       IsHitTestVisible="False"
+                       Text="{Binding Loc.Filter_Placeholder}"
+                       Margin="8,0,4,0"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       Opacity="0.55"
+                       Foreground="{DynamicResource {x:Static platform:CommonControlsColors.TextBoxTextBrushKey}}">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding FilterText}" Value="">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+            <Button Grid.Row="0" Grid.Column="1"
+                    Margin="4,0,0,0"
+                    Style="{StaticResource IconToolbarButton}"
+                    ToolTip="{Binding Loc.Filter_Clear_Tooltip}"
+                    AutomationProperties.Name="{Binding Loc.Filter_Clear_Tooltip}"
+                    AutomationProperties.HelpText="{Binding Loc.Filter_Clear_Tooltip}"
+                    Visibility="{Binding IsFilterActive, Converter={StaticResource BoolToVis}}"
+                    Command="{Binding ClearFilterCommand}">
+                <vs:Image Source="KnownMonikers.Cancel" Width="16" Height="16" />
+            </Button>
+            <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                       Margin="0,4,0,0"
+                       Text="{Binding FilterStatusText}"
+                       ToolTip="{Binding Loc.Filter_LoadedScope_Tooltip}"
+                       TextTrimming="CharacterEllipsis"
+                       Opacity="0.75"
+                       Visibility="{Binding IsFilterActive, Converter={StaticResource BoolToVis}}" />
+        </Grid>
+
         <!-- Welcome panel (visible when signed out) -->
-        <StackPanel Grid.Row="1"
+        <StackPanel Grid.Row="2"
                     Orientation="Vertical"
                     Margin="0,4,0,8"
                     Visibility="{Binding IsSignedOut, Converter={StaticResource BoolToVis}}">
@@ -222,7 +285,7 @@
         </StackPanel>
 
         <!-- Error banner -->
-        <Border Grid.Row="2"
+        <Border Grid.Row="3"
                 Background="#33FF6961"
                 BorderBrush="#FFCC4F4F"
                 BorderThickness="1"
@@ -234,7 +297,7 @@
         </Border>
 
         <!-- Tree -->
-        <TreeView Grid.Row="3"
+        <TreeView Grid.Row="4"
                   ItemsSource="{Binding Roots}"
                   AutomationProperties.Name="{Binding Loc.A11y_Tree_Name}"
                   Visibility="{Binding IsSignedIn, Converter={StaticResource BoolToVis}}">
@@ -242,6 +305,7 @@
                 <Style TargetType="{x:Type TreeViewItem}" BasedOn="{StaticResource {x:Type TreeViewItem}}">
                     <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
                     <Setter Property="ToolTip" Value="{Binding Tooltip}" />
+                    <Setter Property="Visibility" Value="{Binding IsVisibleUnderFilter, Converter={StaticResource BoolToVis}}" />
                 </Style>
             </TreeView.ItemContainerStyle>
             <TreeView.ItemTemplate>
