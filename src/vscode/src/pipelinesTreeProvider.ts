@@ -164,6 +164,7 @@ type GroupKind = 'templates' | 'scripts';
 
 export class GroupNode extends vscode.TreeItem {
 	readonly kind = 'group' as const;
+	readonly totalCount: number;
 	constructor(
 		public readonly parent: PipelineNode | TemplateItemNode,
 		public readonly group: GroupKind,
@@ -174,12 +175,32 @@ export class GroupNode extends vscode.TreeItem {
 		this.id = `${parent.id}:group:${group}`;
 		this.contextValue = `pipelinesexplorer.group.${group}`;
 		this.iconPath = new vscode.ThemeIcon(group === 'templates' ? 'files' : 'terminal');
-		const count = group === 'templates' ? analysis.templates.length : analysis.scripts.length;
-		this.description = String(count);
+		this.totalCount = group === 'templates' ? analysis.templates.length : analysis.scripts.length;
+		this.description = String(this.totalCount);
 		const groupLabel = group === 'templates' ? vscode.l10n.t('Templates') : vscode.l10n.t('Scripts');
 		this.accessibilityInformation = {
-			label: vscode.l10n.t('Group {0}, {1} items', groupLabel, count),
+			label: vscode.l10n.t('Group {0}, {1} items', groupLabel, this.totalCount),
 		};
+	}
+
+	/**
+	 * Update the group's `description` (and its a11y label) to reflect how
+	 * many items are currently visible under the active filter. Pass
+	 * `undefined` (or the total count) to reset to the plain total.
+	 */
+	updateFilteredCount(visibleCount: number | undefined): void {
+		const groupLabel = this.group === 'templates' ? vscode.l10n.t('Templates') : vscode.l10n.t('Scripts');
+		if (visibleCount === undefined || visibleCount === this.totalCount) {
+			this.description = String(this.totalCount);
+			this.accessibilityInformation = {
+				label: vscode.l10n.t('Group {0}, {1} items', groupLabel, this.totalCount),
+			};
+		} else {
+			this.description = `${visibleCount}/${this.totalCount}`;
+			this.accessibilityInformation = {
+				label: vscode.l10n.t('Group {0}, {1} of {2} items match filter', groupLabel, visibleCount, this.totalCount),
+			};
+		}
 	}
 }
 
@@ -516,6 +537,8 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 		const children = await this.fetchChildren(element);
 		this.populateChildCache(element, children);
 
+		this.applyGroupFilterCounts(children);
+
 		if (!this.currentFilter) {
 			return children;
 		}
@@ -524,6 +547,39 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 			return [this.buildFilterStatusNode(), ...children.filter(c => this.isVisibleUnderFilter(c))];
 		}
 		return children.filter(c => this.isVisibleUnderFilter(c));
+	}
+
+	/**
+	 * Refresh the `description` on every {@link GroupNode} in `children` so it
+	 * shows the filtered / total count (e.g. `4/7`) while a filter is active,
+	 * or the plain total when the filter is cleared. Counts are derived from
+	 * the same `matchedIds` / `visibleIds` sets that drive
+	 * {@link isVisibleUnderFilter}, so the label always matches the number of
+	 * items that will actually render under the group.
+	 */
+	private applyGroupFilterCounts(children: Node[]): void {
+		for (const c of children) {
+			if (c.kind !== 'group') { continue; }
+			if (!this.currentFilter) {
+				c.updateFilteredCount(undefined);
+				continue;
+			}
+			const groupId = c.id!;
+			let visible = 0;
+			if (c.group === 'templates') {
+				for (const t of c.analysis.templates) {
+					const tplId = `${groupId}:tpl:${t.raw}`;
+					if (this.matchedIds.has(tplId) || this.visibleIds.has(tplId)) { visible++; }
+				}
+			} else {
+				for (const s of c.analysis.scripts) {
+					const idTail = s.filePath ?? (s.inline ? `inline@${s.line ?? '?'}` : 'unknown');
+					const sId = `${groupId}:script:${s.task}:${s.kind}:${idTail}`;
+					if (this.matchedIds.has(sId) || this.visibleIds.has(sId)) { visible++; }
+				}
+			}
+			c.updateFilteredCount(visible);
+		}
 	}
 
 	private populateChildCache(element: Node | undefined, children: Node[]): void {

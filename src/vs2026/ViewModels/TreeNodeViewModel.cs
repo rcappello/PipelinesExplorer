@@ -361,11 +361,34 @@ public sealed class GroupNode : TreeNodeViewModel
     public GroupNode(GroupKind group, int count) : base(TreeNodeKind.Group)
     {
         Group = group;
+        TotalCount = count;
         Label = group == GroupKind.Templates ? Strings.Tree_Group_Templates : Strings.Tree_Group_Scripts;
         Description = count.ToString(CultureInfo.InvariantCulture);
     }
 
     public GroupKind Group { get; }
+
+    /// <summary>
+    /// Total number of items in this group before any filter is applied.
+    /// Used to render a "visible/total" label when the filter is active.
+    /// </summary>
+    public int TotalCount { get; }
+
+    /// <summary>
+    /// Update <see cref="TreeNodeViewModel.Description"/> to reflect how many
+    /// items are currently visible under the active filter. Pass <c>null</c>
+    /// (or the total count) to reset to the plain total.
+    /// </summary>
+    public void UpdateFilteredCount(int? visibleCount)
+    {
+        Description = (visibleCount is null || visibleCount.Value == TotalCount)
+            ? TotalCount.ToString(CultureInfo.InvariantCulture)
+            : string.Format(
+                CultureInfo.InvariantCulture,
+                "{0}/{1}",
+                visibleCount.Value,
+                TotalCount);
+    }
 
     [DataMember]
     public override string IconMoniker => Group == GroupKind.Templates
