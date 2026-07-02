@@ -61,6 +61,16 @@
 
     <!-- YAML parsing for pipeline analysis (templates / script tasks) -->
     <PackageReference Include="YamlDotNet" Version="17.1.*" />
+
+    <!--
+      Pin MessagePack to the 2.5.x patch line that fixes CVE-2026-48506 and
+      CVE-2026-48109. This overrides the transitive 2.5.198 pulled in by
+      Microsoft.VisualStudio.Extensibility.Sdk 17.14 (via
+      Microsoft.ServiceHub.Framework). Kept on the 2.5.x line to preserve
+      binary compatibility with the SDK's expectations.
+    -->
+    <PackageReference Include="MessagePack" Version="2.5.302" />
+    <PackageReference Include="MessagePack.Annotations" Version="2.5.302" />
   </ItemGroup>
 
   <ItemGroup>
