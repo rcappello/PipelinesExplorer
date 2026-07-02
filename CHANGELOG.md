@@ -12,6 +12,11 @@ or `vs2026`.
 
 ## [Unreleased]
 
+### Fixed
+
+- `[vs2026]` Filter pruning did not survive lazy-load: when a pipeline or template was expanded manually after the filter scan, non-matching sibling templates and the whole `Scripts` group stayed visible. Visibility is now reapplied to every newly materialised subtree, matching the VS Code client (plan 001 §2 parity).
+- `[vs2026]` Filter pruning had two remaining gaps that made results depend on when the user expanded a pipeline. The scan now records deferred group-visibility marks (honoured when `Templates` / `Scripts` groups are materialised later) and tracks intermediate templates that transitively contain a match, so a matched pipeline no longer shows an empty `Templates` group and a `Scripts` group without direct matches no longer leaks in.
+
 ### Documentation
 
 - `[vscode]` `[vs2026]` Note the Azure DevOps global PAT retirement scheduled for 1 December 2026 ([aka.ms/GlobalPATDeprecation](https://aka.ms/GlobalPATDeprecation)): both READMEs now spell out that PAT sign-in currently requires the *All accessible organizations* scope and recommend Microsoft sign-in as the durable path. Multi-org PAT support after the retirement is tracked as plan 002.
