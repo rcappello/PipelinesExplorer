@@ -65,7 +65,7 @@ Pipelines
 2. Restart Visual Studio 2026 and open **View → Other Windows → Pipelines Explorer**.
 3. Choose a sign-in method:
    - **Sign in with Microsoft** — uses MSAL with the Windows WAM broker. Recommended for organizations connected to Microsoft Entra ID.
-   - **Sign in with Personal Access Token** — paste a PAT with at least `Code (Read)`, `Build (Read)` and `Project and Team (Read)` scopes. The PAT is persisted in Windows Credential Manager.
+   - **Sign in with Personal Access Token** — paste a PAT with at least `Code (Read)`, `Build (Read)` and `Project and Team (Read)` scopes, and **`All accessible organizations`** as *Organizations* scope so the tree can enumerate every org your account can reach. The PAT is persisted in Windows Credential Manager. See [PAT scope and the 1 Dec 2026 deprecation](#pat-scope-and-the-1-dec-2026-deprecation) below before you generate one.
 4. Browse organizations → projects → repositories → pipelines.
 
 A header row at the top of the tree shows the active connection (account name and, for Microsoft sign-in, the current tenant). Clicking the row — or the **organization** icon next to **Refresh** in the tool window toolbar — opens a tenant picker listing the Entra ID tenants your account belongs to, so you can switch tenant without signing out. The choice is persisted across restarts; **Reset all settings** clears it.
@@ -145,6 +145,30 @@ adapted to WPF Remote UI:
 - **Localized announcements** — accessibility labels live in
   `Strings.resx` under the `A11y_*` prefix and are translated through the
   same satellite assemblies as the rest of the UI.
+
+## PAT scope and the 1 Dec 2026 deprecation
+
+Pipelines Explorer discovers organizations by calling
+`https://app.vssps.visualstudio.com/_apis/accounts` — a *global* Azure DevOps
+endpoint. When you sign in with a Personal Access Token, that endpoint only
+works with a PAT whose **Organizations** scope is set to
+**All accessible organizations** (also called a *global PAT*). An
+organization-scoped PAT returns an empty list and the tree stays empty.
+
+Microsoft has announced the retirement of global PATs for Azure DevOps
+Services on **1 December 2026** ([aka.ms/GlobalPATDeprecation](https://aka.ms/GlobalPATDeprecation)).
+On that date every existing global PAT stops working and new ones can no
+longer be created. Azure DevOps *Server* is not affected.
+
+What this means for Pipelines Explorer:
+
+- **Until 1 Dec 2026** — PAT sign-in works as documented, provided you tick
+  *All accessible organizations* when you generate the token.
+- **Recommended today** — use **Sign in with Microsoft**. Entra-backed
+  sign-in is the durable path and is unaffected by the retirement.
+- **After 1 Dec 2026** — PAT sign-in will only be usable against a single
+  organization at a time. Support for per-organization PATs is tracked as
+  [plan 002](https://github.com/rcappello/PipelinesExplorer/blob/main/.specify/plans/002-pat-per-org-fallback.md).
 
 ## Requirements
 
