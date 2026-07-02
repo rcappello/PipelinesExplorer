@@ -194,10 +194,35 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <TextBox Grid.Row="0" Grid.Column="0"
+                     x:Name="FilterTextBox"
                      Text="{Binding FilterText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                      ToolTip="{Binding Loc.Filter_Placeholder}"
                      AutomationProperties.Name="{Binding Loc.A11y_Filter_Name}"
                      AutomationProperties.HelpText="{Binding Loc.Filter_Placeholder}" />
+            <!-- Placeholder overlay: WPF TextBox has no native watermark. Sits in the
+                 same Grid cell as FilterTextBox, is transparent to hit-testing so
+                 clicks reach the TextBox, and toggles visibility via a DataTrigger on
+                 the VM's FilterText being empty (no ElementName binding needed, which
+                 is safer under Remote UI). -->
+            <TextBlock Grid.Row="0" Grid.Column="0"
+                       IsHitTestVisible="False"
+                       Text="{Binding Loc.Filter_Placeholder}"
+                       Margin="8,0,4,0"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       Opacity="0.55"
+                       Foreground="{DynamicResource {x:Static platform:CommonControlsColors.TextBoxTextBrushKey}}">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding FilterText}" Value="">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
             <Button Grid.Row="0" Grid.Column="1"
                     Margin="4,0,0,0"
                     Style="{StaticResource IconToolbarButton}"
