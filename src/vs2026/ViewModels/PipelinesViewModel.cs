@@ -1300,7 +1300,12 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
 
                 if (pipelineMatched && !_matchedNodes.Contains(pipe))
                 {
-                    _ancestorNodes.Add(pipe);
+                    // A template/script inside this pipeline matched. Count the
+                    // pipeline itself as a match so the status line agrees with
+                    // what the tree is showing (Pass 1 only matches pipeline
+                    // names, so without this the status stays at "no results"
+                    // for pure YAML-content matches).
+                    _matchedNodes.Add(pipe);
                     MarkAncestorsVisible(pipe);
                 }
             }
