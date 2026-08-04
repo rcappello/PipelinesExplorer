@@ -6,6 +6,10 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Maintenance
+
+- Updated vulnerable transitive development dependencies in `package-lock.json`: `brace-expansion` (`1.1.18`, `2.1.4`, and `5.0.9`), `fast-uri` `3.1.5`, `js-yaml` `4.3.1`, `linkify-it` `5.0.2`, `shell-quote` `1.10.0`, and `undici` `7.29.0`. `npm audit` now reports no vulnerabilities.
+
 ## [0.3.2] - 2026-07-02
 
 ### Changed
