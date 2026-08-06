@@ -223,7 +223,7 @@ export class AuthService implements vscode.Disposable {
 		// non-fatal: the session is already valid and any per-org PATs already
 		// stored still work.
 		await this.tryPerOrgFallbackAfterSignIn(raw.accessToken);
-		return session;
+		return this.currentSession;
 	}
 
 	/**

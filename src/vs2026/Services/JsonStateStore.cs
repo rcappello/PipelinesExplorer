@@ -63,6 +63,27 @@ public sealed class JsonStateStore
         Persist();
     }
 
+    /// <summary>Stores and persists a value, restoring the previous in-memory value if persistence fails.</summary>
+    public bool TrySet<T>(string key, T value)
+    {
+        var hadPrevious = _values.TryGetValue(key, out var previous);
+        _values[key] = JsonSerializer.SerializeToElement(value);
+        if (Persist())
+        {
+            return true;
+        }
+
+        if (hadPrevious)
+        {
+            _values[key] = previous;
+        }
+        else
+        {
+            _values.TryRemove(key, out _);
+        }
+        return false;
+    }
+
     /// <summary>Removes <paramref name="key"/>; returns <c>true</c> if it existed.</summary>
     public bool Remove(string key)
     {
@@ -74,7 +95,7 @@ public sealed class JsonStateStore
         return true;
     }
 
-    private void Persist()
+    private bool Persist()
     {
         // Snapshot to a plain dictionary so the on-disk shape is deterministic.
         var snapshot = new Dictionary<string, JsonElement>(_values);
@@ -92,10 +113,12 @@ public sealed class JsonStateStore
                 {
                     File.Move(tmp, _filePath);
                 }
+                return true;
             }
             catch
             {
                 // Persistence failures are non-fatal at runtime; swallow so the UI keeps working.
+                return false;
             }
         }
     }

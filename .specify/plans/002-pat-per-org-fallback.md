@@ -37,15 +37,15 @@ Impact on Pipelines Explorer PAT sign-in mode:
 ### 1.1 Additional evidence — `_apis/accounts` is already unreliable today
 
 Field-tested on 2026-07-07 with a single *All accessible organizations*
-PAT (`memberId = a645562a-4dad-46a7-87e6-22af4841d689`, verified identical
-across every call). Successive calls returned different, non-overlapping
+PAT (the same redacted `memberId` was verified across every call).
+Successive calls returned different, non-overlapping
 sets:
 
 | Client | Time | `count` | `accountName` values |
 | ------ | ---- | ------- | -------------------- |
-| VS 2026 extension | first cold start | 4 | altenitalia, marcominerva, riccardocappello, vividolab |
-| VS 2026 extension | after sign-out + sign-in | 1 | riccardocappello |
-| PowerShell `Invoke-RestMethod` (same PAT, same memberId, same host) | ~minutes later | 2 | dbtek, riccardocappello |
+| VS 2026 extension | first cold start | 4 | org-a, org-b, org-c, org-d |
+| VS 2026 extension | after sign-out + sign-in | 1 | org-c |
+| PowerShell `Invoke-RestMethod` (same PAT, same memberId, same host) | ~minutes later | 2 | org-e, org-c |
 
 Same PAT, same `memberId`, three completely different responses. Cookie
 scrubbing (`HttpClientHandler.UseCookies = false`, landed on 2026-07-07 in
@@ -61,7 +61,7 @@ deterministic, complete list of the org(s) they care about.
 We already recommend Microsoft sign-in in the READMEs (see plan **000-docs**
 / the `docs/pat-global-deprecation` branch). This plan covers the **PAT
 fallback** so that users who cannot use Microsoft sign-in (air-gapped
-tenants, service accounts, Azure DevOps Server users) keep a working
+tenants and service accounts) keep a working
 experience by naming the organizations up front.
 
 The user-requested behavior is:

@@ -62,6 +62,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     /// already-working session.
     /// </summary>
     private bool _isAddOrgPanelFallback;
+    private int _addOrgPanelGeneration;
 
     // Filter state (Plan 001). Kept together for clarity.
     private const int FilterPipelineCap = 500;
@@ -148,6 +149,10 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
                 // for global PATs — auto-open the per-org fallback panel with
                 // the just-entered PAT already filled in.
                 await TryDiscoveryOrOpenAddOrgPanelAsync(pat, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                await _auth.SignOutAsync(CancellationToken.None).ConfigureAwait(false);
             }
             catch (Exception ex) { _logger.Error("PAT sign in failed", ex); SetError(ex.Message); }
         });
@@ -742,6 +747,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     /// </param>
     public void OpenAddOrgPanel(string? prefillPat = null, bool isFallback = false)
     {
+        _addOrgPanelGeneration++;
         AddOrgNameInput = string.Empty;
         AddOrgPatInput = prefillPat ?? string.Empty;
         AddOrgErrorMessage = null;
@@ -753,6 +759,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     /// <summary>Close the panel and clear its transient state.</summary>
     public void CloseAddOrgPanel()
     {
+        _addOrgPanelGeneration++;
         IsAddOrgPanelOpen = false;
         AddOrgNameInput = string.Empty;
         AddOrgPatInput = string.Empty;
@@ -804,11 +811,16 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         }
         IsAddOrgBusy = true;
         AddOrgErrorMessage = null;
+        var panelGeneration = _addOrgPanelGeneration;
         try
         {
             var result = await _ado.ProbeOrganizationAsync(org, pat, cancellationToken).ConfigureAwait(false);
             if (result == OrgProbeResult.Ok)
             {
+                if (!IsAddOrgPanelOpen || panelGeneration != _addOrgPanelGeneration)
+                {
+                    return;
+                }
                 await _auth.SavePerOrgPatAsync(org, pat, cancellationToken).ConfigureAwait(false);
                 _logger.Info($"Added organization '{org}' via per-org fallback");
                 CloseAddOrgPanel();
@@ -856,7 +868,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         }
         catch (OperationCanceledException)
         {
-            return;
+            throw;
         }
         catch (Exception ex)
         {

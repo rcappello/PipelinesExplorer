@@ -421,6 +421,7 @@ public sealed class AdoAuthService : IAdoAuthHeaderProvider, IDisposable
     private async Task SignOutInternalAsync(bool reset)
     {
         var kind = GetStoredKind();
+        Exception? patCleanupError = null;
         _logger.Info($"SignOut invoked (kind={kind?.ToString() ?? "<none>"}, reset={reset})");
 
         if (kind == SignInKind.Pat || reset)
@@ -444,6 +445,7 @@ public sealed class AdoAuthService : IAdoAuthHeaderProvider, IDisposable
             catch (Exception ex)
             {
                 _logger.Warn($"PAT delete failed: {ex.Message}");
+                patCleanupError = ex;
             }
             lock (_perOrgGate)
             {
@@ -470,6 +472,11 @@ public sealed class AdoAuthService : IAdoAuthHeaderProvider, IDisposable
             _store.Remove(MsTenantNameKey);
         }
         ClearSession();
+
+        if (patCleanupError is not null)
+        {
+            throw new InvalidOperationException("One or more PAT credentials could not be deleted.", patCleanupError);
+        }
     }
 
     private SignInKind? GetStoredKind()

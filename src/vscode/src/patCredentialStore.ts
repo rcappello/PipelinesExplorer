@@ -72,12 +72,18 @@ export class PatCredentialStore {
 	 */
 	async savePerOrgPat(org: string, pat: string): Promise<void> {
 		const canonical = canonicalizeOrg(org);
-		await this.secrets.store(PER_ORG_SECRET_PREFIX + canonical, pat);
+		const secretKey = PER_ORG_SECRET_PREFIX + canonical;
+		await this.secrets.store(secretKey, pat);
 		const index = this.readIndex();
 		if (!index.includes(canonical)) {
 			index.push(canonical);
 			index.sort((a, b) => a.localeCompare(b));
-			await this.state.update(PER_ORG_INDEX_KEY, index);
+			try {
+				await this.state.update(PER_ORG_INDEX_KEY, index);
+			} catch (err) {
+				await this.secrets.delete(secretKey);
+				throw err;
+			}
 		}
 		await this.rememberInHistory(canonical);
 	}

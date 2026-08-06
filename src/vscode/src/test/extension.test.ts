@@ -115,6 +115,15 @@ class FakeMemento implements vscode.Memento {
 	setKeysForSync(_keys: readonly string[]): void { /* no-op */ }
 }
 
+class FailingIndexMemento extends FakeMemento {
+	override async update(key: string, value: unknown): Promise<void> {
+		if (key === PER_ORG_INDEX_KEY) {
+			throw new Error('index update failed');
+		}
+		await super.update(key, value);
+	}
+}
+
 class FakeSecretStorage implements vscode.SecretStorage {
 	readonly map = new Map<string, string>();
 	private readonly emitter = new vscode.EventEmitter<vscode.SecretStorageChangeEvent>();
@@ -152,6 +161,15 @@ suite('PatCredentialStore', () => {
 
 		assert.strictEqual(secrets.map.get(PER_ORG_SECRET_PREFIX + 'contoso'), 'pat-1');
 		assert.deepStrictEqual(memento.get<string[]>(PER_ORG_INDEX_KEY), ['contoso']);
+	});
+
+	test('savePerOrgPat removes the secret when the index update fails', async () => {
+		const secrets = new FakeSecretStorage();
+		const store = new PatCredentialStore(secrets, new FailingIndexMemento());
+
+		await assert.rejects(store.savePerOrgPat('Contoso', 'pat-1'), /index update failed/);
+
+		assert.strictEqual(secrets.map.has(PER_ORG_SECRET_PREFIX + 'contoso'), false);
 	});
 
 	test('savePerOrgPat is idempotent on the index but overwrites the value', async () => {

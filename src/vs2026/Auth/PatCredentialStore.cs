@@ -92,7 +92,11 @@ public sealed class PatCredentialStore
         {
             index.Add(canonical);
             index.Sort(StringComparer.OrdinalIgnoreCase);
-            _state.Set(IndexKey, index);
+            if (!_state.TrySet(IndexKey, index))
+            {
+                DeleteCredential(PerOrgTargetPrefix + canonical);
+                throw new InvalidOperationException("The per-organization credential index could not be persisted.");
+            }
         }
         RememberInHistory(canonical);
     }
