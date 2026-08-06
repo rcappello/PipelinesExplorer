@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,7 +35,10 @@ public sealed class AdoClient : IDisposable
     {
         _logger = logger;
         _authProvider = authProvider;
-        _http = httpClient ?? new HttpClient();
+        // ADO REST APIs authenticate exclusively via the Authorization header
+        // (PAT or Bearer); shared cookies (e.g. VstsSession from
+        // app.vssps.visualstudio.com) can only pollute subsequent requests.
+        _http = httpClient ?? new HttpClient(new HttpClientHandler { UseCookies = false }, disposeHandler: true);
         _ownsHttpClient = httpClient is null;
     }
 
@@ -66,21 +71,104 @@ public sealed class AdoClient : IDisposable
     public async Task<IReadOnlyList<AdoProject>> ListProjectsAsync(string organizationName, CancellationToken cancellationToken = default)
     {
         var url = $"https://dev.azure.com/{Uri.EscapeDataString(organizationName)}/_apis/projects?api-version={ApiVersion}&stateFilter=wellFormed&$top=1000";
-        var res = await GetJsonAsync<AdoListResponse<AdoProject>>(url, cancellationToken).ConfigureAwait(false);
+        var res = await GetJsonAsync<AdoListResponse<AdoProject>>(url, organizationName, cancellationToken).ConfigureAwait(false);
         return res.Value;
+    }
+
+    /// <summary>
+    /// Lightweight authorization probe for a given organization. Calls
+    /// <c>dev.azure.com/{org}/_apis/projects?$top=1</c> and classifies the
+    /// outcome so the PAT fallback flow (plan <c>002</c>) can pick the right
+    /// branch without inspecting HTTP status codes at the call site.
+    /// </summary>
+    /// <param name="organizationName">Azure DevOps organization to probe.</param>
+    /// <param name="patOverride">
+    /// Optional PAT to use for the probe instead of the currently-active
+    /// session credentials. Pass this when validating a token that has not
+    /// yet been stored (typical during sign-in fallback or the "Add
+    /// organization" command).
+    /// </param>
+    public async Task<OrgProbeResult> ProbeOrganizationAsync(string organizationName, string? patOverride = null, CancellationToken cancellationToken = default)
+    {
+        var url = $"https://dev.azure.com/{Uri.EscapeDataString(organizationName)}/_apis/projects?api-version={ApiVersion}&$top=1";
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Accept.ParseAdd("application/json");
+
+        if (!string.IsNullOrEmpty(patOverride))
+        {
+            var basic = Convert.ToBase64String(Encoding.UTF8.GetBytes(":" + patOverride));
+            request.Headers.Authorization = new AuthenticationHeaderValue("Basic", basic);
+        }
+        else if (_authProvider is not null)
+        {
+            try
+            {
+                var header = await _authProvider.GetAuthHeaderAsync(organizationName, cancellationToken).ConfigureAwait(false);
+                if (header is not null)
+                {
+                    request.Headers.Authorization = header;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"probeOrganization({organizationName}): no auth headers available", ex);
+                return OrgProbeResult.Unauthorized;
+            }
+        }
+
+        _logger.Debug($"GET {url} (probe)");
+        HttpResponseMessage response;
+        try
+        {
+            response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error($"probeOrganization({organizationName}): send failed", ex);
+            return OrgProbeResult.NetworkError;
+        }
+
+        try
+        {
+            if (response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.Forbidden)
+            {
+                return OrgProbeResult.Unauthorized;
+            }
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return OrgProbeResult.NotFound;
+            }
+            if (!response.IsSuccessStatusCode)
+            {
+                return OrgProbeResult.NetworkError;
+            }
+            var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
+            if (!contentType.Contains("application/json", StringComparison.OrdinalIgnoreCase))
+            {
+                // ADO returns HTML on silent auth failure; treat as unauthorized
+                // so the fallback flow can prompt again rather than pretending
+                // success.
+                return OrgProbeResult.Unauthorized;
+            }
+            return OrgProbeResult.Ok;
+        }
+        finally
+        {
+            response.Dispose();
+        }
     }
 
     public async Task<IReadOnlyList<AdoPipeline>> ListPipelinesAsync(string organizationName, string projectName, CancellationToken cancellationToken = default)
     {
         var url = $"https://dev.azure.com/{Uri.EscapeDataString(organizationName)}/{Uri.EscapeDataString(projectName)}/_apis/pipelines?api-version={ApiVersion}&$top=1000";
-        var res = await GetJsonAsync<AdoListResponse<AdoPipeline>>(url, cancellationToken).ConfigureAwait(false);
+        var res = await GetJsonAsync<AdoListResponse<AdoPipeline>>(url, organizationName, cancellationToken).ConfigureAwait(false);
         return res.Value;
     }
 
     public Task<AdoPipelineDetail> GetPipelineAsync(string organizationName, string projectName, int pipelineId, CancellationToken cancellationToken = default)
     {
         var url = $"https://dev.azure.com/{Uri.EscapeDataString(organizationName)}/{Uri.EscapeDataString(projectName)}/_apis/pipelines/{pipelineId}?api-version={ApiVersion}";
-        return GetJsonAsync<AdoPipelineDetail>(url, cancellationToken);
+        return GetJsonAsync<AdoPipelineDetail>(url, organizationName, cancellationToken);
     }
 
     /// <summary>Look up a Git repository by id. Returns <c>null</c> on 404.</summary>
@@ -89,7 +177,7 @@ public sealed class AdoClient : IDisposable
         var url = $"https://dev.azure.com/{Uri.EscapeDataString(organizationName)}/{Uri.EscapeDataString(projectName)}/_apis/git/repositories/{Uri.EscapeDataString(repositoryId)}?api-version={ApiVersion}";
         try
         {
-            return await GetJsonAsync<AdoRepository>(url, cancellationToken).ConfigureAwait(false);
+            return await GetJsonAsync<AdoRepository>(url, organizationName, cancellationToken).ConfigureAwait(false);
         }
         catch (HttpRequestException ex) when (ex.Message.Contains(" 404 ", StringComparison.Ordinal))
         {
@@ -116,7 +204,7 @@ public sealed class AdoClient : IDisposable
         {
             url += $"&versionDescriptor.versionType=branch&versionDescriptor.version={Uri.EscapeDataString(branch!)}";
         }
-        return await GetTextAsync(url, cancellationToken).ConfigureAwait(false);
+        return await GetTextAsync(url, organizationName, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -127,7 +215,7 @@ public sealed class AdoClient : IDisposable
     public async Task<IReadOnlyList<string>> ListBranchesAsync(string organizationName, string projectName, string repositoryId, CancellationToken cancellationToken = default)
     {
         var url = $"https://dev.azure.com/{Uri.EscapeDataString(organizationName)}/{Uri.EscapeDataString(projectName)}/_apis/git/repositories/{Uri.EscapeDataString(repositoryId)}/refs?filter=heads/&api-version={ApiVersion}&$top=1000";
-        var res = await GetJsonAsync<AdoListResponse<GitRefEntry>>(url, cancellationToken).ConfigureAwait(false);
+        var res = await GetJsonAsync<AdoListResponse<GitRefEntry>>(url, organizationName, cancellationToken).ConfigureAwait(false);
         return res.Value
             .Select(r => r.Name.StartsWith("refs/heads/", StringComparison.Ordinal) ? r.Name.Substring("refs/heads/".Length) : r.Name)
             .OrderBy(n => n, StringComparer.Ordinal)
@@ -135,8 +223,11 @@ public sealed class AdoClient : IDisposable
     }
 
     private async Task<T> GetJsonAsync<T>(string url, CancellationToken cancellationToken)
+        => await GetJsonAsync<T>(url, orgHint: null, cancellationToken).ConfigureAwait(false);
+
+    private async Task<T> GetJsonAsync<T>(string url, string? orgHint, CancellationToken cancellationToken)
     {
-        using var request = await BuildRequestAsync(url, cancellationToken).ConfigureAwait(false);
+        using var request = await BuildRequestAsync(url, orgHint, cancellationToken).ConfigureAwait(false);
         _logger.Debug($"GET {url}");
 
         using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
@@ -162,9 +253,9 @@ public sealed class AdoClient : IDisposable
         return value ?? throw new InvalidOperationException($"Empty JSON response from {url}");
     }
 
-    private async Task<string?> GetTextAsync(string url, CancellationToken cancellationToken)
+    private async Task<string?> GetTextAsync(string url, string? orgHint, CancellationToken cancellationToken)
     {
-        using var request = await BuildRequestAsync(url, cancellationToken).ConfigureAwait(false);
+        using var request = await BuildRequestAsync(url, orgHint, cancellationToken).ConfigureAwait(false);
         _logger.Debug($"GET {url}");
 
         using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
@@ -180,14 +271,14 @@ public sealed class AdoClient : IDisposable
         return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<HttpRequestMessage> BuildRequestAsync(string url, CancellationToken cancellationToken)
+    private async Task<HttpRequestMessage> BuildRequestAsync(string url, string? orgHint, CancellationToken cancellationToken)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Accept.ParseAdd("application/json");
 
         if (_authProvider is not null)
         {
-            var header = await _authProvider.GetAuthHeaderAsync(cancellationToken).ConfigureAwait(false);
+            var header = await _authProvider.GetAuthHeaderAsync(orgHint, cancellationToken).ConfigureAwait(false);
             if (header is not null)
             {
                 request.Headers.Authorization = header;

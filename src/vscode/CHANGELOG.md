@@ -6,6 +6,31 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-05
+
+### Added
+
+- **Per-organization PAT sign-in.** Sign-in with a Personal Access Token now works with **both** *All accessible organizations* PATs (the historical path, unchanged) and **organization-scoped** PATs. When the classic discovery call to `_apis/accounts` returns nothing usable — the deterministic outcome for an org-scoped PAT, and increasingly the case even for global PATs (see plan 002 §1.1) — the extension prompts for the **exact Azure DevOps organization identifier** (the segment after `dev.azure.com/` in your URL, e.g. `contoso`), validates the token against `dev.azure.com/{org}/_apis/projects?$top=1`, and stores the `<org, pat>` pair in its own [`SecretStorage`](https://code.visualstudio.com/api/references/vscode-api#SecretStorage) slot. Mistyped or unauthorized names surface an actionable *Try another* / *Cancel* dialog rather than a broken slot. The tree then renders that organization normally. Multiple per-organization PATs coexist and every request routes to the right token automatically.
+- **`Pipelines Explorer: Add Azure DevOps organization…`** command (title-bar `+` icon under PAT sign-in, and Command Palette). Prompts for an organization name and a matching PAT, then adds that organization as a new root without touching the existing ones.
+- **Organization-name suggestions** in the *Add organization* prompt (plan 002 §B.1). The extension now:
+  - Remembers every organization ever added via the per-org flow in a rolling history (up to 20 entries, most-recent first) that survives `Sign out` — only `Reset` wipes it. From the second add onwards the prompt opens as a QuickPick over that history, plus a *"Type another organization name…"* fallback.
+  - Sniffs the system clipboard when the input box is shown, and pre-selects the org portion of any `https://dev.azure.com/{org}/…` or `https://{org}.visualstudio.com/…` URL it finds. Covers the common case of copying an ADO URL from the browser before running the command.
+
+### Changed
+
+- The tree merges organizations from the global `_apis/accounts` call **and** every per-organization slot, deduplicated by canonical name (per-org slots win on conflict).
+- `Sign out` also clears every per-organization PAT slot, matching plan 002 §2.3.
+- Internal: `AdoClient` request routing threads the target organization through to `AuthService.getHeaders`, so each `dev.azure.com/{org}/…` call uses the right PAT.
+- Copy: the *Add organization* error for `unauthorized` now reads *"The token was rejected for organization … . This can happen if the token is invalid, revoked, or not scoped to this organization."* — the previous wording implied the org was the problem when a wrong PAT is just as likely.
+
+### Fixed
+
+- Cancelling the *Add Azure DevOps organization* prompt right after a fresh PAT sign-in now signs the user out and discards the just-entered token, so a fake or unverifiable PAT no longer lingers in `SecretStorage` and reactivates as a zombie session on the next activation. Cancelling on top of an already-working session (prompt opened via the *Add another organization* command) still leaves the existing per-org PATs untouched.
+
+### Documentation
+
+- README: reworked the *PAT scope and the 1 Dec 2026 deprecation* section to describe the two supported PAT shapes and to explain the small UX cost of an org-scoped PAT — you must type the organization name once at first sign-in. Verified empirically (2026-07-07) that Azure DevOps does not expose any endpoint that returns the org from an opaque scoped PAT: `_apis/accounts?memberId=` returns `0`, `_apis/ConnectionData` (SPS-level) responds `401`, and `_apis/tokens/pats` requires the org already. The org name is intrinsically unrecoverable client-side.
+
 ### Maintenance
 
 - Updated vulnerable transitive development dependencies in `package-lock.json`: `brace-expansion` (`1.1.18`, `2.1.4`, and `5.0.9`), `fast-uri` `3.1.5`, `js-yaml` `4.3.1`, `linkify-it` `5.0.2`, `shell-quote` `1.10.0`, and `undici` `7.29.0`. `npm audit` now reports no vulnerabilities.

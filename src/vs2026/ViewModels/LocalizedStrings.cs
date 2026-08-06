@@ -57,4 +57,16 @@ public sealed class LocalizedStrings : NotifyPropertyChangedObject
     [DataMember] public string Filter_Placeholder { get; } = Strings.Filter_Placeholder;
     [DataMember] public string Filter_Clear_Tooltip { get; } = Strings.Filter_Clear_Tooltip;
     [DataMember] public string Filter_LoadedScope_Tooltip { get; } = Strings.Filter_LoadedScope_Tooltip;
+
+    // Add-organization panel (plan 002 phase D)
+    [DataMember] public string AddOrg_Header { get; } = Strings.AddOrg_Header;
+    [DataMember] public string AddOrg_DeprecationNotice { get; } = Strings.AddOrg_DeprecationNotice;
+    [DataMember] public string AddOrg_OrgLabel { get; } = Strings.AddOrg_OrgLabel;
+    [DataMember] public string AddOrg_OrgHint { get; } = Strings.AddOrg_OrgHint;
+    [DataMember] public string AddOrg_OrgFieldHelp { get; } = Strings.AddOrg_OrgFieldHelp;
+    [DataMember] public string AddOrg_PatLabel { get; } = Strings.AddOrg_PatLabel;
+    [DataMember] public string AddOrg_PatFieldHelp { get; } = Strings.AddOrg_PatFieldHelp;
+    [DataMember] public string AddOrg_HistoryLabel { get; } = Strings.AddOrg_HistoryLabel;
+    [DataMember] public string AddOrg_Verify { get; } = Strings.AddOrg_Verify;
+    [DataMember] public string AddOrg_Cancel { get; } = Strings.AddOrg_Cancel;
 }

@@ -5,6 +5,7 @@
   "PipelinesExplorer.Command.SignInPat.DisplayName": "Pipelines Explorer: Logga in med PAT",
   "PipelinesExplorer.Command.SignOut.DisplayName": "Pipelines Explorer: Logga ut",
   "PipelinesExplorer.Command.SelectTenant.DisplayName": "Pipelines Explorer: Välj Microsoft-klientorganisation",
+  "PipelinesExplorer.Command.AddOrganization.DisplayName": "Pipelines Explorer: Lägg till Azure DevOps-organisation…",
   "PipelinesExplorer.Command.Refresh.DisplayName": "Pipelines Explorer: Uppdatera",
   "PipelinesExplorer.Command.Reset.DisplayName": "Pipelines Explorer: Återställ alla inställningar",
   "PipelinesExplorer.Command.ShowLogs.DisplayName": "Pipelines Explorer: Visa loggar"

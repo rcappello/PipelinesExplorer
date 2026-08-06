@@ -4,8 +4,7 @@
   "PipelinesExplorer.Command.SignInMicrosoft.DisplayName": "Pipelines Explorer: Iniciar sesión con Microsoft",
   "PipelinesExplorer.Command.SignInPat.DisplayName": "Pipelines Explorer: Iniciar sesión con PAT",
   "PipelinesExplorer.Command.SignOut.DisplayName": "Pipelines Explorer: Cerrar sesión",
-  "PipelinesExplorer.Command.SelectTenant.DisplayName": "Pipelines Explorer: Seleccionar inquilino de Microsoft",
-  "PipelinesExplorer.Command.Refresh.DisplayName": "Pipelines Explorer: Actualizar",
+  "PipelinesExplorer.Command.SelectTenant.DisplayName": "Pipelines Explorer: Seleccionar inquilino de Microsoft",  "PipelinesExplorer.Command.AddOrganization.DisplayName": "Pipelines Explorer: Agregar organización de Azure DevOps…",  "PipelinesExplorer.Command.Refresh.DisplayName": "Pipelines Explorer: Actualizar",
   "PipelinesExplorer.Command.Reset.DisplayName": "Pipelines Explorer: Restablecer toda la configuración",
   "PipelinesExplorer.Command.ShowLogs.DisplayName": "Pipelines Explorer: Mostrar registros"
 }

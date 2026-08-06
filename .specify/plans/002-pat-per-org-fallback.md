@@ -1,9 +1,10 @@
 # 002 — PAT sign-in: per-organization fallback
 
-> Status: **Draft**
+> Status: **Ready to release**
+> Release preparation: **Complete for VS Code and VS 2026**
 > Owner: rcappello
 > Created: 2026-07-03
-> Last updated: 2026-07-03
+> Last updated: 2026-08-06
 
 ## 1. Context / problem
 
@@ -32,6 +33,30 @@ Impact on Pipelines Explorer PAT sign-in mode:
   see an empty tree with no explanation.
 - After 1 Dec 2026 the current PAT flow cannot enumerate multiple
   organizations regardless of the token.
+
+### 1.1 Additional evidence — `_apis/accounts` is already unreliable today
+
+Field-tested on 2026-07-07 with a single *All accessible organizations*
+PAT (`memberId = a645562a-4dad-46a7-87e6-22af4841d689`, verified identical
+across every call). Successive calls returned different, non-overlapping
+sets:
+
+| Client | Time | `count` | `accountName` values |
+| ------ | ---- | ------- | -------------------- |
+| VS 2026 extension | first cold start | 4 | altenitalia, marcominerva, riccardocappello, vividolab |
+| VS 2026 extension | after sign-out + sign-in | 1 | riccardocappello |
+| PowerShell `Invoke-RestMethod` (same PAT, same memberId, same host) | ~minutes later | 2 | dbtek, riccardocappello |
+
+Same PAT, same `memberId`, three completely different responses. Cookie
+scrubbing (`HttpClientHandler.UseCookies = false`, landed on 2026-07-07 in
+[`AdoClient.cs`](../../src/vs2026/AzureDevOps/AdoClient.cs)) did **not**
+stabilise the result. SPS is routing to different regional shards whose
+`accounts` views of the same identity diverge.
+
+**Consequence for this plan:** the `_apis/accounts` path must be treated
+as *best-effort* — not authoritative — even *before* 1 Dec 2026. The
+per-organization fallback is the only way to give the user a
+deterministic, complete list of the org(s) they care about.
 
 We already recommend Microsoft sign-in in the READMEs (see plan **000-docs**
 / the `docs/pat-global-deprecation` branch). This plan covers the **PAT
@@ -351,3 +376,105 @@ Per the matrix in
 ## 10. Change log (filled during implementation)
 
 - 2026-07-03 — Plan drafted.
+- 2026-07-07 — Added §1.1 with field evidence that `_apis/accounts` is
+  already non-deterministic today (same PAT + same `memberId`, three
+  different results). `UseCookies=false` applied to `AdoClient` on VS 2026
+  as a hygiene fix (does not stabilise the SPS response but eliminates
+  cookie cross-contamination between calls).
+- 2026-07-07 — **Phase A (VS Code backend) landed.** New
+  `src/vscode/src/patCredentialStore.ts` with global + per-org slots
+  (`AzureDevOpsPAT` retained for BC, `pipelinesexplorer.pat.org.{org}`
+  new), `Memento`-tracked index. `AdoClient.probeOrganization(org)`
+  added. Pass-through methods on `AuthService`. 15 total unit tests
+  passing (8 new for the store).
+- 2026-07-07 — **Phase B (VS Code UX) landed.** Discovery + fallback wired
+  into `signInWithPat`; new `pipelinesexplorer.addOrganization` command
+  (title-bar + Command Palette). `AuthService.getHeaders(orgHint)` routes
+  per-org PATs, in-memory cache refreshed on save/delete. Tree
+  enumeration merges global `_apis/accounts` result with per-org slots
+  (deduplicated). New localized strings routed inline through
+  `vscode.l10n.t()` — English defaults on all locales.
+- 2026-07-07 — **Phase B.1 (VS Code UX polish) landed.** Rolling org
+  history (cap 20) survives `SignOut`, wiped by `Reset`. Prompt opens as
+  QuickPick over history when available, plus "Type another…" option.
+  Clipboard sniff pre-fills input box with the org portion of any
+  `dev.azure.com/{org}` or `{org}.visualstudio.com` URL. 10 new tests
+  (5 history + 5 clipboard URL parsing).
+- 2026-07-07 — **Phase C (VS 2026 backend) landed.** `PatCredentialStore.cs`
+  rewritten with per-org slots (Credential Manager targets under
+  `PipelinesExplorer.VisualStudio:AzureDevOpsPAT/{org}`) + history via
+  `JsonStateStore`. New `AdoClient.ProbeOrganizationAsync` returning
+  `OrgProbeResult`. `IAdoAuthHeaderProvider.GetAuthHeaderAsync` gained
+  `orgHint`. `AdoAuthService` keeps an in-memory PAT cache and pass-
+  through methods. `SignOut` clears per-org slots but preserves history;
+  `Reset` wipes everything. No user-visible UI change in this phase.
+- 2026-07-07 — **Phase D (VS 2026 UX) landed.** Inline
+  *Add Azure DevOps organization* panel in the tool window with header,
+  deprecation notice, history quick-picks, org + PAT inputs, error
+  banner, and Verify & add / Cancel buttons. Sign-in with PAT now runs
+  the SPS discovery and, on empty/error, auto-opens the panel with the
+  just-entered PAT pre-filled. New `AddOrganizationCommand` (Tools menu)
+  reopens the same panel to add more organizations. Tree merges global
+  discovery + per-org slots. 15 new `AddOrg_*` strings routed through
+  `LocalizedStrings`.
+- 2026-07-08 — **Phase D UX fixes.**
+  - **Bug**: sign-in with org-scoped PAT triggered the unauthorized
+    recovery dialog and forced a sign-out, because `RefreshAsync` treated
+    the deterministic SPS 401 (`_apis/profile/profiles/me`) as a real
+    credentials failure. Fix: for PAT sessions the SPS-level 401 is
+    recognised as expected and swallowed; Microsoft sign-in still surfaces
+    the recovery dialog on real 401s.
+  - **UX**: cancelling the fallback panel/prompt right after a fresh
+    PAT sign-in now signs the user out and discards the just-entered
+    token (VS Code + VS 2026 both), so a fake or unverifiable PAT no
+    longer lingers as a zombie session on next activation. Cancel from
+    the *Add another organization* command on an already-working session
+    leaves the existing per-org PATs untouched.
+  - **Copy**: the `unauthorized` probe error was reworded from
+    *"The token is not authorized for organization …"* to
+    *"The token was rejected for organization …. This can happen if the
+    token is invalid, revoked, or not scoped to this organization."* on
+    both clients.
+  - **Layout (VS 2026)**: the empty-tree placeholder used to render as
+    an `InfoNode` inside the `TreeView` — its label was ellipsized on
+    narrow tool windows because the tree's internal `ScrollViewer`
+    absorbs the overflow into a horizontal scrollbar rather than passing
+    a bounded width down to items. Refactored to a standalone `TextBlock`
+    with `TextWrapping="Wrap"` (`EmptyRootsMessage` + `ShouldShowTree`
+    mutex on the VM) that sits in the same `Grid.Row` as the tree.
+  - **XAML binding fix**: the "Recently used" history buttons in the
+    add-org panel bound their command via
+    `RelativeSource={RelativeSource AncestorType=UserControl}`, but the
+    Remote UI root is a `<DataTemplate>` and there is no `UserControl`
+    ancestor — the binding failed silently and clicks were no-ops.
+    Switched to `ElementName=AddOrgPanel` against the panel's outer
+    `Border`, which is the reliable Remote UI pattern.
+  - **Tree message parity**: the *"no organizations"* placeholder now
+    uses `Strings.Tree_NoOrganizations_Pat` when signed in via PAT —
+    *"No Azure DevOps organizations added yet. Use 'Add Azure DevOps
+    organization…' to name one."* — instead of the Microsoft-only
+    *"…found for this tenant"* wording. VS Code already had the
+    corresponding branch.
+- 2026-08-05 — **Release 0.4.0 preparation.** Promoted the root and per-client
+  changelogs, updated both publishing version sources, and synchronized the VS
+  Code lockfile metadata. `npm install --package-lock-only --ignore-scripts
+  --offline` confirmed that the manifest and lockfile are aligned, audited 671
+  packages, and reported 0 vulnerabilities. The VS 2026 Release build produced
+  a validated `PipelinesExplorer.VisualStudio-0.4.0.vsix` whose embedded
+  manifest reports `0.4.0.0`.
+- 2026-08-06 — **VS Code release gate accepted.** The corporate npm proxy now
+  serves the required `brace-expansion` versions but still returns `404` for
+  the transitive development-only packages `fast-uri@3.1.5` and
+  `js-yaml@4.3.1`. These packages support build tooling and are not shipped in
+  the VSIX. The earlier post-implementation validation remains valid: 25 tests
+  passed, and the manifest and lockfile are aligned. The local clean-install
+  limitation is accepted as an environment constraint. The GitHub release
+  workflow must complete `npm ci`, the production build, and VSIX packaging
+  before its dependent Marketplace publishing job can run. Tags and pushes
+  remain with the author.
+
+## 11. Status
+
+- **VS Code client**: complete (Phases A + B + B.1). 25 tests passing.
+- **VS 2026 client**: complete (Phases C + D + D fixes).
+- Plan is ready to close on the next joint release.

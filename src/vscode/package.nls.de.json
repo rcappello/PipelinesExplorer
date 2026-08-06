@@ -8,6 +8,7 @@
 	"command.reset.title": "Pipelines Explorer: Zurücksetzen (gespeicherte Anmeldedaten löschen)",
 	"command.refresh.title": "Pipelines Explorer: Aktualisieren",
 	"command.selectTenant.title": "Pipelines Explorer: Microsoft Entra-Tenant auswählen…",
+	"command.addOrganization.title": "Pipelines Explorer: Azure DevOps-Organisation hinzufügen…",
 	"command.showLogs.title": "Pipelines Explorer: Protokolle anzeigen",
 	"command.linkWorkspace.title": "Arbeitsbereichsordner verknüpfen…",
 	"command.unlinkWorkspace.title": "Arbeitsbereichsordner-Verknüpfung aufheben",

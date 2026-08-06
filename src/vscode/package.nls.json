@@ -7,6 +7,7 @@
 	"command.reset.title": "Pipelines Explorer: Reset (clear stored credentials)",
 	"command.refresh.title": "Pipelines Explorer: Refresh",
 	"command.selectTenant.title": "Pipelines Explorer: Select Microsoft Entra Tenant…",
+	"command.addOrganization.title": "Pipelines Explorer: Add Azure DevOps organization…",
 	"command.showLogs.title": "Pipelines Explorer: Show Logs",
 	"command.linkWorkspace.title": "Link Workspace Folder…",
 	"command.unlinkWorkspace.title": "Unlink Workspace Folder",

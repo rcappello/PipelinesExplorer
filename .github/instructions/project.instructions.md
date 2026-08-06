@@ -64,6 +64,17 @@ prefer them over launching duplicates.
 - Don't bump versions, publish, push tags, or run release workflows unless the plan
   explicitly says so.
 - Don't add dependencies without listing them in the plan and justifying them.
+- **VS Code lockfile.** Before pushing or opening/updating a PR that changes
+  `src/vscode/`, run `npm ci --ignore-scripts` in `src/vscode/` to verify that
+  `package-lock.json` is aligned with `package.json`. If the check fails, regenerate
+  the lockfile from the manifest and include both files in the same change.
+- **Release preparation.** When the developer asks to prepare a release, for each
+  requested client: promote its `Unreleased` changelog entries to the requested
+  version and release date; update the publishing version in the source-of-truth
+  file listed below; synchronize derived manifests or lockfiles; run the client's
+  build, tests, packaging, and release-specific consistency checks; and report the
+  exact tag the developer should create. Do not create tags, push commits or tags,
+  or trigger release workflows. The developer performs those actions.
 - Don't change formatting of unrelated code.
 
 ### Should (stack & structure)

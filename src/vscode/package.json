@@ -2,7 +2,7 @@
   "name": "vscode-pipelinesexplorer",
   "displayName": "%displayName%",
   "description": "%description%",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "publisher": "RiccardoCappello",
   "author": {
     "name": "Riccardo Cappello"
@@ -69,6 +69,11 @@
         "icon": "$(organization)"
       },
       {
+        "command": "pipelinesexplorer.addOrganization",
+        "title": "%command.addOrganization.title%",
+        "icon": "$(add)"
+      },
+      {
         "command": "pipelinesexplorer.showLogs",
         "title": "%command.showLogs.title%"
       },
@@ -125,6 +130,11 @@
           "group": "navigation@3"
         },
         {
+          "command": "pipelinesexplorer.addOrganization",
+          "when": "view == pipelinesTree && pipelinesexplorer.signedIn && pipelinesexplorer.signInKind == pat",
+          "group": "navigation@3"
+        },
+        {
           "command": "pipelinesexplorer.signOut",
           "when": "view == pipelinesTree && pipelinesexplorer.signedIn"
         }
@@ -144,6 +154,10 @@
         {
           "command": "pipelinesexplorer.selectTenant",
           "when": "pipelinesexplorer.signedIn && pipelinesexplorer.signInKind == microsoft"
+        },
+        {
+          "command": "pipelinesexplorer.addOrganization",
+          "when": "pipelinesexplorer.signedIn && pipelinesexplorer.signInKind == pat"
         },
         {
           "command": "pipelinesexplorer.showLogs"

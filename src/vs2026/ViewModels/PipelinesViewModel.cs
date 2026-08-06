@@ -37,12 +37,31 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     private string? _connectionLabel;
     private string? _connectionTooltip;
     private string? _errorMessage;
+    private string? _emptyRootsMessage;
     private string _patInputText = string.Empty;
     private CancellationTokenSource? _loadCts;
     // One-shot gate: when an Ado 401/403 triggers the recovery prompt we set
     // this flag so subsequent failures in the same broken session don't keep
     // re-showing the same modal. Cleared on session change / sign-in success.
     private bool _unauthorizedHandled;
+
+    // Add-organization panel state (plan 002 phase D). All bound to the
+    // inline panel in PipelinesToolWindowControl.xaml.
+    private bool _isAddOrgPanelOpen;
+    private string _addOrgNameInput = string.Empty;
+    private string _addOrgPatInput = string.Empty;
+    private string? _addOrgErrorMessage;
+    private bool _isAddOrgBusy;
+    private IReadOnlyList<string> _orgHistory = System.Array.Empty<string>();
+    /// <summary>
+    /// True when the panel was opened automatically after a fresh sign-in
+    /// (SPS discovery returned nothing usable). In this mode, hitting
+    /// <b>Cancel</b> rolls the sign-in back so a fake or unverifiable PAT
+    /// does not persist in Credential Manager. False when the panel is
+    /// opened via <see cref="AddOrganizationCommand"/> on top of an
+    /// already-working session.
+    /// </summary>
+    private bool _isAddOrgPanelFallback;
 
     // Filter state (Plan 001). Kept together for clarity.
     private const int FilterPipelineCap = 500;
@@ -123,8 +142,30 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
                 }
                 await _auth.SignInWithPatAsync(pat, cancellationToken).ConfigureAwait(false);
                 PatInputText = string.Empty;
+                // Plan 002 §2.1/§2.2: after storing the token, try the classic
+                // `_apis/accounts` discovery. If it returns nothing usable —
+                // deterministic for an org-scoped PAT, and increasingly common
+                // for global PATs — auto-open the per-org fallback panel with
+                // the just-entered PAT already filled in.
+                await TryDiscoveryOrOpenAddOrgPanelAsync(pat, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex) { _logger.Error("PAT sign in failed", ex); SetError(ex.Message); }
+        });
+        OpenAddOrgPanelCommand = new AsyncCommand((parameter, clientContext, cancellationToken) =>
+        {
+            var prefill = parameter as string;
+            OpenAddOrgPanel(prefillPat: prefill);
+            return Task.CompletedTask;
+        });
+        CloseAddOrgPanelCommand = new AsyncCommand((parameter, clientContext, cancellationToken) => CancelAddOrgAsync(cancellationToken));
+        VerifyAndAddOrgCommand = new AsyncCommand((parameter, clientContext, cancellationToken) => VerifyAndAddOrgAsync(cancellationToken));
+        PickOrgFromHistoryCommand = new AsyncCommand((parameter, clientContext, cancellationToken) =>
+        {
+            if (parameter is string org && !string.IsNullOrWhiteSpace(org))
+            {
+                AddOrgNameInput = org;
+            }
+            return Task.CompletedTask;
         });
         ClearFilterCommand = new AsyncCommand((_, _, _) =>
         {
@@ -159,6 +200,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
             if (SetProperty(ref _isSignedIn, value))
             {
                 RaiseNotifyPropertyChangedEvent(nameof(IsSignedOut));
+                RaiseNotifyPropertyChangedEvent(nameof(ShouldShowTree));
             }
         }
     }
@@ -213,6 +255,33 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
     [DataMember]
     public bool HasError => !string.IsNullOrEmpty(_errorMessage);
 
+    /// <summary>
+    /// Empty-tree placeholder message. Rendered as a wrapping TextBlock in
+    /// the tool window (not as a TreeView item) because the TreeView's
+    /// internal ScrollViewer would otherwise force horizontal scrolling and
+    /// swallow the wrap. See plan 002 phase D fixes.
+    /// </summary>
+    [DataMember]
+    public string? EmptyRootsMessage
+    {
+        get => _emptyRootsMessage;
+        private set
+        {
+            if (SetProperty(ref _emptyRootsMessage, value))
+            {
+                RaiseNotifyPropertyChangedEvent(nameof(HasEmptyRootsMessage));
+                RaiseNotifyPropertyChangedEvent(nameof(ShouldShowTree));
+            }
+        }
+    }
+
+    [DataMember]
+    public bool HasEmptyRootsMessage => !string.IsNullOrEmpty(_emptyRootsMessage);
+
+    /// <summary>True when the TreeView should render — signed in AND at least one root available.</summary>
+    [DataMember]
+    public bool ShouldShowTree => _isSignedIn && string.IsNullOrEmpty(_emptyRootsMessage);
+
     /// <summary>Two-way bound textbox for the PAT entered in the welcome panel.</summary>
     [DataMember]
     public string PatInputText
@@ -220,6 +289,79 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         get => _patInputText;
         set => SetProperty(ref _patInputText, value ?? string.Empty);
     }
+
+    // ---------- Add-organization panel (plan 002 phase D) ----------
+
+    /// <summary>True when the inline "Add Azure DevOps organization" panel is visible.</summary>
+    [DataMember]
+    public bool IsAddOrgPanelOpen
+    {
+        get => _isAddOrgPanelOpen;
+        private set => SetProperty(ref _isAddOrgPanelOpen, value);
+    }
+
+    /// <summary>Two-way bound org-name input for the add-organization panel.</summary>
+    [DataMember]
+    public string AddOrgNameInput
+    {
+        get => _addOrgNameInput;
+        set
+        {
+            if (SetProperty(ref _addOrgNameInput, value ?? string.Empty)
+                && !string.IsNullOrEmpty(_addOrgErrorMessage))
+            {
+                AddOrgErrorMessage = null;
+            }
+        }
+    }
+
+    /// <summary>Two-way bound PAT input for the add-organization panel.</summary>
+    [DataMember]
+    public string AddOrgPatInput
+    {
+        get => _addOrgPatInput;
+        set => SetProperty(ref _addOrgPatInput, value ?? string.Empty);
+    }
+
+    [DataMember]
+    public string? AddOrgErrorMessage
+    {
+        get => _addOrgErrorMessage;
+        private set
+        {
+            if (SetProperty(ref _addOrgErrorMessage, value))
+            {
+                RaiseNotifyPropertyChangedEvent(nameof(HasAddOrgError));
+            }
+        }
+    }
+
+    [DataMember]
+    public bool HasAddOrgError => !string.IsNullOrEmpty(_addOrgErrorMessage);
+
+    [DataMember]
+    public bool IsAddOrgBusy
+    {
+        get => _isAddOrgBusy;
+        private set => SetProperty(ref _isAddOrgBusy, value);
+    }
+
+    /// <summary>Recently-used organization names (survives sign-out). Bound to the QuickPick list in the panel.</summary>
+    [DataMember]
+    public IReadOnlyList<string> OrgHistory
+    {
+        get => _orgHistory;
+        private set
+        {
+            if (SetProperty(ref _orgHistory, value ?? System.Array.Empty<string>()))
+            {
+                RaiseNotifyPropertyChangedEvent(nameof(HasOrgHistory));
+            }
+        }
+    }
+
+    [DataMember]
+    public bool HasOrgHistory => _orgHistory.Count > 0;
 
     [DataMember]
     public AsyncCommand RefreshCommand { get; }
@@ -236,6 +378,22 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
 
     [DataMember]
     public AsyncCommand SignInWithPatCommand { get; }
+
+    /// <summary>Opens the inline "Add Azure DevOps organization" panel with empty fields.</summary>
+    [DataMember]
+    public AsyncCommand OpenAddOrgPanelCommand { get; }
+
+    /// <summary>Closes the inline "Add Azure DevOps organization" panel and clears its state.</summary>
+    [DataMember]
+    public AsyncCommand CloseAddOrgPanelCommand { get; }
+
+    /// <summary>Probes the entered org+PAT and, on success, stores them under a per-org slot.</summary>
+    [DataMember]
+    public AsyncCommand VerifyAndAddOrgCommand { get; }
+
+    /// <summary>Copies an org name from <see cref="OrgHistory"/> into <see cref="AddOrgNameInput"/> (parameter: string).</summary>
+    [DataMember]
+    public AsyncCommand PickOrgFromHistoryCommand { get; }
 
     /// <summary>
     /// Two-way bound text of the filter box. Changes are debounced (~200ms)
@@ -282,6 +440,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         if (!_isSignedIn)
         {
             Roots.Clear();
+            EmptyRootsMessage = null;
             return;
         }
 
@@ -293,19 +452,76 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         SetError(null);
         try
         {
-            var profile = await _ado.GetProfileAsync(ct).ConfigureAwait(false);
-            var orgs = await _ado.ListOrganizationsAsync(profile.Id, ct).ConfigureAwait(false);
-            _logger.Info($"Loaded {orgs.Count} organization(s) for {profile.DisplayName ?? profile.Id}");
-            if (orgs.Count == 0)
+            // Merge organizations from the historical global-discovery call
+            // and every per-organization slot (plan 002 §2.3). For Microsoft
+            // sign-in only the global path applies; for PAT the two sources
+            // are unioned and de-duplicated by canonical org name, with the
+            // per-org slot winning on conflict.
+            var seen = new Dictionary<string, AdoOrganization>(StringComparer.OrdinalIgnoreCase);
+            var session = _auth.Session;
+            try
             {
-                ReplaceList(Roots, new TreeNodeViewModel[]
+                var profile = await _ado.GetProfileAsync(ct).ConfigureAwait(false);
+                var listed = await _ado.ListOrganizationsAsync(profile.Id, ct).ConfigureAwait(false);
+                _logger.Info($"Loaded {listed.Count} organization(s) from _apis/accounts for {profile.DisplayName ?? profile.Id}");
+                foreach (var o in listed)
                 {
-                    new InfoNode(Strings.Tree_NoOrganizations, TreeNodeKind.Info),
-                });
+                    seen[PatCredentialStore.CanonicalizeOrg(o.AccountName)] = o;
+                }
+            }
+            catch (AdoUnauthorizedException ex) when (session is not null && session.Kind == SignInKind.Pat)
+            {
+                // For an organization-scoped PAT the SPS discovery endpoint
+                // returns 401 by design; that's the *normal* path into the
+                // per-org fallback (plan 002 §1.1 + §2.1). Do NOT bubble up —
+                // signing the user out here would cancel the fresh session
+                // we just established and hide the "Add organization" panel.
+                _logger.Info($"Refresh: SPS discovery returned 401 for PAT session — expected for org-scoped tokens, using per-org slots only ({ex.Message})");
+            }
+            catch (AdoUnauthorizedException)
+            {
+                // Microsoft sign-in: a 401 on `/profiles/me` is a real
+                // credentials problem, bubble up so the outer catch clears
+                // the session and prompts for re-auth.
+                throw;
+            }
+            catch (Exception ex) when (session is not null && session.Kind == SignInKind.Pat)
+            {
+                _logger.Warn($"Refresh: listOrganizations failed under PAT sign-in — falling back to per-org slots only ({ex.Message})");
+            }
+
+            if (session is not null && session.Kind == SignInKind.Pat)
+            {
+                foreach (var org in _auth.ListPerOrgNames())
+                {
+                    if (!seen.ContainsKey(org))
+                    {
+                        seen[org] = new AdoOrganization
+                        {
+                            AccountId = org,
+                            AccountName = org,
+                            AccountUri = $"https://dev.azure.com/{org}",
+                        };
+                    }
+                }
+            }
+
+            if (seen.Count == 0)
+            {
+                var emptyMessage = session is not null && session.Kind == SignInKind.Pat
+                    ? Strings.Tree_NoOrganizations_Pat
+                    : Strings.Tree_NoOrganizations;
+                // Render the empty-state hint outside the TreeView (see
+                // EmptyRootsMessage) so its text wraps on narrow tool windows
+                // instead of being ellipsized by the tree's horizontal
+                // scroll viewer.
+                Roots.Clear();
+                EmptyRootsMessage = emptyMessage;
             }
             else
             {
-                var orgNodes = orgs
+                EmptyRootsMessage = null;
+                var orgNodes = seen.Values
                     .OrderBy(o => o.AccountName, StringComparer.OrdinalIgnoreCase)
                     .Select(BuildOrganizationNode)
                     .Cast<TreeNodeViewModel>()
@@ -508,6 +724,143 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         }
     }
 
+    // ---------- Add-organization panel helpers (plan 002 phase D) ----------
+
+    /// <summary>
+    /// Open the inline "Add Azure DevOps organization" panel with fresh
+    /// state. Pre-fills the PAT field with <paramref name="prefillPat"/>
+    /// when the caller has one (typical during the fallback flow triggered
+    /// by <see cref="TryDiscoveryOrOpenAddOrgPanelAsync"/>).
+    /// </summary>
+    /// <param name="isFallback">
+    /// When true, the panel is being opened as part of the post-sign-in
+    /// fallback (SPS discovery returned nothing usable). Cancelling in this
+    /// mode also rolls back the sign-in so a fake or unverifiable PAT does
+    /// not persist. False (default) means the panel was opened via the
+    /// Tools menu command with a session that already has at least one
+    /// working PAT slot.
+    /// </param>
+    public void OpenAddOrgPanel(string? prefillPat = null, bool isFallback = false)
+    {
+        AddOrgNameInput = string.Empty;
+        AddOrgPatInput = prefillPat ?? string.Empty;
+        AddOrgErrorMessage = null;
+        OrgHistory = _auth.GetOrgHistory();
+        _isAddOrgPanelFallback = isFallback;
+        IsAddOrgPanelOpen = true;
+    }
+
+    /// <summary>Close the panel and clear its transient state.</summary>
+    public void CloseAddOrgPanel()
+    {
+        IsAddOrgPanelOpen = false;
+        AddOrgNameInput = string.Empty;
+        AddOrgPatInput = string.Empty;
+        AddOrgErrorMessage = null;
+        _isAddOrgPanelFallback = false;
+    }
+
+    /// <summary>
+    /// Handle the user hitting <b>Cancel</b> on the add-organization panel.
+    /// In fallback mode, roll the sign-in back so an unverifiable PAT does
+    /// not linger in Credential Manager.
+    /// </summary>
+    private async Task CancelAddOrgAsync(CancellationToken cancellationToken)
+    {
+        var wasFallback = _isAddOrgPanelFallback;
+        CloseAddOrgPanel();
+        if (wasFallback)
+        {
+            _logger.Info("Add-organization cancelled in fallback mode → signing out to discard the unverified PAT");
+            try
+            {
+                await _auth.SignOutAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"Sign-out on Cancel failed: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task VerifyAndAddOrgAsync(CancellationToken cancellationToken)
+    {
+        var org = (_addOrgNameInput ?? string.Empty).Trim();
+        var pat = (_addOrgPatInput ?? string.Empty).Trim();
+        if (string.IsNullOrEmpty(org))
+        {
+            AddOrgErrorMessage = Strings.AddOrg_OrgRequired;
+            return;
+        }
+        if (string.IsNullOrEmpty(pat))
+        {
+            AddOrgErrorMessage = Strings.AddOrg_PatRequired;
+            return;
+        }
+        IsAddOrgBusy = true;
+        AddOrgErrorMessage = null;
+        try
+        {
+            var result = await _ado.ProbeOrganizationAsync(org, pat, cancellationToken).ConfigureAwait(false);
+            if (result == OrgProbeResult.Ok)
+            {
+                await _auth.SavePerOrgPatAsync(org, pat, cancellationToken).ConfigureAwait(false);
+                _logger.Info($"Added organization '{org}' via per-org fallback");
+                CloseAddOrgPanel();
+                await RefreshAsync(cancellationToken).ConfigureAwait(false);
+                return;
+            }
+            AddOrgErrorMessage = result switch
+            {
+                OrgProbeResult.Unauthorized => string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.AddOrg_Error_Unauthorized_Format, org),
+                OrgProbeResult.NotFound => string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.AddOrg_Error_NotFound_Format, org),
+                _ => string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.AddOrg_Error_Network_Format, org),
+            };
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("VerifyAndAddOrg failed", ex);
+            AddOrgErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsAddOrgBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Right after a PAT sign-in, try the classic <c>_apis/accounts</c>
+    /// discovery. When it returns nothing usable — deterministic for an
+    /// org-scoped PAT — open the fallback panel with the PAT already
+    /// pre-filled so the user only has to enter the organization name.
+    /// </summary>
+    private async Task TryDiscoveryOrOpenAddOrgPanelAsync(string pat, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var profile = await _ado.GetProfileAsync(cancellationToken).ConfigureAwait(false);
+            var orgs = await _ado.ListOrganizationsAsync(profile.Id, cancellationToken).ConfigureAwait(false);
+            if (orgs.Count > 0)
+            {
+                _logger.Info($"PAT discovery: found {orgs.Count} org(s), skipping fallback panel");
+                return;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            _logger.Warn($"PAT discovery failed, entering per-org fallback: {ex.Message}");
+        }
+        _logger.Info("PAT discovery empty → opening Add organization panel");
+        OpenAddOrgPanel(prefillPat: pat, isFallback: true);
+    }
+
     private void OnSessionChanged(AdoSession? session)
     {
         IsSignedIn = session is not null;
@@ -520,6 +873,15 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         // Session boundary invalidates any active filter — clear it before
         // Roots are rebuilt so we don't leak stale visibility state.
         FilterText = string.Empty;
+
+        // The add-org panel is context-sensitive: it only makes sense while
+        // signed in with a PAT. Close it on any session boundary so it does
+        // not float over an empty tree after sign-out or over the Microsoft
+        // welcome UI after a provider switch.
+        if (session is null || session.Kind != SignInKind.Pat)
+        {
+            CloseAddOrgPanel();
+        }
 
         if (session is null)
         {
@@ -556,6 +918,7 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
         if (session is null)
         {
             Roots.Clear();
+            EmptyRootsMessage = null;
         }
         else
         {
