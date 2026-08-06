@@ -293,6 +293,9 @@ export class AuthService implements vscode.Disposable {
 			// If the user has previously added organizations, offer them as
 			// picks so the second-time experience is a single click.
 			const historyOrg = await this.pickOrgFromHistory(suggested);
+			if (historyOrg === undefined) {
+				return undefined;
+			}
 			const org = historyOrg ?? await this.askOrgViaInputBox(suggested);
 			if (!org) {
 				return undefined;
@@ -320,10 +323,10 @@ export class AuthService implements vscode.Disposable {
 		}
 	}
 
-	private async pickOrgFromHistory(prefill: string | undefined): Promise<string | undefined> {
+	private async pickOrgFromHistory(prefill: string | undefined): Promise<string | null | undefined> {
 		const history = this.patCredentials.getHistory();
 		if (history.length === 0) {
-			return undefined;
+			return null;
 		}
 		const typeItLabel = vscode.l10n.t('$(edit) Type another organization name…');
 		const items: Array<vscode.QuickPickItem & { org?: string; typeIt?: boolean }> = history
@@ -340,7 +343,7 @@ export class AuthService implements vscode.Disposable {
 		if (!pick) {
 			return undefined;
 		}
-		return pick.typeIt ? undefined : pick.org;
+		return pick.typeIt ? null : pick.org;
 	}
 
 	private async askOrgViaInputBox(prefill: string | undefined): Promise<string | undefined> {

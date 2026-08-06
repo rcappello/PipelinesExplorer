@@ -135,6 +135,7 @@ Click the organization icon to switch tenant.</value><comment>{0} = account UPN,
 
   <!-- ==== Add-organization panel (plan 002 phase D) ==== -->
   <data name="AddOrg_Header" xml:space="preserve"><value>Add Azure DevOps organization</value></data>
+  <data name="AddOrg_RequiresPatSignIn" xml:space="preserve"><value>Add Azure DevOps organization requires PAT sign-in.</value></data>
   <data name="AddOrg_DeprecationNotice" xml:space="preserve"><value>Global PATs retire on 1 December 2026 (aka.ms/GlobalPATDeprecation). Enter an organization name below to continue with a per-organization token.</value></data>
   <data name="AddOrg_OrgLabel" xml:space="preserve"><value>Organization</value></data>
   <data name="AddOrg_OrgHint" xml:space="preserve"><value>e.g. contoso</value></data>

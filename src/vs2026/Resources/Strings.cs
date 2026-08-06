@@ -120,6 +120,7 @@ public static class Strings
 
     // Add-organization panel (Plan 002 phase D)
     public static string AddOrg_Header => Get(nameof(AddOrg_Header));
+    public static string AddOrg_RequiresPatSignIn => Get(nameof(AddOrg_RequiresPatSignIn));
     public static string AddOrg_DeprecationNotice => Get(nameof(AddOrg_DeprecationNotice));
     public static string AddOrg_OrgLabel => Get(nameof(AddOrg_OrgLabel));
     public static string AddOrg_OrgHint => Get(nameof(AddOrg_OrgHint));

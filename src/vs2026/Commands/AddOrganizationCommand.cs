@@ -31,7 +31,7 @@ internal sealed class AddOrganizationCommand : Command
         if (session is null || session.Kind != SignInKind.Pat)
         {
             await this.Extensibility.Shell().ShowPromptAsync(
-                Resources.Strings.AddOrg_Header + " — requires PAT sign-in.",
+                Resources.Strings.AddOrg_RequiresPatSignIn,
                 PromptOptions.OK,
                 cancellationToken).ConfigureAwait(false);
             return;

@@ -161,6 +161,7 @@ public sealed class PatCredentialStore
 
     public void ClearAllPerOrgPats()
     {
+        var failedOrganizations = new List<string>();
         foreach (var org in ReadIndex())
         {
             try
@@ -169,10 +170,18 @@ public sealed class PatCredentialStore
             }
             catch
             {
-                // best-effort; if one entry fails we still want to clear the index
+                failedOrganizations.Add(org);
             }
         }
-        _state.Remove(IndexKey);
+
+        if (failedOrganizations.Count == 0)
+        {
+            _state.Remove(IndexKey);
+            return;
+        }
+
+        _state.Set(IndexKey, failedOrganizations);
+        throw new InvalidOperationException("One or more per-organization credentials could not be deleted.");
     }
 
     // ---------- cross-slot ----------

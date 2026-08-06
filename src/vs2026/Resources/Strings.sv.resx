@@ -84,4 +84,21 @@ Klicka på organisationsikonen för att byta klientorganisation.</value></data>
   <data name="Filter_Status_Capped_Format" xml:space="preserve"><value>Filter aktivt: {0} — {1} träff(ar) (omfång begränsat till {2} pipelines)</value></data>
   <data name="Filter_LoadedScope_Tooltip" xml:space="preserve"><value>Filtret söker i alla organisationer, projekt och lagringsplatser som den inloggade identiteten ser. YAML-analysen är begränsad till 500 pipelines.</value></data>
   <data name="A11y_Filter_Name" xml:space="preserve"><value>Filter</value></data>
+  <data name="Tree_NoOrganizations_Pat" xml:space="preserve"><value>No Azure DevOps organizations added yet. Use "Add Azure DevOps organization…" to name one.</value></data>
+  <data name="AddOrg_Header" xml:space="preserve"><value>Add Azure DevOps organization</value></data>
+  <data name="AddOrg_RequiresPatSignIn" xml:space="preserve"><value>Add Azure DevOps organization requires PAT sign-in.</value></data>
+  <data name="AddOrg_DeprecationNotice" xml:space="preserve"><value>Global PATs retire on 1 December 2026 (aka.ms/GlobalPATDeprecation). Enter an organization name below to continue with a per-organization token.</value></data>
+  <data name="AddOrg_OrgLabel" xml:space="preserve"><value>Organization</value></data>
+  <data name="AddOrg_OrgHint" xml:space="preserve"><value>e.g. contoso</value></data>
+  <data name="AddOrg_OrgFieldHelp" xml:space="preserve"><value>The exact organization identifier as it appears in your Azure DevOps URL (dev.azure.com/{org}).</value></data>
+  <data name="AddOrg_PatLabel" xml:space="preserve"><value>Personal Access Token</value></data>
+  <data name="AddOrg_PatFieldHelp" xml:space="preserve"><value>Paste a PAT authorized for this organization.</value></data>
+  <data name="AddOrg_HistoryLabel" xml:space="preserve"><value>Recently used</value></data>
+  <data name="AddOrg_Verify" xml:space="preserve"><value>Verify &amp; add</value></data>
+  <data name="AddOrg_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="AddOrg_OrgRequired" xml:space="preserve"><value>Organization name is required.</value></data>
+  <data name="AddOrg_PatRequired" xml:space="preserve"><value>Personal Access Token is required.</value></data>
+  <data name="AddOrg_Error_Unauthorized_Format" xml:space="preserve"><value>The token was rejected for organization "{0}". This can happen if the token is invalid, revoked, or not scoped to this organization.</value></data>
+  <data name="AddOrg_Error_NotFound_Format" xml:space="preserve"><value>Organization "{0}" not found.</value></data>
+  <data name="AddOrg_Error_Network_Format" xml:space="preserve"><value>Could not reach dev.azure.com/{0}.</value></data>
 </root>

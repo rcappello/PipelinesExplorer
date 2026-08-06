@@ -785,6 +785,11 @@ public sealed class PipelinesViewModel : NotifyPropertyChangedObject
 
     private async Task VerifyAndAddOrgAsync(CancellationToken cancellationToken)
     {
+        if (IsAddOrgBusy)
+        {
+            return;
+        }
+
         var org = (_addOrgNameInput ?? string.Empty).Trim();
         var pat = (_addOrgPatInput ?? string.Empty).Trim();
         if (string.IsNullOrEmpty(org))

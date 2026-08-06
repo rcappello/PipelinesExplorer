@@ -109,6 +109,10 @@ public sealed class AdoClient : IDisposable
                     request.Headers.Authorization = header;
                 }
             }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.Error($"probeOrganization({organizationName}): no auth headers available", ex);
@@ -121,6 +125,10 @@ public sealed class AdoClient : IDisposable
         try
         {
             response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
