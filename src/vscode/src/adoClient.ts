@@ -96,19 +96,73 @@ export class AdoClient {
 
 	async listProjects(organizationName: string): Promise<AdoProject[]> {
 		const url = `https://dev.azure.com/${encodeURIComponent(organizationName)}/_apis/projects?api-version=7.1&stateFilter=wellFormed&$top=1000`;
-		const res = await this.getJson<AdoListResponse<AdoProject>>(url);
+		const res = await this.getJson<AdoListResponse<AdoProject>>(url, organizationName);
 		return res.value;
+	}
+
+	/**
+	 * Lightweight authorization probe for a given organization. Calls
+	 * `dev.azure.com/{org}/_apis/projects?$top=1` and classifies the outcome
+	 * so the PAT fallback flow (plan `002`) can pick the right branch
+	 * without inspecting HTTP status codes at the call site.
+	 *
+	 * Pass `patOverride` when validating a token that has not yet been
+	 * stored (typical during sign-in fallback or the "Add organization"
+	 * command). Without it the probe uses the currently active session
+	 * headers.
+	 */
+	async probeOrganization(organizationName: string, patOverride?: string): Promise<'ok' | 'unauthorized' | 'not-found' | 'network-error'> {
+		const url = `https://dev.azure.com/${encodeURIComponent(organizationName)}/_apis/projects?api-version=7.1&$top=1`;
+		let headers: Record<string, string>;
+		if (patOverride) {
+			const basic = Buffer.from(`:${patOverride}`).toString('base64');
+			headers = {
+				authorization: `Basic ${basic}`,
+				'content-type': 'application/json',
+			};
+		} else {
+			try {
+				headers = this.auth.getHeaders(organizationName) as unknown as Record<string, string>;
+			} catch (err) {
+				this.logger.logError(`probeOrganization(${organizationName}): no auth headers available`, err);
+				return 'unauthorized';
+			}
+		}
+		this.logger.logDebug(`GET ${url} (probe)`);
+		let response: Response;
+		try {
+			response = await fetch(url, { headers });
+		} catch (err) {
+			this.logger.logError(`probeOrganization(${organizationName}): fetch failed`, err);
+			return 'network-error';
+		}
+		if (response.status === 401 || response.status === 403) {
+			return 'unauthorized';
+		}
+		if (response.status === 404) {
+			return 'not-found';
+		}
+		if (!response.ok) {
+			return 'network-error';
+		}
+		const contentType = response.headers.get('content-type') ?? '';
+		if (!contentType.includes('application/json')) {
+			// ADO returns HTML on silent auth failure; treat as unauthorized so
+			// the fallback flow can prompt again rather than pretending success.
+			return 'unauthorized';
+		}
+		return 'ok';
 	}
 
 	async listPipelines(organizationName: string, projectName: string): Promise<AdoPipeline[]> {
 		const url = `https://dev.azure.com/${encodeURIComponent(organizationName)}/${encodeURIComponent(projectName)}/_apis/pipelines?api-version=7.1&$top=1000`;
-		const res = await this.getJson<AdoListResponse<AdoPipeline>>(url);
+		const res = await this.getJson<AdoListResponse<AdoPipeline>>(url, organizationName);
 		return res.value;
 	}
 
 	async getPipeline(organizationName: string, projectName: string, pipelineId: number): Promise<AdoPipelineDetail> {
 		const url = `https://dev.azure.com/${encodeURIComponent(organizationName)}/${encodeURIComponent(projectName)}/_apis/pipelines/${pipelineId}?api-version=7.1`;
-		return this.getJson<AdoPipelineDetail>(url);
+		return this.getJson<AdoPipelineDetail>(url, organizationName);
 	}
 
 	/** Look up a Git repository by id. Returns undefined on 404. */
@@ -119,7 +173,7 @@ export class AdoClient {
 	): Promise<AdoRepository | undefined> {
 		const url = `https://dev.azure.com/${encodeURIComponent(organizationName)}/${encodeURIComponent(projectName)}/_apis/git/repositories/${encodeURIComponent(repositoryId)}?api-version=7.1`;
 		try {
-			return await this.getJson<AdoRepository>(url);
+			return await this.getJson<AdoRepository>(url, organizationName);
 		} catch (err) {
 			if (err instanceof Error && /\b404\b/.test(err.message)) {
 				return undefined;
@@ -146,7 +200,7 @@ export class AdoClient {
 		if (branch) {
 			url += `&versionDescriptor.versionType=branch&versionDescriptor.version=${encodeURIComponent(branch)}`;
 		}
-		return this.getText(url);
+		return this.getText(url, organizationName);
 	}
 
 	/**
@@ -159,14 +213,14 @@ export class AdoClient {
 		repositoryId: string,
 	): Promise<string[]> {
 		const url = `https://dev.azure.com/${encodeURIComponent(organizationName)}/${encodeURIComponent(projectName)}/_apis/git/repositories/${encodeURIComponent(repositoryId)}/refs?filter=heads/&api-version=7.1&$top=1000`;
-		const res = await this.getJson<AdoListResponse<{ name: string }>>(url);
+		const res = await this.getJson<AdoListResponse<{ name: string }>>(url, organizationName);
 		return res.value
 			.map(r => r.name.replace(/^refs\/heads\//, ''))
 			.sort((a, b) => a.localeCompare(b));
 	}
 
-	private async getText(url: string): Promise<string | undefined> {
-		const headers = this.auth.getHeaders();
+	private async getText(url: string, orgHint?: string): Promise<string | undefined> {
+		const headers = this.auth.getHeaders(orgHint);
 		this.logger.logDebug(`GET ${url}`);
 		const response = await fetch(url, { headers: headers as unknown as Record<string, string> });
 		if (response.status === 404) {
@@ -187,8 +241,8 @@ export class AdoClient {
 		return await response.text();
 	}
 
-	private async getJson<T>(url: string): Promise<T> {
-		const headers = this.auth.getHeaders();
+	private async getJson<T>(url: string, orgHint?: string): Promise<T> {
+		const headers = this.auth.getHeaders(orgHint);
 		this.logger.logDebug(`GET ${url}`);
 		const response = await fetch(url, { headers: headers as unknown as Record<string, string> });
 

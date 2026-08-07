@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { AdoClient, AdoOrganization, AdoPipeline, AdoPipelineDetail, AdoProject, AdoUnauthorizedError } from './adoClient';
 import { AuthService } from './authService';
 import { LoggingService } from './LoggingService';
+import { canonicalizeOrg } from './patCredentialStore';
 import { PipelineAnalysis, PipelineYamlAnalyzer, ScriptKind, ScriptRef, TemplateRef } from './pipelineYamlAnalyzer';
 import { RepoBranchService } from './repoBranchService';
 import { WorkspaceLinkService } from './workspaceLinkService';
@@ -530,6 +531,50 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 		return new ConnectionInfoNode(label, tooltip, true);
 	}
 
+	/**
+	 * Merge organizations from every available source under the active
+	 * sign-in. For Microsoft sign-in we rely on `_apis/accounts` because the
+	 * tenant-scoped Bearer already filters to the right tenant. For PAT
+	 * sign-in the same call is best-effort (plan 002 §1.1 documents its
+	 * instability) and every per-organization slot is layered on top,
+	 * deduplicated by canonical org name. Per-org slots win on conflict.
+	 */
+	private async enumerateRootOrgs(): Promise<AdoOrganization[]> {
+		const session = this.auth.session;
+		if (!session) {
+			return [];
+		}
+		const seen = new Map<string, AdoOrganization>();
+
+		try {
+			const profile = await this.client.getProfile();
+			const listed = await this.client.listOrganizations(profile.id);
+			for (const o of listed) {
+				seen.set(canonicalizeOrg(o.accountName), o);
+			}
+		} catch (err) {
+			if (session.kind === 'microsoft') {
+				// Microsoft sign-in has no other org source; propagate.
+				throw err;
+			}
+			this.logger.logWarning(
+				`enumerateRootOrgs: listOrganizations failed under PAT sign-in — falling back to per-org slots only (${err instanceof Error ? err.message : String(err)})`,
+			);
+		}
+
+		if (session.kind === 'pat') {
+			for (const org of this.auth.listPerOrgNames()) {
+				seen.set(org, {
+					accountId: org,
+					accountName: org,
+					accountUri: `https://dev.azure.com/${org}`,
+				});
+			}
+		}
+
+		return [...seen.values()];
+	}
+
 	async getChildren(element?: Node): Promise<Node[]> {
 		if (!this.auth.session) {
 			return [];
@@ -641,11 +686,15 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<Node> {
 	private async fetchChildren(element?: Node): Promise<Node[]> {
 		try {
 			if (!element) {
-				const profile = await this.client.getProfile();
-				const orgs = await this.client.listOrganizations(profile.id);
 				const header = this.buildConnectionInfoNode();
+				const orgs = await this.enumerateRootOrgs();
 				if (orgs.length === 0) {
-					const empty = new InfoNode('no-orgs', vscode.l10n.t('No Azure DevOps organizations found for this tenant'));
+					const empty = new InfoNode(
+						'no-orgs',
+						this.auth.session?.kind === 'pat'
+							? vscode.l10n.t('No Azure DevOps organizations found. Use "Add Azure DevOps organization…" to name one.')
+							: vscode.l10n.t('No Azure DevOps organizations found for this tenant'),
+					);
 					return header ? [header, empty] : [empty];
 				}
 				const orgNodes = orgs

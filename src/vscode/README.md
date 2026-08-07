@@ -144,12 +144,44 @@ Pipelines Explorer follows the
 
 ## PAT scope and the 1 Dec 2026 deprecation
 
-Pipelines Explorer discovers organizations by calling
-`https://app.vssps.visualstudio.com/_apis/accounts` — a *global* Azure DevOps
-endpoint. When you sign in with a Personal Access Token, that endpoint only
-works with a PAT whose **Organizations** scope is set to
-**All accessible organizations** (also called a *global PAT*). An
-organization-scoped PAT returns an empty list and the tree stays empty.
+Pipelines Explorer supports **two** shapes of Azure DevOps Personal Access
+Token and picks the right flow automatically:
+
+- **All accessible organizations** (also called a *global PAT*) — the historical
+  path. On sign-in the extension calls
+  `https://app.vssps.visualstudio.com/_apis/accounts` to enumerate every
+  organization your account can reach and shows them as roots in the tree.
+- **Organization-scoped PAT** — a PAT whose *Organizations* dropdown was
+  narrowed to a single organization at creation time. `_apis/accounts` returns
+  an empty list for these tokens by design, so on sign-in the extension asks
+  you for the organization name once. **Type the exact organization
+  identifier as it appears in your Azure DevOps URL** — the segment right
+  after `dev.azure.com/` (e.g. `contoso` in `https://dev.azure.com/contoso/`),
+  or the subdomain before `.visualstudio.com` on legacy URLs. It is
+  case-insensitive but must otherwise match exactly; typos, project names
+  or friendly display names will not resolve. The extension validates the
+  pair against `dev.azure.com/{org}/_apis/projects?$top=1` and, if the token
+  is not authorized for that org (or the org does not exist), surfaces an
+  actionable error (*Try another* / *Cancel*) instead of storing a broken
+  slot. On success the `<org, pat>` pair is saved in
+  [`SecretStorage`](https://code.visualstudio.com/api/references/vscode-api#SecretStorage)
+  under a per-org slot. Layer more per-organization PATs on top later via
+  the **Pipelines Explorer: Add Azure DevOps organization…** command
+  (title-bar `+` icon or Command Palette).
+
+### Why the extension has to ask you for the organization name
+
+Azure DevOps PATs are opaque strings, not JWTs, and Microsoft does not expose
+any client-facing endpoint that returns the owning organization from a
+scoped token. This was verified empirically on 2026-07-07 against every
+candidate path: `_apis/accounts?memberId=` returns `count: 0`,
+`_apis/ConnectionData` (SPS-level) responds `401 Unauthorized`,
+`_apis/tokens/pats` requires the organization already in the URL, and
+`_apis/profile/profiles/me` only carries the identity. There is no client-
+side reverse lookup; the name has to come from you the first time. After
+that it is remembered for the duration of the sign-in.
+
+### Global PAT retirement
 
 Microsoft has announced the retirement of global PATs for Azure DevOps
 Services on **1 December 2026** ([aka.ms/GlobalPATDeprecation](https://aka.ms/GlobalPATDeprecation)).
@@ -158,13 +190,15 @@ longer be created. Azure DevOps *Server* is not affected.
 
 What this means for Pipelines Explorer:
 
-- **Until 1 Dec 2026** — PAT sign-in works as documented, provided you tick
-  *All accessible organizations* when you generate the token.
+- **Until 1 Dec 2026** — both PAT shapes work; keep using *All accessible
+  organizations* if you want the single-token enumeration path and are aware
+  that the underlying endpoint is already best-effort ([plan 002 §1.1](https://github.com/rcappello/PipelinesExplorer/blob/main/.specify/plans/002-pat-per-org-fallback.md)).
 - **Recommended today** — use **Sign in with Microsoft**. Entra-backed
   sign-in is the durable path and is unaffected by the retirement.
-- **After 1 Dec 2026** — PAT sign-in will only be usable against a single
-  organization at a time. Support for per-organization PATs is tracked as
-  [plan 002](https://github.com/rcappello/PipelinesExplorer/blob/main/.specify/plans/002-pat-per-org-fallback.md).
+- **After 1 Dec 2026** — PAT sign-in continues to work in per-organization
+  mode only. The extension already routes every request to the right
+  per-org token so no UX regression is expected — you will just add one
+  organization at a time.
 
 ## Requirements
 

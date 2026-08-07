@@ -8,6 +8,7 @@
 	"command.reset.title": "Pipelines Explorer: Återställ (ta bort sparade autentiseringsuppgifter)",
 	"command.refresh.title": "Pipelines Explorer: Uppdatera",
 	"command.selectTenant.title": "Pipelines Explorer: Välj Microsoft Entra-tenant…",
+	"command.addOrganization.title": "Pipelines Explorer: Lägg till Azure DevOps-organisation…",
 	"command.showLogs.title": "Pipelines Explorer: Visa loggar",
 	"command.linkWorkspace.title": "Länka arbetsytemapp…",
 	"command.unlinkWorkspace.title": "Ta bort länk till arbetsytemapp",

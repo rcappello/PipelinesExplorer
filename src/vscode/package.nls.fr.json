@@ -8,6 +8,7 @@
 	"command.reset.title": "Pipelines Explorer : Réinitialiser (effacer les identifiants enregistrés)",
 	"command.refresh.title": "Pipelines Explorer : Actualiser",
 	"command.selectTenant.title": "Pipelines Explorer : Sélectionner le tenant Microsoft Entra…",
+	"command.addOrganization.title": "Pipelines Explorer : Ajouter une organisation Azure DevOps…",
 	"command.showLogs.title": "Pipelines Explorer : Afficher les journaux",
 	"command.linkWorkspace.title": "Lier un dossier de l'espace de travail…",
 	"command.unlinkWorkspace.title": "Délier le dossier de l'espace de travail",

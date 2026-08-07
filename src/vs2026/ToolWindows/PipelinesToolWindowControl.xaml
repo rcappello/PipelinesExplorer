@@ -284,6 +284,95 @@
             </DockPanel>
         </StackPanel>
 
+        <!-- Add Azure DevOps organization panel (plan 002 phase D).
+             Sits in the same Grid.Row as the welcome panel but is toggled by
+             a distinct visibility binding; only ever visible under PAT sign-in. -->
+        <Border x:Name="AddOrgPanel"
+                Grid.Row="2"
+                BorderBrush="{DynamicResource {x:Static platform:CommonControlsColors.TextBoxBorderBrushKey}}"
+                BorderThickness="1"
+                Padding="8"
+                Margin="0,0,0,8"
+                Visibility="{Binding IsAddOrgPanelOpen, Converter={StaticResource BoolToVis}}">
+            <StackPanel Orientation="Vertical">
+                <TextBlock Text="{Binding Loc.AddOrg_Header}"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,4" />
+                <TextBlock Text="{Binding Loc.AddOrg_DeprecationNotice}"
+                           TextWrapping="Wrap"
+                           Opacity="0.75"
+                           Margin="0,0,0,8" />
+
+                <!-- History suggestions -->
+                <StackPanel Orientation="Vertical"
+                            Margin="0,0,0,8"
+                            Visibility="{Binding HasOrgHistory, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="{Binding Loc.AddOrg_HistoryLabel}"
+                               Opacity="0.75"
+                               Margin="0,0,0,4" />
+                    <ItemsControl ItemsSource="{Binding OrgHistory}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Content="{Binding}"
+                                        Margin="0,0,6,4"
+                                        Padding="6,2"
+                                        Command="{Binding DataContext.PickOrgFromHistoryCommand, ElementName=AddOrgPanel}"
+                                        CommandParameter="{Binding}"
+                                        ToolTip="{Binding DataContext.Loc.AddOrg_OrgFieldHelp, ElementName=AddOrgPanel}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <TextBlock Text="{Binding Loc.AddOrg_OrgLabel}" Margin="0,0,0,2" />
+                <TextBox Text="{Binding AddOrgNameInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         Background="{DynamicResource {x:Static platform:CommonControlsColors.TextBoxBackgroundBrushKey}}"
+                         Foreground="{DynamicResource {x:Static platform:CommonControlsColors.TextBoxTextBrushKey}}"
+                         CaretBrush="{DynamicResource {x:Static platform:CommonControlsColors.TextBoxTextBrushKey}}"
+                         ToolTip="{Binding Loc.AddOrg_OrgFieldHelp}"
+                         AutomationProperties.HelpText="{Binding Loc.AddOrg_OrgFieldHelp}"
+                         Margin="0,0,0,8" />
+
+                <TextBlock Text="{Binding Loc.AddOrg_PatLabel}" Margin="0,0,0,2" />
+                <!-- Same "plain-text PAT" trade-off as the welcome panel: Remote UI
+                     cannot bind to WPF PasswordBox.Password (not a DependencyProperty). -->
+                <TextBox Text="{Binding AddOrgPatInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         FontFamily="Consolas"
+                         Background="{DynamicResource {x:Static platform:CommonControlsColors.TextBoxBackgroundBrushKey}}"
+                         Foreground="{DynamicResource {x:Static platform:CommonControlsColors.TextBoxTextBrushKey}}"
+                         CaretBrush="{DynamicResource {x:Static platform:CommonControlsColors.TextBoxTextBrushKey}}"
+                         ToolTip="{Binding Loc.AddOrg_PatFieldHelp}"
+                         AutomationProperties.Name="{Binding Loc.A11y_PatField_Name}"
+                         AutomationProperties.HelpText="{Binding Loc.AddOrg_PatFieldHelp}"
+                         Margin="0,0,0,8" />
+
+                <!-- Inline error banner for this panel -->
+                <Border Background="#33FF6961"
+                        BorderBrush="#FFCC4F4F"
+                        BorderThickness="1"
+                        Padding="6"
+                        Margin="0,0,0,8"
+                        Visibility="{Binding HasAddOrgError, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="{Binding AddOrgErrorMessage}" TextWrapping="Wrap" />
+                </Border>
+
+                <WrapPanel HorizontalAlignment="Right">
+                    <Button Content="{Binding Loc.AddOrg_Cancel}"
+                            Margin="0,0,6,0"
+                            Padding="10,3"
+                            Command="{Binding CloseAddOrgPanelCommand}" />
+                    <Button Content="{Binding Loc.AddOrg_Verify}"
+                            Padding="10,3"
+                            Command="{Binding VerifyAndAddOrgCommand}" />
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+
         <!-- Error banner -->
         <Border Grid.Row="3"
                 Background="#33FF6961"
@@ -296,23 +385,43 @@
                        TextWrapping="Wrap" />
         </Border>
 
+        <!-- Empty-state hint. Sits in the same Grid row as the tree so we
+             don't need an extra row definition; visibility is mutex with the
+             TreeView so they never overlap. Rendering the message outside the
+             tree is important on narrow tool windows: the tree's internal
+             ScrollViewer would otherwise force a horizontal scrollbar and
+             eat the wrap. -->
+        <TextBlock Grid.Row="4"
+                   Margin="6,6,6,0"
+                   TextWrapping="Wrap"
+                   VerticalAlignment="Top"
+                   Text="{Binding EmptyRootsMessage}"
+                   Visibility="{Binding HasEmptyRootsMessage, Converter={StaticResource BoolToVis}}" />
+
         <!-- Tree -->
         <TreeView Grid.Row="4"
                   ItemsSource="{Binding Roots}"
                   AutomationProperties.Name="{Binding Loc.A11y_Tree_Name}"
-                  Visibility="{Binding IsSignedIn, Converter={StaticResource BoolToVis}}">
+                  Visibility="{Binding ShouldShowTree, Converter={StaticResource BoolToVis}}">
             <TreeView.ItemContainerStyle>
                 <Style TargetType="{x:Type TreeViewItem}" BasedOn="{StaticResource {x:Type TreeViewItem}}">
                     <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
                     <Setter Property="ToolTip" Value="{Binding Tooltip}" />
                     <Setter Property="Visibility" Value="{Binding IsVisibleUnderFilter, Converter={StaticResource BoolToVis}}" />
+                    <!-- Stretch each item so the ContentPresenter (which hosts the
+                         DataTemplate) fills the TreeViewItem width. Without this,
+                         a long Label inside the template only measures its own
+                         intrinsic width, so DockPanel/Grid children never learn
+                         the real available width and TextWrapping degrades to a
+                         mid-word ellipsis. -->
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                 </Style>
             </TreeView.ItemContainerStyle>
             <TreeView.ItemTemplate>
                 <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                    <StackPanel Orientation="Horizontal"
+                    <DockPanel LastChildFill="True"
                                 ContextMenuService.IsEnabled="{Binding HasContextMenu}">
-                        <StackPanel.ContextMenu>
+                        <DockPanel.ContextMenu>
                             <ContextMenu>
                                 <MenuItem Header="{Binding Loc.Context_Open}"
                                           Command="{Binding OpenCommand}"
@@ -328,17 +437,21 @@
                                           Command="{Binding SelectBranchCommand}"
                                           Visibility="{Binding CanSelectBranch, Converter={StaticResource BoolToVis}}" />
                             </ContextMenu>
-                        </StackPanel.ContextMenu>
-                        <vs:Image Source="{Binding IconMoniker}"
+                        </DockPanel.ContextMenu>
+                        <vs:Image DockPanel.Dock="Left"
+                                  Source="{Binding IconMoniker}"
                                   Width="16" Height="16"
                                   Margin="0,0,6,0"
                                   VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding Description}"
+                        <TextBlock DockPanel.Dock="Right"
+                                   Text="{Binding Description}"
                                    Margin="6,0,0,0"
                                    VerticalAlignment="Center"
                                    Opacity="0.7" />
-                    </StackPanel>
+                        <TextBlock Text="{Binding Label}"
+                                   TextWrapping="Wrap"
+                                   VerticalAlignment="Center" />
+                    </DockPanel>
                 </HierarchicalDataTemplate>
             </TreeView.ItemTemplate>
         </TreeView>

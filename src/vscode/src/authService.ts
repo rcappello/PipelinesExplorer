@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
+import type { AdoClient } from './adoClient';
 import { AzureDevOpsAuthenticationProvider } from './authProvider';
 import { LoggingService } from './LoggingService';
+import { PatCredentialStore, PerOrgPat, canonicalizeOrg } from './patCredentialStore';
 
 /**
  * Azure DevOps "well-known" application id used as scope when requesting
@@ -54,12 +56,22 @@ export class AuthService implements vscode.Disposable {
 
 	private currentSession: AdoSession | undefined;
 	private readonly subscriptions: vscode.Disposable[] = [];
+	private readonly patCredentials: PatCredentialStore;
+	/**
+	 * In-memory mirror of the per-org PATs (canonical org → PAT). Kept because
+	 * {@link getHeaders} is a synchronous API and cannot await SecretStorage on
+	 * every ADO request. Refreshed on initialize, sign-in, addOrganization, and
+	 * SecretStorage change events.
+	 */
+	private readonly perOrgPatCache = new Map<string, string>();
+	private adoClient: AdoClient | undefined;
 
 	constructor(
 		private readonly context: vscode.ExtensionContext,
 		private readonly patProvider: AzureDevOpsAuthenticationProvider,
 		private readonly logger: LoggingService,
 	) {
+		this.patCredentials = new PatCredentialStore(context.secrets, context.globalState);
 		// React to external session changes (e.g. user signs out from Accounts menu).
 		this.subscriptions.push(
 			vscode.authentication.onDidChangeSessions(async e => {
@@ -87,6 +99,7 @@ export class AuthService implements vscode.Disposable {
 
 	/** Best-effort silent restore using the previously chosen provider. */
 	async initialize(): Promise<void> {
+		await this.reloadPerOrgPatCache();
 		const kind = this.getStoredKind();
 		this.logger.logInfo(`AuthService.initialize: stored kind = ${kind ?? '<none>'}`);
 		if (!kind) {
@@ -100,6 +113,16 @@ export class AuthService implements vscode.Disposable {
 			this.logger.logError('AuthService.initialize: silent restore failed', err);
 			await this.setContext(undefined);
 		}
+	}
+
+	/**
+	 * Late-bind the {@link AdoClient} instance. Breaks the initialization
+	 * cycle: `AdoClient` depends on `AuthService.getHeaders()`, but the PAT
+	 * sign-in fallback flow in this class also needs the client to hit
+	 * `_apis/accounts` and `_apis/projects`.
+	 */
+	attachAdoClient(client: AdoClient): void {
+		this.adoClient = client;
 	}
 
 	async signInWithMicrosoft(): Promise<AdoSession | undefined> {
@@ -189,10 +212,150 @@ export class AuthService implements vscode.Disposable {
 		};
 		this.currentSession = session;
 		await this.context.globalState.update(SIGN_IN_KIND_KEY, 'pat');
+		await this.reloadPerOrgPatCache();
 		await this.setContext(session);
 		this._onDidChangeSession.fire(session);
 		this.logger.logInfo('PAT sign-in completed');
-		return session;
+
+		// Plan 002 §2.1: try the historical `_apis/accounts` discovery. On
+		// empty / unauthorized / network the token likely is org-scoped, so run
+		// the per-organization fallback prompt (§2.2). Any failure here is
+		// non-fatal: the session is already valid and any per-org PATs already
+		// stored still work.
+		await this.tryPerOrgFallbackAfterSignIn(raw.accessToken);
+		return this.currentSession;
+	}
+
+	/**
+	 * Run the discovery + per-org fallback flow described in plan 002 §2.1
+	 * and §2.2. Called right after a fresh PAT sign-in with the raw PAT the
+	 * user just entered (needed for the org probe when `_apis/accounts`
+	 * returns nothing usable).
+	 */
+	private async tryPerOrgFallbackAfterSignIn(rawPat: string): Promise<void> {
+		const client = this.adoClient;
+		if (!client) {
+			this.logger.logWarning('tryPerOrgFallbackAfterSignIn: AdoClient not attached, skipping discovery');
+			return;
+		}
+		let decision: 'ok' | 'fallback' = 'fallback';
+		try {
+			const profile = await client.getProfile();
+			const orgs = await client.listOrganizations(profile.id);
+			decision = orgs.length > 0 ? 'ok' : 'fallback';
+			this.logger.logInfo(`PAT discovery: listOrganizations returned ${orgs.length} org(s) → ${decision}`);
+		} catch (err) {
+			this.logger.logWarning(`PAT discovery failed, entering per-org fallback: ${err instanceof Error ? err.message : String(err)}`);
+		}
+		if (decision === 'ok') {
+			return;
+		}
+		const deprecationNotice = vscode.l10n.t(
+			'Global Azure DevOps PATs are being retired on 1 December 2026 (aka.ms/GlobalPATDeprecation). Enter an organization name below to continue with a per-organization token.',
+		);
+		vscode.window.showInformationMessage(deprecationNotice);
+		const addedOrg = await this.promptAndAddOrganization(rawPat);
+		if (!addedOrg) {
+			// The user cancelled the fallback prompt without adding any org.
+			// Roll the sign-in back so an unverified PAT (potentially a typo or
+			// fake) doesn't linger in SecretStorage and surface as a zombie
+			// session on the next activation. Only do this on the fresh-sign-in
+			// path — the "Add another organization" command doesn't come
+			// through here.
+			this.logger.logInfo('Per-org fallback cancelled — signing out to discard the unverified PAT');
+			try {
+				await this.signOut();
+			} catch (err) {
+				this.logger.logError('Sign-out on fallback cancel failed', err);
+			}
+		}
+	}
+
+	/**
+	 * Prompt for an Azure DevOps organization name, probe it with `pat`, and
+	 * on success store it under a per-org slot and refresh consumers. Loops
+	 * on `unauthorized` / `not-found` / `network-error` so the user can
+	 * correct the org name without restarting the flow.
+	 *
+	 * Returns the org name on success, or `undefined` if the user cancelled.
+	 */
+	async promptAndAddOrganization(pat: string): Promise<string | undefined> {
+		const client = this.adoClient;
+		if (!client) {
+			vscode.window.showErrorMessage(vscode.l10n.t('Pipelines Explorer is not fully initialized. Try again in a moment.'));
+			return undefined;
+		}
+		// Best-effort seed for the input box: prefer the org name discovered
+		// in the clipboard (e.g. the user just copied a dev.azure.com URL),
+		// fall back to whatever the previous iteration typed after an error.
+		let suggested: string | undefined = await sniffOrgFromClipboard();
+		while (true) {
+			// If the user has previously added organizations, offer them as
+			// picks so the second-time experience is a single click.
+			const historyOrg = await this.pickOrgFromHistory(suggested);
+			if (historyOrg === undefined) {
+				return undefined;
+			}
+			const org = historyOrg ?? await this.askOrgViaInputBox(suggested);
+			if (!org) {
+				return undefined;
+			}
+			const result = await client.probeOrganization(org, pat);
+			if (result === 'ok') {
+				await this.patCredentials.savePerOrgPat(org, pat);
+				this.perOrgPatCache.set(canonicalizeOrg(org), pat);
+				this._onDidChangeSession.fire(this.currentSession);
+				vscode.window.showInformationMessage(vscode.l10n.t('Added organization "{0}".', org));
+				return org;
+			}
+			const message = result === 'unauthorized'
+				? vscode.l10n.t('The token was rejected for organization "{0}". This can happen if the token is invalid, revoked, or not scoped to this organization.', org)
+				: result === 'not-found'
+					? vscode.l10n.t('Organization "{0}" not found.', org)
+					: vscode.l10n.t('Could not reach dev.azure.com/{0}.', org);
+			const tryAgain = vscode.l10n.t('Try another');
+			const cancel = vscode.l10n.t('Cancel');
+			const pick = await vscode.window.showErrorMessage(message, { modal: false }, tryAgain, cancel);
+			if (pick !== tryAgain) {
+				return undefined;
+			}
+			suggested = org;
+		}
+	}
+
+	private async pickOrgFromHistory(prefill: string | undefined): Promise<string | null | undefined> {
+		const history = this.patCredentials.getHistory();
+		if (history.length === 0) {
+			return null;
+		}
+		const typeItLabel = vscode.l10n.t('$(edit) Type another organization name…');
+		const items: Array<vscode.QuickPickItem & { org?: string; typeIt?: boolean }> = history
+			.map(o => ({ label: `$(organization) ${o}`, org: o }));
+		items.push({ label: '', kind: vscode.QuickPickItemKind.Separator });
+		items.push({ label: typeItLabel, typeIt: true });
+		const pick = await vscode.window.showQuickPick(items, {
+			title: vscode.l10n.t('Select an Azure DevOps organization for this PAT'),
+			placeHolder: prefill
+				? vscode.l10n.t('Suggested from clipboard: {0}', prefill)
+				: vscode.l10n.t('Recently used organizations'),
+			ignoreFocusOut: true,
+		});
+		if (!pick) {
+			return undefined;
+		}
+		return pick.typeIt ? null : pick.org;
+	}
+
+	private async askOrgViaInputBox(prefill: string | undefined): Promise<string | undefined> {
+		const input = await vscode.window.showInputBox({
+			ignoreFocusOut: true,
+			prompt: vscode.l10n.t('Enter the name of the Azure DevOps organization.'),
+			placeHolder: vscode.l10n.t('e.g. contoso'),
+			value: prefill,
+			valueSelection: prefill ? [0, prefill.length] : undefined,
+			validateInput: v => v.trim().length === 0 ? vscode.l10n.t('Organization name is required') : undefined,
+		});
+		return input?.trim() || undefined;
 	}
 
 	async signOut(): Promise<void> {
@@ -200,6 +363,9 @@ export class AuthService implements vscode.Disposable {
 		this.logger.logInfo(`signOut invoked (kind=${kind ?? '<none>'})`);
 		if (kind === 'pat') {
 			await this.patProvider.removeSession(AzureDevOpsAuthenticationProvider.id);
+			// Plan 002 §2.3: signing out clears every per-org slot too.
+			await this.patCredentials.clearAllPerOrgPats();
+			this.perOrgPatCache.clear();
 		}
 		await this.context.globalState.update(SIGN_IN_KIND_KEY, undefined);
 		this.currentSession = undefined;
@@ -218,13 +384,48 @@ export class AuthService implements vscode.Disposable {
 		} catch (err) {
 			this.logger.logError('reset: removeSession failed (ignored)', err);
 		}
-		await this.context.secrets.delete('AzureDevOpsPAT');
+		await this.patCredentials.clearAll();
 		await this.context.globalState.update(SIGN_IN_KIND_KEY, undefined);
 		await this.context.globalState.update(MS_TENANT_KEY, undefined);
 		await this.context.globalState.update(MS_TENANT_NAME_KEY, undefined);
 		this.currentSession = undefined;
 		await this.setContext(undefined);
 		this._onDidChangeSession.fire(undefined);
+	}
+
+	// ---------- Per-organization PAT storage (plan 002 fallback backend) ----------
+
+	/** List every stored per-organization PAT (canonical org name + PAT). */
+	listPerOrgPats(): Promise<PerOrgPat[]> {
+		return this.patCredentials.listPerOrgPats();
+	}
+
+	/** Canonical names of the organizations that currently have a per-org PAT. */
+	listPerOrgNames(): string[] {
+		return [...this.perOrgPatCache.keys()].sort((a, b) => a.localeCompare(b));
+	}
+
+	/** Persist a PAT for a specific organization. Overwrites any previous value. */
+	async savePerOrgPat(org: string, pat: string): Promise<void> {
+		await this.patCredentials.savePerOrgPat(org, pat);
+		this.perOrgPatCache.set(canonicalizeOrg(org), pat);
+	}
+
+	/** Look up a stored PAT for a specific organization. */
+	getPerOrgPat(org: string): Thenable<string | undefined> {
+		return this.patCredentials.getPerOrgPat(org);
+	}
+
+	/** Remove the PAT for a single organization without touching the others. */
+	async deletePerOrgPat(org: string): Promise<void> {
+		await this.patCredentials.deletePerOrgPat(org);
+		this.perOrgPatCache.delete(canonicalizeOrg(org));
+	}
+
+	/** Wipe both the global and every per-organization PAT slot. */
+	async clearAllPats(): Promise<void> {
+		await this.patCredentials.clearAll();
+		this.perOrgPatCache.clear();
 	}
 
 	private async confirmReplaceIfSignedIn(label: string): Promise<boolean> {
@@ -246,7 +447,7 @@ export class AuthService implements vscode.Disposable {
 	}
 
 	/** Build the auth headers required for a REST call. */
-	getHeaders(): AdoAuthHeaders {
+	getHeaders(orgHint?: string): AdoAuthHeaders {
 		if (!this.currentSession) {
 			throw new Error('Not signed in to Azure DevOps.');
 		}
@@ -256,11 +457,39 @@ export class AuthService implements vscode.Disposable {
 				'content-type': 'application/json',
 			};
 		}
-		const basic = Buffer.from(`:${this.currentSession.accessToken}`).toString('base64');
+		const pat = this.pickPatForOrg(orgHint);
+		const basic = Buffer.from(`:${pat}`).toString('base64');
 		return {
 			authorization: `Basic ${basic}`,
 			'content-type': 'application/json',
 		};
+	}
+
+	/**
+	 * Choose the right PAT for `orgHint`. When a per-organization PAT is
+	 * stored for `orgHint` it wins (plan 002 §2.3); otherwise the session's
+	 * primary PAT is used, which matches the historical behavior and covers
+	 * calls that are not org-scoped (SPS `profiles/me`, `accounts`).
+	 */
+	private pickPatForOrg(orgHint: string | undefined): string {
+		if (!this.currentSession || this.currentSession.kind !== 'pat') {
+			throw new Error('pickPatForOrg called without an active PAT session');
+		}
+		if (orgHint) {
+			const perOrg = this.perOrgPatCache.get(canonicalizeOrg(orgHint));
+			if (perOrg) {
+				return perOrg;
+			}
+		}
+		return this.currentSession.accessToken;
+	}
+
+	private async reloadPerOrgPatCache(): Promise<void> {
+		const entries = await this.patCredentials.listPerOrgPats();
+		this.perOrgPatCache.clear();
+		for (const e of entries) {
+			this.perOrgPatCache.set(e.org, e.pat);
+		}
 	}
 
 	private getStoredKind(): SignInKind | undefined {
@@ -355,4 +584,47 @@ function extractTenantFromJwt(token: string): string | undefined {
 	} catch {
 		return undefined;
 	}
+}
+
+/**
+ * If the system clipboard currently holds an Azure DevOps URL like
+ * `https://dev.azure.com/{org}/…` or `https://{org}.visualstudio.com/…`,
+ * return the extracted `{org}` in canonical form. Silently returns
+ * `undefined` on any failure (clipboard unavailable, non-URL content, etc.).
+ * Best-effort UX helper for the "Add organization" prompt — never blocks
+ * on user cancellation or throws.
+ */
+async function sniffOrgFromClipboard(): Promise<string | undefined> {
+	try {
+		const raw = await vscode.env.clipboard.readText();
+		return parseOrgFromUrl(raw);
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * Parse the organization name out of an Azure DevOps URL, if `text` looks
+ * like one. Recognises the modern `dev.azure.com/{org}` shape and the
+ * legacy `{org}.visualstudio.com` shape. Returns `undefined` on any other
+ * input. Pure function to make the clipboard integration testable without
+ * a live VS Code clipboard.
+ */
+export function parseOrgFromUrl(text: string | undefined): string | undefined {
+	if (!text) {
+		return undefined;
+	}
+	const trimmed = text.trim();
+	if (trimmed.length === 0 || trimmed.length > 2048) {
+		return undefined;
+	}
+	const devAzure = /^https?:\/\/dev\.azure\.com\/([^/\s?#]+)/i.exec(trimmed);
+	if (devAzure) {
+		return devAzure[1].toLowerCase();
+	}
+	const legacy = /^https?:\/\/([a-z0-9][a-z0-9-]*)\.visualstudio\.com\b/i.exec(trimmed);
+	if (legacy) {
+		return legacy[1].toLowerCase();
+	}
+	return undefined;
 }

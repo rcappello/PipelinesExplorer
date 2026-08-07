@@ -33,6 +33,16 @@ public sealed class AdoAuthService : IAdoAuthHeaderProvider, IDisposable
     private readonly bool _ownsHttpClient;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
 
+    /// <summary>
+    /// In-memory mirror of the per-org PATs (canonical org → PAT). Kept because
+    /// <see cref="GetAuthHeaderAsync"/> is called from the hot request path and
+    /// cannot afford a Credential Manager round-trip on every call. Refreshed
+    /// on <see cref="InitializeAsync"/>, after <see cref="SavePerOrgPatAsync"/>,
+    /// <see cref="DeletePerOrgPatAsync"/>, and on sign-out.
+    /// </summary>
+    private readonly Dictionary<string, string> _perOrgPatCache = new(StringComparer.Ordinal);
+    private readonly System.Threading.Lock _perOrgGate = new();
+
     private AdoSession? _currentSession;
     private IReadOnlyList<TenantInfo>? _cachedTenants;
 
@@ -66,7 +76,7 @@ public sealed class AdoAuthService : IAdoAuthHeaderProvider, IDisposable
     }
 
     /// <inheritdoc />
-    public async Task<AuthenticationHeaderValue?> GetAuthHeaderAsync(CancellationToken cancellationToken)
+    public async Task<AuthenticationHeaderValue?> GetAuthHeaderAsync(string? orgHint, CancellationToken cancellationToken)
     {
         var session = _currentSession;
         if (session is null)
@@ -83,13 +93,48 @@ public sealed class AdoAuthService : IAdoAuthHeaderProvider, IDisposable
             return new AuthenticationHeaderValue("Bearer", session.AccessToken);
         }
 
-        var basic = Convert.ToBase64String(Encoding.UTF8.GetBytes(":" + session.AccessToken));
+        var pat = PickPatForOrg(orgHint) ?? session.AccessToken;
+        var basic = Convert.ToBase64String(Encoding.UTF8.GetBytes(":" + pat));
         return new AuthenticationHeaderValue("Basic", basic);
+    }
+
+    /// <summary>
+    /// Choose the right PAT for <paramref name="orgHint"/>. When a per-org PAT
+    /// is stored for the (canonicalized) org name it wins (plan 002 §2.3);
+    /// otherwise the session's primary PAT is used, which matches historical
+    /// behavior and covers calls that are not org-scoped (SPS <c>profiles/me</c>,
+    /// <c>accounts</c>).
+    /// </summary>
+    private string? PickPatForOrg(string? orgHint)
+    {
+        if (string.IsNullOrEmpty(orgHint))
+        {
+            return null;
+        }
+        var canonical = PatCredentialStore.CanonicalizeOrg(orgHint!);
+        lock (_perOrgGate)
+        {
+            return _perOrgPatCache.TryGetValue(canonical, out var pat) ? pat : null;
+        }
+    }
+
+    private void ReloadPerOrgPatCache()
+    {
+        var entries = _patStore.ListPerOrgPats();
+        lock (_perOrgGate)
+        {
+            _perOrgPatCache.Clear();
+            foreach (var e in entries)
+            {
+                _perOrgPatCache[e.Org] = e.Pat;
+            }
+        }
     }
 
     /// <summary>Best-effort silent restore using the previously chosen provider.</summary>
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
+        ReloadPerOrgPatCache();
         var kind = GetStoredKind();
         _logger.Info($"AdoAuthService.Initialize: stored kind = {kind?.ToString() ?? "<none>"}");
         if (kind is null)
@@ -136,6 +181,52 @@ public sealed class AdoAuthService : IAdoAuthHeaderProvider, IDisposable
 
     /// <summary>Wipes ALL persisted state (PAT secret + chosen provider + tenant override).</summary>
     public Task ResetAsync(CancellationToken cancellationToken = default) => SignOutInternalAsync(reset: true);
+
+    // ---------- Per-organization PAT storage (plan 002 fallback backend) ----------
+
+    /// <summary>List every stored per-organization PAT (canonical org name + PAT).</summary>
+    public IReadOnlyList<PerOrgPat> ListPerOrgPats() => _patStore.ListPerOrgPats();
+
+    /// <summary>Canonical names of the organizations that currently have a per-org PAT.</summary>
+    public IReadOnlyList<string> ListPerOrgNames()
+    {
+        lock (_perOrgGate)
+        {
+            var names = _perOrgPatCache.Keys.ToList();
+            names.Sort(StringComparer.OrdinalIgnoreCase);
+            return names;
+        }
+    }
+
+    /// <summary>Org names the user has previously added, most-recent first. Survives sign-out.</summary>
+    public IReadOnlyList<string> GetOrgHistory() => _patStore.GetHistory();
+
+    /// <summary>Persist a PAT for a specific organization. Overwrites any previous value.</summary>
+    public Task SavePerOrgPatAsync(string org, string pat, CancellationToken cancellationToken = default)
+    {
+        _patStore.SavePerOrgPat(org, pat);
+        lock (_perOrgGate)
+        {
+            _perOrgPatCache[PatCredentialStore.CanonicalizeOrg(org)] = pat;
+        }
+        SessionChanged?.Invoke(this, _currentSession);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Look up a stored PAT for a specific organization.</summary>
+    public string? GetPerOrgPat(string org) => _patStore.ReadPerOrgPat(org);
+
+    /// <summary>Remove the PAT for a single organization without touching the others.</summary>
+    public Task DeletePerOrgPatAsync(string org, CancellationToken cancellationToken = default)
+    {
+        _patStore.DeletePerOrgPat(org);
+        lock (_perOrgGate)
+        {
+            _perOrgPatCache.Remove(PatCredentialStore.CanonicalizeOrg(org));
+        }
+        SessionChanged?.Invoke(this, _currentSession);
+        return Task.CompletedTask;
+    }
 
     /// <summary>
     /// Lists the Microsoft Entra tenants the signed-in account has access to,
@@ -330,17 +421,35 @@ public sealed class AdoAuthService : IAdoAuthHeaderProvider, IDisposable
     private async Task SignOutInternalAsync(bool reset)
     {
         var kind = GetStoredKind();
+        Exception? patCleanupError = null;
         _logger.Info($"SignOut invoked (kind={kind?.ToString() ?? "<none>"}, reset={reset})");
 
         if (kind == SignInKind.Pat || reset)
         {
             try
             {
-                _patStore.Delete();
+                if (reset)
+                {
+                    // Reset wipes global + per-org + history in one shot.
+                    _patStore.ClearAll();
+                }
+                else
+                {
+                    // SignOut clears the global PAT and every per-org slot
+                    // (plan 002 §2.3) but keeps the history so the next add can
+                    // suggest previously-used organizations.
+                    _patStore.Delete();
+                    _patStore.ClearAllPerOrgPats();
+                }
             }
             catch (Exception ex)
             {
                 _logger.Warn($"PAT delete failed: {ex.Message}");
+                patCleanupError = ex;
+            }
+            lock (_perOrgGate)
+            {
+                _perOrgPatCache.Clear();
             }
         }
 
@@ -363,6 +472,11 @@ public sealed class AdoAuthService : IAdoAuthHeaderProvider, IDisposable
             _store.Remove(MsTenantNameKey);
         }
         ClearSession();
+
+        if (patCleanupError is not null)
+        {
+            throw new InvalidOperationException("One or more PAT credentials could not be deleted.", patCleanupError);
+        }
     }
 
     private SignInKind? GetStoredKind()

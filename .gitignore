@@ -91,6 +91,9 @@ PublishScripts/
 !.vscode/extensions.json
 *.code-workspace.user
 
+# Copilot-generated local review and pull request artifacts
+.copilot-tracking/
+
 # ---------------------------------------------------------------------
 # Catch-all (in case anything is run from the repo root)
 # ---------------------------------------------------------------------

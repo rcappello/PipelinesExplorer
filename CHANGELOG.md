@@ -12,6 +12,33 @@ or `vs2026`.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-05
+
+### Added
+
+- `[vscode]` **Per-organization PAT sign-in.** Sign-in now works with both *All accessible organizations* PATs (unchanged) and organization-scoped PATs; a new *Add Azure DevOps organization…* command (title-bar `+` icon + Command Palette) layers additional per-org PATs on top of an existing session. Roots merge the global discovery result and every per-org slot, deduplicated. See plan 002 §2 for the full flow.
+- `[vscode]` **Organization-name suggestions** in the *Add organization* prompt: a rolling history (survives `Sign out`, wiped by `Reset`) offers past organizations as picks, and the input box is pre-filled from the clipboard when it contains a `dev.azure.com/{org}` or `{org}.visualstudio.com` URL (plan 002 §B.1).
+- `[vs2026]` **Per-organization PAT sign-in** with the same behavior contract as the VS Code client: after a PAT sign-in the extension runs the classic `_apis/accounts` discovery and, if it returns nothing usable, opens an inline *Add Azure DevOps organization* panel in the tool window with the just-entered PAT pre-filled. `dev.azure.com/{org}/_apis/projects?$top=1` validates the pair and a per-org slot is stored in Windows Credential Manager. A new *Pipelines Explorer: Add Azure DevOps organization…* Tools-menu command opens the panel manually to add more organizations on top of an existing sign-in.
+- `[vs2026]` **Organization-name suggestions** in the *Add organization* panel: the same rolling history (survives *Sign out*, wiped by *Reset*, capped at 20 entries) is rendered as clickable buttons that fill the organization field in one click.
+
+### Changed
+
+- `[vs2026]` `AdoClient` now creates its owned `HttpClient` with `HttpClientHandler { UseCookies = false }`. Azure DevOps REST authenticates entirely via the `Authorization` header, and shared cookies (e.g. `VstsSession` set by `app.vssps.visualstudio.com`) can only pollute subsequent requests. Hygiene fix; no user-visible behavior change.
+- `[vs2026]` **Backend plumbing for per-organization PATs** — `PatCredentialStore` grows per-org slots and a survives-sign-out history; `IAdoAuthHeaderProvider` gains an `orgHint` parameter so `AdoClient` routes every `dev.azure.com/{org}/…` call to the right token via an in-memory cache; new `ProbeOrganizationAsync` classifies validation outcomes as `OrgProbeResult`. `SignOut` now clears every per-org slot alongside the global slot (plan 002 §2.3) but preserves the org-name history. The tool-window UX to feed the new store lands in the same release.
+- `[vscode]` `Sign out` now clears every per-organization PAT slot in addition to the global slot, matching plan 002 §2.3.
+- `[vscode]` `[vs2026]` Copy: the *Add organization* error for `unauthorized` now reads *"The token was rejected for organization … . This can happen if the token is invalid, revoked, or not scoped to this organization."* — the previous wording implied the org was the problem when a wrong PAT is just as likely.
+- `[vs2026]` The tree's "no organizations" placeholder now reads *"No Azure DevOps organizations added yet. Use 'Add Azure DevOps organization…' to name one."* under PAT sign-in (previously the Microsoft-only wording *"…found for this tenant"* was shown for PAT too). VS Code already had the corresponding behavior.
+
+### Fixed
+
+- `[vs2026]` Sign-in with an organization-scoped PAT used to trigger the unauthorized-recovery dialog and forcibly sign the user out, because the refresh treated the deterministic 401 from `app.vssps.visualstudio.com/_apis/profile/profiles/me` as a real credentials failure. For PAT sessions this specific 401 is now recognised as the *expected* signal that the token cannot enumerate cross-org and the flow falls through to the per-organization slots as intended.
+- `[vscode]` `[vs2026]` Cancelling the *Add Azure DevOps organization* prompt/panel right after a fresh PAT sign-in now signs the user out and discards the just-entered token, so a fake or unverifiable PAT no longer lingers in `SecretStorage` / Credential Manager and reactivates as a zombie session on the next activation. Cancelling on top of an already-working session (opened via the *Add another organization* command) still leaves the existing per-org PATs untouched.
+
+### Documentation
+
+- `[vscode]` `[vs2026]` Reworked the *PAT scope and the 1 Dec 2026 deprecation* section of both READMEs to describe the two supported PAT shapes and to explain the small UX cost of an org-scoped PAT: the extension has to ask for the organization name once, because Azure DevOps does not expose any endpoint that returns the org from an opaque scoped PAT (verified on 2026-07-07: `_apis/accounts?memberId=` returns `0`, `_apis/ConnectionData` at the SPS level responds `401`, `_apis/tokens/pats` requires the org already in the URL, and `_apis/profile/profiles/me` only carries the identity).
+- Plan 002 §1.1 documents field evidence (2026-07-07) that `_apis/accounts` is already non-deterministic today \u2014 same PAT + same `memberId` returned 4, then 1, then 2 organizations across three calls minutes apart.
+
 ### Maintenance
 
 - `[vscode]` Updated vulnerable transitive development dependencies in `package-lock.json`: `brace-expansion` (`1.1.18`, `2.1.4`, and `5.0.9`), `fast-uri` `3.1.5`, `js-yaml` `4.3.1`, `linkify-it` `5.0.2`, `shell-quote` `1.10.0`, and `undici` `7.29.0`. `npm audit` now reports no vulnerabilities.
@@ -55,4 +82,4 @@ or `vs2026`.
 ## VS Code client
 
 See [`src/vscode/CHANGELOG.md`](src/vscode/CHANGELOG.md) for the full history
-of the VS Code extension (latest: 0.2.0).
+of the VS Code extension (latest: 0.4.0).

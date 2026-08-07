@@ -47,6 +47,7 @@ public static class Strings
     // Tree info nodes
     public static string Tree_Loading => Get(nameof(Tree_Loading));
     public static string Tree_NoOrganizations => Get(nameof(Tree_NoOrganizations));
+    public static string Tree_NoOrganizations_Pat => Get(nameof(Tree_NoOrganizations_Pat));
     public static string Tree_NoProjects => Get(nameof(Tree_NoProjects));
     public static string Tree_NoPipelines => Get(nameof(Tree_NoPipelines));
     public static string Tree_NoTemplatesOrScripts => Get(nameof(Tree_NoTemplatesOrScripts));
@@ -116,4 +117,22 @@ public static class Strings
     public static string Unauthorized_Message_Format => Get(nameof(Unauthorized_Message_Format));
     public static string Unauthorized_SignInMicrosoft => Get(nameof(Unauthorized_SignInMicrosoft));
     public static string Unauthorized_SignInPat => Get(nameof(Unauthorized_SignInPat));
+
+    // Add-organization panel (Plan 002 phase D)
+    public static string AddOrg_Header => Get(nameof(AddOrg_Header));
+    public static string AddOrg_RequiresPatSignIn => Get(nameof(AddOrg_RequiresPatSignIn));
+    public static string AddOrg_DeprecationNotice => Get(nameof(AddOrg_DeprecationNotice));
+    public static string AddOrg_OrgLabel => Get(nameof(AddOrg_OrgLabel));
+    public static string AddOrg_OrgHint => Get(nameof(AddOrg_OrgHint));
+    public static string AddOrg_OrgFieldHelp => Get(nameof(AddOrg_OrgFieldHelp));
+    public static string AddOrg_PatLabel => Get(nameof(AddOrg_PatLabel));
+    public static string AddOrg_PatFieldHelp => Get(nameof(AddOrg_PatFieldHelp));
+    public static string AddOrg_HistoryLabel => Get(nameof(AddOrg_HistoryLabel));
+    public static string AddOrg_Verify => Get(nameof(AddOrg_Verify));
+    public static string AddOrg_Cancel => Get(nameof(AddOrg_Cancel));
+    public static string AddOrg_OrgRequired => Get(nameof(AddOrg_OrgRequired));
+    public static string AddOrg_PatRequired => Get(nameof(AddOrg_PatRequired));
+    public static string AddOrg_Error_Unauthorized_Format => Get(nameof(AddOrg_Error_Unauthorized_Format));
+    public static string AddOrg_Error_NotFound_Format => Get(nameof(AddOrg_Error_NotFound_Format));
+    public static string AddOrg_Error_Network_Format => Get(nameof(AddOrg_Error_Network_Format));
 }

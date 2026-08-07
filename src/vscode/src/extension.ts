@@ -44,6 +44,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 	context.subscriptions.push(auth);
 
 	const client = new AdoClient(auth, logger);
+	auth.attachAdoClient(client);
 
 	const links = new WorkspaceLinkService(context, logger);
 	const branches = new RepoBranchService(context, logger);
@@ -168,6 +169,28 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 		}),
 		vscode.commands.registerCommand('pipelinesexplorer.refresh', () => tree.refresh()),
 		vscode.commands.registerCommand('pipelinesexplorer.showLogs', () => logger.show()),
+
+		vscode.commands.registerCommand('pipelinesexplorer.addOrganization', async () => {
+			const session = auth.session;
+			if (session?.kind !== 'pat') {
+				vscode.window.showWarningMessage(
+					vscode.l10n.t('This command is only available when signed in with a Personal Access Token.'),
+				);
+				return;
+			}
+			const pat = await vscode.window.showInputBox({
+				ignoreFocusOut: true,
+				password: true,
+				prompt: vscode.l10n.t('Enter an Azure DevOps Personal Access Token (PAT) authorized for this organization.'),
+				placeHolder: vscode.l10n.t('Personal access token'),
+				validateInput: v => v.trim().length === 0 ? vscode.l10n.t('PAT is required') : undefined,
+			});
+			if (!pat) {
+				return;
+			}
+			await auth.promptAndAddOrganization(pat.trim());
+			tree.refresh();
+		}),
 
 		vscode.commands.registerCommand('pipelinesexplorer.filter', async () => {
 			const current = tree.getCurrentFilter();

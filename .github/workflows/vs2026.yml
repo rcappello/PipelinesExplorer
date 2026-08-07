@@ -23,9 +23,9 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@v6
         with:
           # Project targets net10.0-windows; keep this in sync with TargetFramework
           # in PipelinesExplorer.VisualStudio.csproj.
@@ -38,7 +38,7 @@ jobs:
         run: dotnet build PipelinesExplorer.VisualStudio.csproj -c Release --no-restore
 
       - name: Upload VSIX as workflow artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: pipelines-explorer-vs2026-vsix
           path: src/vs2026/bin/Release/**/*.vsix

@@ -8,6 +8,36 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-05
+
+> Per-organization PAT sign-in is now available end-to-end in the Visual Studio 2026 client.
+
+### Added
+
+- **Per-organization PAT sign-in.** Sign-in with a PAT now works with both *All accessible organizations* PATs (the historical path, unchanged) and **organization-scoped** PATs. After you paste the token, Pipelines Explorer runs the classic `_apis/accounts` discovery: if it returns nothing usable — the deterministic outcome for an org-scoped PAT, and increasingly common even for global PATs (see plan 002 §1.1) — an inline *Add Azure DevOps organization* panel opens with the just-entered token pre-filled, so you only have to type the exact organization identifier. The extension validates the pair against `dev.azure.com/{org}/_apis/projects?$top=1`; on success the `<org, pat>` pair is stored in Windows Credential Manager under `PipelinesExplorer.VisualStudio:AzureDevOpsPAT/{org}` and the tree renders that organization normally. Mistyped or unauthorized names surface an inline error inside the panel with *Verify & add* / *Cancel* actions rather than a broken slot. Multiple per-organization PATs coexist and every request routes to the right token automatically.
+- **`Pipelines Explorer: Add Azure DevOps organization…`** command (Tools menu). Opens the tool window and toggles the *Add organization* panel so you can layer another PAT on top of an existing sign-in without going through a fresh sign-in flow.
+- **Organization-name suggestions** in the *Add organization* panel: a rolling history (survives *Sign out*, wiped by *Reset*, capped at 20 entries) appears as clickable buttons that fill the organization field in one click.
+- **Per-organization PAT storage.** `PatCredentialStore` now supports per-org slots (Windows Credential Manager targets under `PipelinesExplorer.VisualStudio:AzureDevOpsPAT/{canonical-org}`) alongside the historical global slot, with the set of known org names tracked in `JsonStateStore` under `pipelinesexplorer.pat.org.index`.
+- **`AdoClient.ProbeOrganizationAsync(org, patOverride?)`** — lightweight `dev.azure.com/{org}/_apis/projects?$top=1` probe returning a classified `OrgProbeResult` (`Ok` / `Unauthorized` / `NotFound` / `NetworkError`). Accepts an optional PAT override so the fallback flow can validate a token that is not yet stored.
+- **Per-organization header routing.** `IAdoAuthHeaderProvider.GetAuthHeaderAsync` gains an `orgHint` parameter; `AdoAuthService` keeps an in-memory cache of per-org PATs (loaded from Credential Manager at `InitializeAsync` and refreshed on save/delete) and returns the per-org PAT for calls to `dev.azure.com/{org}/…`, falling back to the session's primary PAT for SPS-level calls. Every `AdoClient` method that already receives `organizationName` now threads it through to the auth layer.
+
+### Changed
+
+- `SignOutAsync` now clears every per-organization slot alongside the global slot (plan 002 §2.3) but preserves the org-name history so the next add can suggest previous organizations. `ResetAsync` continues to wipe absolutely everything, history included.
+- The pipelines tree merges organizations from `_apis/accounts` **and** every per-organization slot, deduplicated by canonical name (per-org slots win on conflict).
+- The tree's "no organizations" placeholder now reads *"No Azure DevOps organizations added yet. Use 'Add Azure DevOps organization…' to name one."* under PAT sign-in (previously the Microsoft-only wording *"…found for this tenant"* was shown for PAT too, which is misleading — PAT sign-in has no tenant concept).
+- Hygiene: the internal `HttpClient` used by `AdoClient` is created with `HttpClientHandler { UseCookies = false }`. Azure DevOps REST authenticates entirely via the `Authorization` header (Bearer for Microsoft sign-in, Basic for PAT); shared cookies (e.g. `VstsSession` set by `app.vssps.visualstudio.com`) can only pollute subsequent requests.
+
+### Fixed
+
+- Sign-in with an organization-scoped PAT used to trigger the unauthorized-recovery dialog and forcibly sign the user out, because `RefreshAsync` treated the deterministic 401 from `app.vssps.visualstudio.com/_apis/profile/profiles/me` as a real credentials failure. For PAT sessions this specific 401 is now recognised as the *expected* signal that the token cannot enumerate cross-org and the flow falls through to the per-organization slots as intended (plan 002 §2.1). Microsoft sign-in still surfaces the recovery dialog on real 401s.
+- Cancelling the *Add Azure DevOps organization* panel right after a fresh sign-in now signs the user out and discards the just-entered token, so a fake or unverifiable PAT no longer lingers in Credential Manager and reactivates as a zombie session on the next VS launch. Cancelling on top of an already-working session (panel opened via the Tools-menu command) still leaves the existing per-org PATs untouched.
+- Copy: the *Verify & add* error for `Unauthorized` now reads *"The token was rejected for organization "{0}". This can happen if the token is invalid, revoked, or not scoped to this organization."* — the previous wording implied the org was the problem when a wrong PAT is just as likely.
+
+### Documentation
+
+- README: reworked the *PAT scope and the 1 Dec 2026 deprecation* section to describe the two supported PAT shapes and to explain the small UX cost of an org-scoped PAT — the extension has to ask for the exact organization identifier once, because Azure DevOps does not expose any endpoint that returns the org from an opaque scoped PAT. Verified empirically on 2026-07-07 against every candidate path: `_apis/accounts?memberId=` returns `count: 0`, `_apis/ConnectionData` (SPS-level) responds `401 Unauthorized`, `_apis/tokens/pats` requires the organization already in the URL, and `_apis/profile/profiles/me` only carries the identity.
+
 ## [0.3.2] - 2026-07-02
 
 ### Changed

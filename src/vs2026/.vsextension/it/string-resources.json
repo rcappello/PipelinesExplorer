@@ -5,6 +5,7 @@
   "PipelinesExplorer.Command.SignInPat.DisplayName": "Pipelines Explorer: Accedi con PAT",
   "PipelinesExplorer.Command.SignOut.DisplayName": "Pipelines Explorer: Disconnetti",
   "PipelinesExplorer.Command.SelectTenant.DisplayName": "Pipelines Explorer: Seleziona tenant Microsoft",
+  "PipelinesExplorer.Command.AddOrganization.DisplayName": "Pipelines Explorer: Aggiungi organizzazione Azure DevOps…",
   "PipelinesExplorer.Command.Refresh.DisplayName": "Pipelines Explorer: Aggiorna",
   "PipelinesExplorer.Command.Reset.DisplayName": "Pipelines Explorer: Reimposta tutte le impostazioni",
   "PipelinesExplorer.Command.ShowLogs.DisplayName": "Pipelines Explorer: Mostra log"

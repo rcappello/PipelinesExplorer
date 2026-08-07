@@ -7,6 +7,7 @@
 	"command.reset.title": "Pipelines Explorer: Reimposta (elimina le credenziali salvate)",
 	"command.refresh.title": "Pipelines Explorer: Aggiorna",
 	"command.selectTenant.title": "Pipelines Explorer: Seleziona tenant Microsoft Entra…",
+	"command.addOrganization.title": "Pipelines Explorer: Aggiungi organizzazione Azure DevOps…",
 	"command.showLogs.title": "Pipelines Explorer: Mostra log",
 	"command.linkWorkspace.title": "Collega cartella dell'area di lavoro…",
 	"command.unlinkWorkspace.title": "Scollega cartella dell'area di lavoro",
