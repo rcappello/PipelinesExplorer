@@ -32,6 +32,7 @@ internal sealed class ExtensionEntrypoint : Extension
             // Extension Manager "More info" link and bundled license shown in the details pane.
             MoreInfo = "https://github.com/rcappello/PipelinesExplorer",
             License = "LICENSE",
+            ReleaseNotes = "https://github.com/rcappello/PipelinesExplorer/releases/tag/vs2026-v0.4.0",
 
             // Search hints surfaced in Extension Manager and on the Marketplace.
             Tags = new[] { "azure devops", "pipelines", "yaml", "ci/cd", "build" },

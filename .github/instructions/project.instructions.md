@@ -1,4 +1,5 @@
 ---
+description: "Shared repository rules for Pipelines Explorer development and releases"
 applyTo: "**"
 ---
 
@@ -75,6 +76,11 @@ prefer them over launching duplicates.
   build, tests, packaging, and release-specific consistency checks; and report the
   exact tag the developer should create. Do not create tags, push commits or tags,
   or trigger release workflows. The developer performs those actions.
+- **VS 2026 release notes.** When preparing a VS 2026 release, update
+  `Metadata/ReleaseNotes` in `src/vs2026/source.extension.vsixmanifest` to
+  `https://github.com/rcappello/PipelinesExplorer/releases/tag/vs2026-v<version>`,
+  set the same URL in `ExtensionEntrypoint.cs` `Metadata.ReleaseNotes`, and verify
+  that the URL version, `Identity/@Version`, and reported tag all match.
 - Don't change formatting of unrelated code.
 
 ### Should (stack & structure)
