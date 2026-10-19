@@ -69,8 +69,8 @@
       Microsoft.ServiceHub.Framework). Kept on the 2.5.x line to preserve
       binary compatibility with the SDK's expectations.
     -->
-    <PackageReference Include="MessagePack" Version="2.5.302" />
-    <PackageReference Include="MessagePack.Annotations" Version="2.5.302" />
+    <PackageReference Include="MessagePack" Version="2.5.303" />
+    <PackageReference Include="MessagePack.Annotations" Version="2.5.303" />
   </ItemGroup>
 
   <ItemGroup>
